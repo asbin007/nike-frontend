@@ -33,10 +33,12 @@ const ProductFilters = () => {
     return matchBrand && matchCollection;
   });
 
-  const handleBrandClick = (selectedBrand: string) => {
-    if (selectedBrand === "All") navigate(`/${collection}`);
-    else navigate(`/${collection}/${selectedBrand}`);
-  };
+ const handleBrandClick = (selectedBrand: string) => {
+  if (!collection) return; 
+  if (selectedBrand === "All") navigate(`/${collection}`);
+  else navigate(`/${collection}/${selectedBrand}`);
+};
+
 
   return (
     <section className="py-8 bg-gray-50">

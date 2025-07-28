@@ -17,6 +17,7 @@ import MyOrderDetails from "./pages/order/MyOrderDetaills";
 import { useEffect } from "react";
 import { useAppDispatch } from "./store/hooks";
 import { loadUserFromStorage } from "./store/authSlice";
+import SearchProducts from "./pages/product/SearchProducts";
 
 export const socket = io("http://localhost:5001", {
   auth: {
@@ -44,6 +45,7 @@ const App = () => {
         <Route path="/:collection/:brand/:id" element={<ProductDetail />} />
         <Route path="/:collection/:brand" element={<ProductFilters />} />
         <Route path="/:collection" element={<ProductFilters />} />
+        <Route path="/search" element={<SearchProducts />} />
 
         <Route path="/collection" element={<Collections />} />
         <Route path="/my-cart" element={<MyCart />} />

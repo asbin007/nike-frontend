@@ -6,8 +6,17 @@ import { IProduct } from "../../../globals/types/types";
 interface ICardProps {
   product: Omit<IProduct, "images"> & { images: string[] }; // Override images to string[]
 }
+const CLOUDINARY_VERSION = "v1750340657"; 
 
 const ProductCard: React.FC<ICardProps> = ({ product }) => {
+  const imageUrl =
+  product.images && product.images[1]
+    ? `https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${product.images[0].replace(
+        "/uploads",
+        ""
+      )}.jpg`
+    : "https://via.placeholder.com/300x300?text=No+Image";
+
   // Determine the image URL
   return (
     <Link to={`/men/${product.brand}/${product.id}`}>
@@ -29,11 +38,7 @@ const ProductCard: React.FC<ICardProps> = ({ product }) => {
         {/* Product Image */}
         <div className="h-full w-full overflow-hidden object-cover ">
           <img
-            src={
-              product?.images?.[0]?.includes("cloudinary.com")
-                ? product?.images[0]
-                : `http://localhost:5001/${product?.images[0]}` // Fixed: Changed product?.images to product?.images[0]
-            }
+            src={imageUrl}
             alt={product?.name}
             className="w-full h-auto rounded"
           />
@@ -54,11 +59,11 @@ const ProductCard: React.FC<ICardProps> = ({ product }) => {
           <div className="flex items-center justify-between mt-4">
             <div>
               <span className="font-bold text-indigo-600">
-                ${product.price.toFixed(2)}
+                Rs{product.price.toFixed(2)}
               </span>
               {product.discount && (
                 <span className="text-gray-400 text-sm line-through ml-2">
-                  ${((product.price * 100) / (100 - product.discount)).toFixed(2)}
+                  Rs{((product.price * 100) / (100 - product.discount)).toFixed(2)}
                 </span>
               )}
             </div>

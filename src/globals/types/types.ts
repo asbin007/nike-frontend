@@ -25,7 +25,7 @@ export interface IProduct {
   features: string[];
   discount: number;
   colors: string[];
-  images: string |File;
+  images: string[] ;
   createdAt: string;
   updatedAt: string;
   categoryId: string;

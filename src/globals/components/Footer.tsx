@@ -5,8 +5,7 @@ export default function Footer() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div>
-              <h3 className="text-2xl font-bold text-white mb-4">Footcap</h3>
-              <p className="mb-4">Authoritatively morph 24/7 potentialities with error-free partnerships.</p>
+              <h3 className="text-2xl font-bold text-white mb-4">ShoeMart</h3>
               <div className="flex space-x-4">
                 <a href="#" className="text-gray-400 hover:text-white">
                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -29,16 +28,16 @@ export default function Footer() {
             <div>
               <h3 className="text-white text-lg font-semibold mb-4">Contact Us</h3>
               <address className="not-italic">
-                <p className="mb-2">2751 S Parker Rd, Aurora, CO 80014, United States</p>
-                <p className="mb-2">+557343673257</p>
-                <p>footcap@help.com</p>
+                <p className="mb-2">Bagar-1 Pokhara, Nepal</p>
+                <p className="mb-2">+977 9800000000</p>
+                <p>ShoeMart@help.com</p>
               </address>
             </div>
   
             <div>
               <h3 className="text-white text-lg font-semibold mb-4">My Account</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="hover:text-white">My Account</a></li>
+                <li><a href="/" className="hover:text-white">My Account</a></li>
                 <li><a href="#" className="hover:text-white">View Cart</a></li>
                 <li><a href="#" className="hover:text-white">Wishlist</a></li>
                 <li><a href="#" className="hover:text-white">Compare</a></li>
@@ -59,7 +58,7 @@ export default function Footer() {
           </div>
   
           <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-            <p>© 2022 codewithsadee. All Rights Reserved</p>
+            <p>© 2025 asbinXettri. All Rights Reserved</p>
           </div>
         </div>
       </footer>

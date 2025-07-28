@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { fetchProduct, fetchProducts } from "../../store/productSlice";
 import { addToCart } from "../../store/cartSlice";
 import Review from "./Review";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -17,6 +18,10 @@ const ProductDetail = () => {
   );
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string>("");
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,6 +30,19 @@ const ProductDetail = () => {
       dispatch(fetchProduct(id));
     }
   }, [dispatch, id]);
+
+  // Set initial selected image when product loads
+  useEffect(() => {
+    if (product?.images && Array.isArray(product.images) && product.images.length > 0 && typeof product.images[0] === "string") {
+      setSelectedImage(
+        `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${product.images[0].replace(
+          "/uploads",
+          ""
+        )}.jpg`
+      );
+    }
+  }, [product]);
+
   const handleAddToCart = async () => {
     if (!isLoggedIn) {
       alert("Please log in to add to cart");
@@ -55,6 +73,69 @@ const ProductDetail = () => {
       ? product.colors
       : ["No colors available"];
 
+  // Create array of images for multiple image functionality (show 3 images)
+  const productImages: string[] = Array.isArray(product?.images) 
+    ? product.images.slice(0, 3).filter((img): img is string => typeof img === 'string')
+    : [];
+
+  // Navigation functions
+  const nextImage = () => {
+    if (productImages.length > 1) {
+      const nextIndex = (currentImageIndex + 1) % productImages.length;
+      setCurrentImageIndex(nextIndex);
+      setSelectedImage(
+        `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${productImages[nextIndex].replace(
+          "/uploads",
+          ""
+        )}.jpg`
+      );
+    }
+  };
+
+  const prevImage = () => {
+    if (productImages.length > 1) {
+      const prevIndex = currentImageIndex === 0 ? productImages.length - 1 : currentImageIndex - 1;
+      setCurrentImageIndex(prevIndex);
+      setSelectedImage(
+        `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${productImages[prevIndex].replace(
+          "/uploads",
+          ""
+        )}.jpg`
+      );
+    }
+  };
+
+  const handleImageClick = (image: string, index: number) => {
+    setSelectedImage(
+      `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${image.replace(
+        "/uploads",
+        ""
+      )}.jpg`
+    );
+    setCurrentImageIndex(index);
+  };
+
+  const toggleZoom = () => {
+    setIsZoomed(!isZoomed);
+    setZoomLevel(isZoomed ? 1 : 2);
+  };
+
+  const handleZoomIn = () => {
+    if (zoomLevel < 3) {
+      setZoomLevel(zoomLevel + 0.5);
+      setIsZoomed(true);
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (zoomLevel > 1) {
+      setZoomLevel(zoomLevel - 0.5);
+      if (zoomLevel <= 1.5) {
+        setIsZoomed(false);
+      }
+    }
+  };
+
   return (
     <>
       <section className="py-12 bg-white">
@@ -76,13 +157,93 @@ const ProductDetail = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
             <div>
-              <div className="mb-4 rounded-lg overflow-hidden">
+              {/* Main Image with Zoom and Slider */}
+              <div className="relative mb-4 rounded-lg overflow-hidden bg-gray-100">
                 <img
-                  className="w-full h-full object-cover"
-                  src={`http://localhost:5001/${product?.images}`}
+                  className={`w-full h-full object-cover transition-transform duration-300 ${
+                    isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'
+                  }`}
+                  src={selectedImage}
                   alt="Product Image"
+                  style={{
+                    transform: `scale(${zoomLevel})`,
+                    transformOrigin: 'center',
+                  }}
+                  onClick={toggleZoom}
                 />
+                
+                {/* Zoom Controls */}
+                <div className="absolute top-4 right-4 flex flex-col gap-2">
+                  <button
+                    onClick={handleZoomIn}
+                    className="bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-colors"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleZoomOut}
+                    className="bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-colors"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Slider Navigation */}
+                {productImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-colors"
+                      title="Previous Image"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-colors"
+                      title="Next Image"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
+
+                {/* Image Counter */}
+                {productImages.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
+                    {currentImageIndex + 1} / {productImages.length}
+                  </div>
+                )}
               </div>
+              
+              {/* Thumbnail Images */}
+              {productImages.length > 0 && (
+                <div className="flex gap-4 justify-center">
+                  {productImages.map((image, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleImageClick(image, idx)}
+                      className={`w-20 h-20 rounded-md overflow-hidden border-2 transition-all ${
+                        currentImageIndex === idx
+                          ? "border-indigo-600 shadow-lg"
+                          : "border-gray-300 hover:border-indigo-400"
+                      }`}
+                      type="button"
+                    >
+                      <img
+                        src={`https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${image.replace(
+                          "/uploads",
+                          ""
+                        )}.jpg`}
+                        alt={`Thumbnail ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>
@@ -128,7 +289,7 @@ const ProductDetail = () => {
               <div className="mb-6">
                 <div className="flex items-center">
                   <span className="text-2xl font-bold text-indigo-600 mr-3">
-                    ${product?.price?.toFixed(2)}
+                    Rs{product?.price?.toFixed(2)}
                   </span>
                   {(product?.discount ?? 0) > 0 && (
                     <>

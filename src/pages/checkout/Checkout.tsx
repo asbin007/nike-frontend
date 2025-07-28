@@ -2,7 +2,7 @@ import { ChangeEvent, FormEvent, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { IData, orderItem, PaymentMethod } from "../../store/orderSlice";
 import toast from "react-hot-toast";
-
+const CLOUDINARY_VERSION = "v1750340657"; 
 function Checkout() {
   const dispatch = useAppDispatch();
   const { data } = useAppSelector((store) => store.cart);
@@ -89,7 +89,10 @@ function Checkout() {
                     <div className="flex items-start gap-4" key={item.id}>
                       <div className="w-32 h-28 max-lg:w-24 max-lg:h-24 flex p-3 shrink-0 bg-gray-200 rounded-md">
                         <img
-                          src={`http://localhost:5001/${item.Shoe?.images}`}
+                              src={`https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${item.Shoe?.images[0].replace(
+                            "/uploads",
+                            ""
+                          )}.jpg`}
                           className="w-full object-contain"
                         />
                       </div>
