@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { fetchRecommendations, fetchSimilarProducts, addToRecentlyViewed } from '../store/recommendationsSlice';
+import { fetchRecommendations, fetchSimilarProducts } from '../store/recommendationsSlice';
 import { addToCart } from '../store/cartSlice';
 import { addToWishlist } from '../store/wishlistSlice';
 import { Link } from 'react-router-dom';
@@ -127,9 +127,7 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
     dispatch(addToCart(
       product.id,
       product.size?.[0] || "Default",
-      product.color?.[0] || "Default",
-      product.RAM?.[0] || "Default",
-      product.ROM?.[0] || "Default"
+      product.color?.[0] || "Default"
     ));
     toast.success("Added to cart");
   };

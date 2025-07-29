@@ -6,7 +6,7 @@ import { addToWishlist } from '../../store/wishlistSlice';
 import { X, ShoppingCart, Heart, Star, Check, X as XIcon, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ComparisonSkeleton } from '../../components/SkeletonLoader';
+
 
 const ProductComparison: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -33,9 +33,7 @@ const ProductComparison: React.FC = () => {
     dispatch(addToCart(
       product.id,
       product.size?.[0] || "Default",
-      product.color?.[0] || "Default",
-      product.RAM?.[0] || "Default",
-      product.ROM?.[0] || "Default"
+      product.color?.[0] || "Default"
     ));
     toast.success("Added to cart");
   };

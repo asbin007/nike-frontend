@@ -76,8 +76,7 @@ const ProductCard: React.FC<ICardProps> = ({ product }) => {
         description: product.description?.[0] || "",
         inStock: product.isStock || false,
         totalStock: product.totalStock || 0,
-        RAM: product.RAM || [],
-        ROM: product.ROM || [],
+
         color: product.colors || [],
         size: product.sizes || [],
         isNew: product.isNew,

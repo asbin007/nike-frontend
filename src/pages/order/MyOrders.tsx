@@ -311,7 +311,7 @@ function MyOrder() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Delivered</p>
                   <p className="text-2xl font-bold text-gray-800">
-                    {filteredItems.filter(item => item.orderStatus === OrderStatus.Delivered).length}
+                    {filteredItems.length}
                   </p>
                 </div>
                 <div className="bg-green-100 p-3 rounded-full">
@@ -325,7 +325,7 @@ function MyOrder() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Pending</p>
                   <p className="text-2xl font-bold text-gray-800">
-                    {filteredItems.filter(item => item.orderStatus === OrderStatus.Pending).length}
+                    {filteredItems.length}
                   </p>
                 </div>
                 <div className="bg-yellow-100 p-3 rounded-full">

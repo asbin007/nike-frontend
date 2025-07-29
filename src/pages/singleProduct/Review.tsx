@@ -40,9 +40,7 @@ const Review: React.FC<ReviewProps> = ({ productId }) => {
   const reviewStatus = useAppSelector((store) => store.reviews.status);
   const {review}  = useAppSelector((store) => store.reviews);
   
-  const isLoggedIn = useAppSelector(
-    (store) => !!store.auth.user.token || !!localStorage.getItem("tokenauth")
-  );
+
   const currentUserId = useAppSelector((store) => store.auth.user?.id);
 
   const dispatch = useAppDispatch();
@@ -242,7 +240,7 @@ console.log(currentUserId, "currentUserId")
                           {dropdownOpen === item.id && (
                             <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
                               <button
-                                onClick={() => handleEdit(item)}
+                                onClick={() => handleEdit(item as ReviewItem)}
                                 className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                               >
                                 Edit

@@ -141,7 +141,7 @@ const ChatWidget: React.FC = () => {
   };
 
   // Handle message reactions
-  const handleMessageReaction = (messageId: string, reaction: string) => {
+  const handleMessageReaction = (_messageId: string, reaction: string) => {
     toast.success(`Reacted with ${reaction} to message`);
     setSelectedMessage(null);
   };

@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { IProduct } from '../globals/types/types';
+
 
 export interface RecommendationProduct {
   id: string;
@@ -38,7 +38,7 @@ const initialState: RecommendationsState = {
 // Async thunk for fetching recommendations
 export const fetchRecommendations = createAsyncThunk(
   'recommendations/fetchRecommendations',
-  async (productId?: string) => {
+  async (_productId?: string) => {
     try {
       // In a real app, this would be an API call
       // For now, we'll simulate with mock data

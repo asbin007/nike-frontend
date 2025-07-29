@@ -108,7 +108,7 @@ export default chatSlice.reducer;
 export const selectChatState = (state: RootState) => state.chat;
 
 // Thunk: Get or create chat
-export const getOrCreateChat = (customerId: string, adminId: string) => {
+export const getOrCreateChat = (_customerId: string, adminId: string) => {
   return async (dispatch: AppDispatch) => {
     dispatch(setLoading(true));
     dispatch(setError(null));
