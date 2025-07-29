@@ -1,11 +1,20 @@
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { IData, orderItem, PaymentMethod } from "../../store/orderSlice";
+import { orderItem, checkKhaltiPaymentStatus } from "../../store/orderSlice";
+import { PaymentMethod } from "../../store/orderSlice";
+import { IData } from "../../store/orderSlice";
 import toast from "react-hot-toast";
-const CLOUDINARY_VERSION = "v1750340657"; 
+import { useNavigate } from "react-router-dom";
+
+const CLOUDINARY_VERSION = "v1750340657";
+
 function Checkout() {
-  const dispatch = useAppDispatch();
   const { data } = useAppSelector((store) => store.cart);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+    PaymentMethod.Cod
+  );
 
   const total = data.reduce(
     (total, item) => item.Shoe.price * item.quantity + total,
@@ -15,39 +24,49 @@ function Checkout() {
   const [item, setItem] = useState<IData>({
     firstName: "",
     lastName: "",
+    phoneNumber: "",
     addressLine: "",
     city: "",
-    totalPrice: 0,
+    street: "",
     zipcode: "",
     email: "",
-    phoneNumber: "",
-    street: "",
+    totalPrice: 0,
     paymentMethod: PaymentMethod.Cod,
-    shoes: [],
+    Shoe: [],
   });
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
-    PaymentMethod.Cod
-  );
+  // Check for Khalti payment status on component mount
+  useEffect(() => {
+    const pidx = localStorage.getItem('khalti_pidx');
+    if (pidx) {
+      // Check payment status after 2 seconds to allow Khalti to process
+      const timer = setTimeout(() => {
+        dispatch(checkKhaltiPaymentStatus(pidx));
+        localStorage.removeItem('khalti_pidx');
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [dispatch]);
 
   const handlePaymentMethod = (paymentData: PaymentMethod) => {
     setPaymentMethod(paymentData);
-    setItem({
-      ...item,
-      paymentMethod: paymentData,
-    });
+    setItem((prev) => ({ ...prev, paymentMethod: paymentData }));
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setItem({
-      ...item,
-      [name]: value,
-    });
+    setItem((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Check if cart is empty
+    if (data.length === 0) {
+      toast.error("Your cart is empty!");
+      return;
+    }
 
     const productData =
       data.length > 0
@@ -59,22 +78,28 @@ function Checkout() {
 
     const finalData: IData = {
       ...item,
-      shoes: productData,
+      Shoe: productData,
       totalPrice: total,
     };
 
+    console.log('Sending data to backend:', finalData); // Debug log
+
     await dispatch(orderItem(finalData));
-       toast.error("Order created successfully", {
+    
+    // Show appropriate message based on payment method
+    if (paymentMethod === PaymentMethod.Cod) {
+      toast.success("Order created successfully! Pay on delivery.", {
         duration: 3000,
         position: "top-center",
         style: {
-          background: "#dc2626",
-          color: "green",
+          background: "#10b981",
+          color: "white",
           padding: "12px 16px",
           borderRadius: "8px",
         },
       });
-    
+      navigate("/my-orders");
+    }
   };
 
   return (

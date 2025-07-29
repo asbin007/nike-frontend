@@ -41,11 +41,12 @@ export interface IOrderDetail {
       id:string;
       paymentMethod: PaymentMethod;
       paymentStatus: PaymentStatus;
+      pidx?: string; // Add pidx property for Khalti payments
     };
   };
 
   Shoe: {
-    images: string;
+    images: string[];
     name: string;
     price: number;
     Category: {

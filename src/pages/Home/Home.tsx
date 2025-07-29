@@ -2,17 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { TextPlugin } from "gsap/TextPlugin";
+import { useAppDispatch } from "../../store/hooks";
+import { checkKhaltiPaymentStatus } from "../../store/orderSlice";
+
 import Footer from "../../globals/components/Footer";
-import Categories from "../cartegory/Categories";
 import Features from "../features/Features";
 import ProductFilters from "../product/components/ProductFilters";
 import PromoBanners from "../promoBanner/PromoBanner";
+import ProductRecommendations from "../../components/ProductRecommendations";
 import { ArrowRight, Star, Zap, Shield, ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger, TextPlugin);
 
 export default function Hero() {
+  const dispatch = useAppDispatch();
   const heroRef = useRef(null);
   const titleRef = useRef(null);
   const subtitleRef = useRef(null);
@@ -22,6 +26,7 @@ export default function Hero() {
   const sliderRef = useRef(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+
 
   // Slider images from your local folder
   const sliderImages = [
@@ -53,6 +58,18 @@ export default function Hero() {
     "Comfortable and stylish casual wear",
     "Elegant formal collection for every occasion"
   ];
+
+
+
+  // Check for Khalti payment verification on page load
+  useEffect(() => {
+    const pidx = localStorage.getItem('khalti_pidx');
+    if (pidx) {
+      console.log('Found pidx in localStorage (Home):', pidx);
+      dispatch(checkKhaltiPaymentStatus(pidx));
+      localStorage.removeItem('khalti_pidx');
+    }
+  }, [dispatch]);
 
   useEffect(() => {
     // Auto-play slider
@@ -169,6 +186,8 @@ export default function Hero() {
   const togglePlayPause = () => {
     setIsPlaying(!isPlaying);
   };
+
+
 
   return (
     <>
@@ -326,15 +345,50 @@ export default function Hero() {
         </div>
       </section>
 
-      {/* Animated sections */}
+
+
+      {/* Products Section - Now prominently displayed */}
+      <section className="relative z-10 bg-white py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Our Premium Collection
+            </h2>
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              Discover our handpicked selection of premium footwear for every style and occasion
+            </p>
+          </div>
+          <ProductFilters/>
+        </div>
+      </section>
+
+      {/* Product Recommendations */}
+      <ProductRecommendations 
+        type="trendingProducts" 
+        title="Trending Now"
+        subtitle="Most popular products this week"
+        maxProducts={4}
+        showReason={true}
+      />
+
+      {/* Personalized Recommendations */}
+      <ProductRecommendations 
+        type="personalized" 
+        title="Recommended for You"
+        subtitle="Curated based on your preferences"
+        maxProducts={4}
+        showReason={true}
+      />
+
+      {/* Other sections */}
       <div ref={featuresRef} className="relative z-10">
-        <Categories/>
-        <ProductFilters/>
         <PromoBanners/>
         <Features/>
       </div>
       
       <Footer/>
+
+
     </>
   );
 }

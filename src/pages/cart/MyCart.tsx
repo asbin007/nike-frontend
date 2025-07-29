@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { deleteCart, updateCart } from "../../store/cartSlice";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
+import { CartSkeleton } from "../../components/SkeletonLoader";
 
 function MyCart() {
   const { data } = useAppSelector((store) => store.cart);
@@ -36,6 +37,11 @@ function MyCart() {
       setTimeout(() => navigate("/"), 2000); // redirect after 2s
     }
   }, [data, navigate]);
+
+  // Show skeleton while loading
+  if (!data || data.length === 0) {
+    return <CartSkeleton />;
+  }
 
   return (
   <div className="bg-gray-100 min-h-screen py-8">

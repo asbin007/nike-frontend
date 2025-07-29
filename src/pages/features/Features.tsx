@@ -1,57 +1,111 @@
 // components/Features.jsx
+import { Truck, RotateCcw, Shield, Headphones, Zap, Gift, Globe, Heart } from 'lucide-react';
+
 export default function Features() {
     const features = [
       {
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-          </svg>
-        ),
-        title: "FREE SHIPING",
-        description: "All orders over $150"
+        icon: <Truck className="h-8 w-8" />,
+        title: "Free Shipping",
+        description: "Free delivery on orders over रु 2000",
+        color: "from-blue-500 to-blue-600"
       },
       {
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        ),
-        title: "FREE RETURNS",
-        description: "Money back in 30 days"
+        icon: <RotateCcw className="h-8 w-8" />,
+        title: "Easy Returns",
+        description: "30-day return policy for all items",
+        color: "from-green-500 to-green-600"
       },
       {
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-          </svg>
-        ),
-        title: "QUICK PAYMENT",
-        description: "100% secure payment"
+        icon: <Shield className="h-8 w-8" />,
+        title: "Secure Payment",
+        description: "100% secure payment with Khalti",
+        color: "from-purple-500 to-purple-600"
       },
       {
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-        ),
-        title: "24/7 SUPPORT",
-        description: "Get Quick Support"
+        icon: <Headphones className="h-8 w-8" />,
+        title: "24/7 Support",
+        description: "Get help anytime via chat or call",
+        color: "from-orange-500 to-orange-600"
+      },
+      {
+        icon: <Zap className="h-8 w-8" />,
+        title: "Fast Delivery",
+        description: "Same day delivery in Pokhara",
+        color: "from-red-500 to-red-600"
+      },
+      {
+        icon: <Gift className="h-8 w-8" />,
+        title: "Free Gifts",
+        description: "Free accessories with every order",
+        color: "from-pink-500 to-pink-600"
+      },
+      {
+        icon: <Globe className="h-8 w-8" />,
+        title: "Nationwide",
+        description: "Delivery across all Nepal",
+        color: "from-indigo-500 to-indigo-600"
+      },
+      {
+        icon: <Heart className="h-8 w-8" />,
+        title: "Quality Guarantee",
+        description: "Premium quality footwear guarantee",
+        color: "from-teal-500 to-teal-600"
       }
     ];
   
     return (
-      <section className="py-12 bg-white">
+      <section className="py-16 bg-gradient-to-br from-gray-50 to-white">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Why Choose ShoeMart?
+            </h2>
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              We provide the best shopping experience with premium quality footwear and excellent customer service
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => (
-              <div key={index} className="text-center p-6 bg-gray-50 rounded-lg hover:shadow-md transition duration-300">
-                <div className="text-indigo-600 mb-4 flex justify-center">
-                  {feature.icon}
+              <div key={index} className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 p-6 border border-gray-100">
+                <div className={`text-white mb-4 flex justify-center w-16 h-16 rounded-2xl bg-gradient-to-r ${feature.color} mx-auto group-hover:scale-110 transition-transform duration-300`}>
+                  <div className="flex items-center justify-center">
+                    {feature.icon}
+                  </div>
                 </div>
-                <h3 className="font-bold text-lg mb-2">{feature.title}</h3>
-                <p className="text-gray-600">{feature.description}</p>
+                <h3 className="font-bold text-lg mb-3 text-gray-900 text-center">{feature.title}</h3>
+                <p className="text-gray-600 text-center text-sm leading-relaxed">{feature.description}</p>
+                
+                {/* Hover effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
             ))}
+          </div>
+          
+          {/* Additional Info */}
+          <div className="text-center mt-12">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white">
+              <h3 className="text-2xl font-bold mb-4">
+                🎉 Special Offers for Our Customers
+              </h3>
+              <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
+                Join our loyalty program and get exclusive discounts, early access to new collections, and personalized recommendations.
+              </p>
+              <div className="flex flex-wrap justify-center gap-4 text-sm">
+                <span className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                  🎁 Free Gifts
+                </span>
+                <span className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                  💰 Loyalty Points
+                </span>
+                <span className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                  🚀 Early Access
+                </span>
+                <span className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                  📧 Exclusive Deals
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </section>

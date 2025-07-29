@@ -8,8 +8,27 @@ export interface Message {
   senderId: string;
   receiverId: string;
   content: string;
+  imageUrl?: string;
   createdAt: string;
   read: boolean;
+  Sender?: {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+  };
+  Receiver?: {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+  };
+}
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
 }
 
 interface ChatState {
@@ -19,6 +38,8 @@ interface ChatState {
   error: string | null;
   messages: Message[];
   messageLoading: boolean;
+  adminUsers: AdminUser[];
+  adminUsersLoading: boolean;
 }
 
 const initialState: ChatState = {
@@ -28,6 +49,8 @@ const initialState: ChatState = {
   error: null,
   messages: [],
   messageLoading: false,
+  adminUsers: [],
+  adminUsersLoading: false,
 };
 
 const chatSlice = createSlice({
@@ -58,6 +81,12 @@ const chatSlice = createSlice({
     setMessageLoading(state, action: PayloadAction<boolean>) {
       state.messageLoading = action.payload;
     },
+    setAdminUsers(state, action: PayloadAction<AdminUser[]>) {
+      state.adminUsers = action.payload;
+    },
+    setAdminUsersLoading(state, action: PayloadAction<boolean>) {
+      state.adminUsersLoading = action.payload;
+    },
   },
 });
 
@@ -70,6 +99,8 @@ export const {
   addMessage,
   resetMessages,
   setMessageLoading,
+  setAdminUsers,
+  setAdminUsersLoading,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;
@@ -83,7 +114,6 @@ export const getOrCreateChat = (customerId: string, adminId: string) => {
     dispatch(setError(null));
     try {
       const res = await APIS.post("/chats/get-or-create", {
-        customerId,
         adminId,
       });
       if (res.status === 200 && res.data.chat) {
@@ -92,8 +122,9 @@ export const getOrCreateChat = (customerId: string, adminId: string) => {
       } else {
         dispatch(setError("Failed to create chat"));
       }
-    } catch (err: any) {
-      dispatch(setError(err?.response?.data?.message || err.message || "Chat request failed"));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Chat request failed";
+      dispatch(setError(errorMessage));
     } finally {
       dispatch(setLoading(false));
     }
@@ -111,8 +142,9 @@ export const fetchChatMessages = (chatId: string) => {
       } else {
         dispatch(setError("Failed to load messages"));
       }
-    } catch (err: any) {
-      dispatch(setError(err?.response?.data?.message || err.message || "Failed to load messages"));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to load messages";
+      dispatch(setError(errorMessage));
     } finally {
       dispatch(setMessageLoading(false));
     }
@@ -122,16 +154,12 @@ export const fetchChatMessages = (chatId: string) => {
 // Thunk: Send a message (for REST API, not Socket.io)
 export const sendMessage = (
   chatId: string,
-  senderId: string,
-  receiverId: string,
   content: string
 ) => {
   return async (dispatch: AppDispatch) => {
     try {
       const res = await APIS.post("/chats/send-message", {
         chatId,
-        senderId,
-        receiverId,
         content,
       });
       if (res.status === 200 && res.data.data) {
@@ -139,8 +167,33 @@ export const sendMessage = (
       } else {
         dispatch(setError("Failed to send message"));
       }
-    } catch (err: any) {
-      dispatch(setError(err?.response?.data?.message || err.message || "Failed to send message"));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to send message";
+      dispatch(setError(errorMessage));
+    }
+  };
+};
+
+// Thunk: Fetch admin users
+export const fetchAdminUsers = () => {
+  return async (dispatch: AppDispatch) => {
+    dispatch(setAdminUsersLoading(true));
+    try {
+      const res = await APIS.get("/chats/admins");
+      if (res.status === 200 && res.data.data) {
+        dispatch(setAdminUsers(res.data.data));
+        // Set first admin as default if no admin is selected
+        if (res.data.data.length > 0) {
+          dispatch(setAdminId(res.data.data[0].id));
+        }
+      } else {
+        dispatch(setError("Failed to load admin users"));
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to load admin users";
+      dispatch(setError(errorMessage));
+    } finally {
+      dispatch(setAdminUsersLoading(false));
     }
   };
 };

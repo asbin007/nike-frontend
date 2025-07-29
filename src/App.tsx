@@ -17,26 +17,69 @@ import MyOrderDetails from "./pages/order/MyOrderDetaills";
 import { useEffect } from "react";
 import { useAppDispatch } from "./store/hooks";
 import { loadUserFromStorage } from "./store/authSlice";
+import { checkKhaltiPaymentStatus } from "./store/orderSlice";
 import SearchProducts from "./pages/product/SearchProducts";
+import Wishlist from "./pages/wishlist/Wishlist";
+import ProductComparison from "./pages/comparison/ProductComparison";
+import ChatWidget from "./components/ChatWidget";
 
 export const socket = io("http://localhost:5001", {
   auth: {
     token: localStorage.getItem("tokenauth"),
   },
+  transports: ['websocket', 'polling'],
+  timeout: 20000,
+});
+
+// Socket connection event listeners
+socket.on("connect", () => {
+  console.log("Socket connected:", socket.id);
+});
+
+socket.on("connect_error", (error: any) => {
+  console.error("Socket connection error:", error);
+});
+
+socket.on("error", (error: any) => {
+  console.error("Socket error:", error);
 });
 const App = () => {
   const dispatch = useAppDispatch();
 
+
   useEffect(() => {
     dispatch(loadUserFromStorage());
   }, [dispatch]);
-  return (
+
+
+
+  // Check for Khalti payment verification on app load
+  useEffect(() => {
+    const pidx = localStorage.getItem('khalti_pidx');
+    if (pidx) {
+      console.log('Found pidx in localStorage (App):', pidx);
+      dispatch(checkKhaltiPaymentStatus(pidx));
+      localStorage.removeItem('khalti_pidx');
+    }
+  }, [dispatch]);
+
+  // Reconnect socket when token changes
+  useEffect(() => {
+    const token = localStorage.getItem("tokenauth");
+    if (token && !socket.connected) {
+      console.log("Reconnecting socket with token:", token);
+      socket.connect();
+    }
+  }, []);
+    return (
     <BrowserRouter>
       <Navbar />
 
       <Toaster />
-      <Routes>
-        <Route path="/" element={<Home />} />
+      <ChatWidget />
+              <Routes>
+          <Route path="/" element={<Home />} />
+        <Route path="/all-shoes" element={<ProductFilters />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -48,10 +91,13 @@ const App = () => {
         <Route path="/search" element={<SearchProducts />} />
 
         <Route path="/collection" element={<Collections />} />
+        <Route path="/collections" element={<Collections />} />
         <Route path="/my-cart" element={<MyCart />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/my-orders" element={<MyOrder />} />
         <Route path="/my-orders/:id" element={<MyOrderDetails />} />
+        <Route path="/wishlist" element={<Wishlist />} />
+        <Route path="/comparison" element={<ProductComparison />} />
       </Routes>
     </BrowserRouter>
   );

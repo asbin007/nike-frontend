@@ -6,9 +6,11 @@ import {
   fetchMyOrders,
   updateOrderStatusinSlice,
   updatePaymentStatusinSlice,
+  checkKhaltiPaymentStatus,
 } from "../../store/orderSlice";
 import { Package, Search, Clock, CheckCircle, XCircle, Truck, CreditCard, Eye } from "lucide-react";
 import { OrderStatus } from "./types";
+import { OrderSkeleton } from "../../components/SkeletonLoader";
 
 function MyOrder() {
   const dispatch = useAppDispatch();
@@ -28,20 +30,53 @@ function MyOrder() {
     ? newItems 
     : newItems.filter(item => item.orderStatus === selectedStatus);
 
+  // Show skeleton while loading
+  if (!items || items.length === 0) {
+    return <OrderSkeleton />;
+  }
+
   useEffect(() => {
     dispatch(fetchMyOrders());
-  }, []);
+    
+    // Check for Khalti payment verification on page load
+    const pidx = localStorage.getItem('khalti_pidx');
+    if (pidx) {
+      console.log('Found pidx in localStorage:', pidx);
+      dispatch(checkKhaltiPaymentStatus(pidx));
+      localStorage.removeItem('khalti_pidx');
+    }
+  }, [dispatch]);
   
   useEffect(() => {
-    socket.on("statusUpdated", (data: any) => {
-      console.log(data, "Incoming data");
-      dispatch(updateOrderStatusinSlice(data.status));
-    });
-    socket.on("paymentStatusUpdated", (data: any) => {
-      console.log(data, "Incoming data");
-      dispatch(updatePaymentStatusinSlice(data.status));
-    });
-  }, [socket]);
+    // Socket event listeners for real-time updates
+    const handleStatusUpdate = (data: any) => {
+      console.log("Status update received:", data);
+      dispatch(updateOrderStatusinSlice({
+        status: data.status,
+        userId: data.userId,
+        orderId: data.orderId
+      }));
+    };
+
+    const handlePaymentStatusUpdate = (data: any) => {
+      console.log("Payment status update received:", data);
+      dispatch(updatePaymentStatusinSlice({
+        status: data.status,
+        orderId: data.orderId,
+        paymentId: data.paymentId
+      }));
+    };
+
+    // Add event listeners
+    socket.on("statusUpdated", handleStatusUpdate);
+    socket.on("paymentStatusUpdated", handlePaymentStatusUpdate);
+
+    // Cleanup function
+    return () => {
+      socket.off("statusUpdated", handleStatusUpdate);
+      socket.off("paymentStatusUpdated", handlePaymentStatusUpdate);
+    };
+  }, [dispatch]);
 
   const getStatusInfo = (status: string) => {
     switch (status) {

@@ -4,8 +4,12 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { fetchProduct, fetchProducts } from "../../store/productSlice";
 import { addToCart } from "../../store/cartSlice";
+import { addToWishlist, removeFromWishlist } from "../../store/wishlistSlice";
 import Review from "./Review";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
+import ProductRecommendations from "../../components/ProductRecommendations";
+import { ProductDetailSkeleton } from "../../components/SkeletonLoader";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Heart } from "lucide-react";
+import toast from "react-hot-toast";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -16,6 +20,7 @@ const ProductDetail = () => {
   const isLoggedIn = useAppSelector(
     (store) => !!store.auth.user.token || !!localStorage.getItem("tokenauth")
   );
+  const { items: wishlistItems } = useAppSelector((store) => store.wishlist);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string>("");
@@ -58,11 +63,46 @@ const ProductDetail = () => {
     }
   };
 
+  const handleWishlistToggle = () => {
+    if (!isLoggedIn) {
+      toast.error("Please log in to add to wishlist");
+      return;
+    }
+
+    if (!product) return;
+
+    const isInWishlist = wishlistItems.some(item => item.id === product.id);
+
+    if (isInWishlist) {
+      dispatch(removeFromWishlist(product.id));
+      toast.success("Removed from wishlist");
+    } else {
+      const wishlistItem = {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${product.images[0].replace("/uploads", "")}.jpg` : "",
+        rating: averageRating,
+        reviews: review.length,
+        inStock: product.isStock || false,
+        category: product.Category?.categoryName,
+        brand: product.brand,
+      };
+      dispatch(addToWishlist(wishlistItem));
+      toast.success("Added to wishlist");
+    }
+  };
+
   // Calculate average rating from reviews
   const averageRating = review.length > 0
     ? review.reduce((sum, r) => sum + (r.rating ?? 0), 0) / review.length
     : 0;
   const roundedRating = Math.round(averageRating);
+
+  // Show skeleton while loading
+  if (!product) {
+    return <ProductDetailSkeleton />;
+  }
 
   const availableSizes =
     product?.sizes && product.sizes.length > 0
@@ -257,11 +297,29 @@ const ProductDetail = () => {
                     {product?.Collection?.collectionName}
                   </p>
                 </div>
-                {product?.isNew && (
-                  <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-md">
-                    New
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {product?.isNew && (
+                    <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-md">
+                      New
+                    </span>
+                  )}
+                  
+                  {/* Wishlist Button */}
+                  <button
+                    onClick={handleWishlistToggle}
+                    className={`p-2 rounded-full transition-all duration-200 ${
+                      wishlistItems.some(item => item.id === product?.id)
+                        ? 'bg-red-100 text-red-500 hover:bg-red-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    title={wishlistItems.some(item => item.id === product?.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                  >
+                    <Heart 
+                      className="w-5 h-5" 
+                      fill={wishlistItems.some(item => item.id === product?.id) ? 'currentColor' : 'none'}
+                    />
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center mb-4">
@@ -381,8 +439,19 @@ const ProductDetail = () => {
       </section>
       <section>
         {product?.id &&  <Review key={product?.id} productId={product?.id} />}
-           
       </section>
+
+      {/* Similar Products Recommendations */}
+      {product?.id && (
+        <ProductRecommendations 
+          type="similarProducts" 
+          productId={product.id}
+          title="Similar Products"
+          subtitle="You might also like these products"
+          maxProducts={4}
+          showReason={true}
+        />
+      )}
     </>
   );
 };

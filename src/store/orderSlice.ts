@@ -3,6 +3,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Status } from "../globals/types/types";
 import { APIS } from "../globals/http";
 import { AppDispatch } from "./store";
+import { toast } from "react-toastify";
 
 interface IProduct {
   productId: string;
@@ -11,7 +12,7 @@ interface IProduct {
   orderStatus: Status;
   paymentId: string;
   Payment?: {
-    pidx: string; // ✅ Added this line to fix type error
+    pidx?: string; // Make pidx optional
     paymentMethod: PaymentMethod;
     paymentStatus: PaymentStatus;
   };
@@ -35,6 +36,12 @@ export enum PaymentMethod {
   Cod = "cod",
 }
 
+// Interface for backend API
+export interface IBackendProduct {
+  productId: string;
+  productQty: number;
+}
+
 export interface IData {
   firstName: string;
   lastName: string;
@@ -46,7 +53,7 @@ export interface IData {
   email: string;
   totalPrice: number;
   paymentMethod: PaymentMethod;
-  Shoe: IProduct[];
+  Shoe: IBackendProduct[]; // Changed to match backend expectation
 }
 
 const initialState: IOrder = {
@@ -161,6 +168,7 @@ const orderSlice = createSlice({
                 ...item.Payment,
                 paymentStatus: status,
                 paymentMethod: item.Payment?.paymentMethod ?? PaymentMethod.Cod,
+                pidx: item.Payment?.pidx, // Preserve existing pidx
               },
             }
           : item
@@ -201,6 +209,28 @@ export const {
   updateKhaltiPaymentStatus
 } = orderSlice.actions;
 
+export function checkKhaltiPaymentStatus(pidx: string) {
+  return async function checkKhaltiPaymentStatusThunk(dispatch: AppDispatch) {
+    try {
+      const response = await APIS.post("/order/khalti/verify", { pidx });
+      if (response.status === 200) {
+        const { paymentStatus } = response.data;
+        dispatch(updateKhaltiPaymentStatus({ pidx, status: paymentStatus }));
+        
+        // Show success message
+        if (paymentStatus === "paid") {
+          toast.success("Payment successful! Your order has been confirmed.");
+        } else {
+          toast.error("Payment verification failed. Please contact support.");
+        }
+      }
+    } catch (error) {
+      console.log("Payment verification error:", error);
+      toast.error("Payment verification failed. Please contact support.");
+    }
+  };
+}
+
 export function orderItem(data: IData) {
   return async function orderItemThunk(dispatch: AppDispatch) {
     try {
@@ -209,9 +239,21 @@ export function orderItem(data: IData) {
         dispatch(setStatus(Status.SUCCESS));
         dispatch(setItems(response.data.data));
         console.log(response.data.url, "URL");
+        
         if (response.data.url) {
           dispatch(setKhaltiUrl(response.data.url));
+          
+          // For Khalti payments, store pidx for verification
+          if (data.paymentMethod === PaymentMethod.Khalti && response.data.pidx) {
+            localStorage.setItem('khalti_pidx', response.data.pidx);
+            console.log('Stored pidx:', response.data.pidx); // Debug log
+          }
+          
+          // Redirect to Khalti payment page
           window.location.href = response.data.url;
+        } else {
+          // For COD payments
+          toast.success("Order created successfully!");
         }
       } else {
         dispatch(setStatus(Status.ERROR));
