@@ -5,6 +5,7 @@ import { socket } from "../App";
 import { Send, Image, MapPin, Paperclip, X, Search, Mic, Check, CheckCheck, Smile, MessageCircle, Minimize2, Maximize2 } from "lucide-react";
 import toast from "react-hot-toast";
 
+//chat box for support
 const ChatWidget: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
