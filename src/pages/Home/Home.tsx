@@ -109,60 +109,70 @@ export default function Hero() {
     );
 
     // Parallax effect for hero image
-    gsap.to(imageRef.current, {
-      yPercent: -20,
-      ease: "none",
-      scrollTrigger: {
-        trigger: heroRef.current,
-        start: "top bottom",
-        end: "bottom top",
-        scrub: true
-      }
-    });
+    if (imageRef.current) {
+      gsap.to(imageRef.current, {
+        yPercent: -20,
+        ease: "none",
+        scrollTrigger: {
+          trigger: heroRef.current,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: true
+        }
+      });
 
-    // Floating animation for the image
-    gsap.to(imageRef.current, {
-      y: -10,
-      duration: 2,
-      ease: "power2.inOut",
-      yoyo: true,
-      repeat: -1
-    });
+      // Floating animation for the image
+      gsap.to(imageRef.current, {
+        y: -10,
+        duration: 2,
+        ease: "power2.inOut",
+        yoyo: true,
+        repeat: -1
+      });
+    }
 
     // Text typing effect
-    gsap.to(titleRef.current, {
-      duration: 2,
-      text: "New Summer Shoes Collection",
-      ease: "none",
-      delay: 0.5
-    });
+    if (titleRef.current) {
+      gsap.to(titleRef.current, {
+        duration: 2,
+        text: "New Summer Shoes Collection",
+        ease: "none",
+        delay: 0.5
+      });
+    }
 
     // Scroll-triggered animations for features
-    gsap.fromTo(".feature-card",
-      { y: 100, opacity: 0 },
-      {
-        y: 0,
-        opacity: 1,
-        duration: 0.8,
-        stagger: 0.2,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: featuresRef.current,
-          start: "top 80%",
-          end: "bottom 20%",
-          toggleActions: "play none none reverse"
-        }
-    });
+    const featureCards = document.querySelectorAll(".feature-card");
+    if (featureCards.length > 0 && featuresRef.current) {
+      gsap.fromTo(".feature-card",
+        { y: 100, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.8,
+          stagger: 0.2,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: featuresRef.current,
+            start: "top 80%",
+            end: "bottom 20%",
+            toggleActions: "play none none reverse"
+          }
+      });
+    }
 
     // Animated background elements
-    gsap.to(".bg-element", {
-      y: -20,
-      duration: 3,
-      ease: "power2.inOut",
-      yoyo: true,
-      repeat: -1,
-      stagger: 0.5
-    });
+    const bgElements = document.querySelectorAll(".bg-element");
+    if (bgElements.length > 0) {
+      gsap.to(".bg-element", {
+        y: -20,
+        duration: 3,
+        ease: "power2.inOut",
+        yoyo: true,
+        repeat: -1,
+        stagger: 0.5
+      });
+    }
 
     // Cleanup
     return () => {

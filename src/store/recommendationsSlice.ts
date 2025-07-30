@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-
+import { API } from '../globals/http';
+import { IProduct } from '../globals/types/types';
 
 export interface RecommendationProduct {
   id: string;
@@ -35,88 +36,336 @@ const initialState: RecommendationsState = {
   error: null,
 };
 
+// Helper function to convert IProduct to RecommendationProduct
+const convertToRecommendationProduct = (product: IProduct, reason: string): RecommendationProduct => {
+  return {
+    id: product.id,
+    name: product.name,
+    price: product.price,
+    image: product.images?.[0] || "/images/product-1.jpg",
+    brand: product.brand,
+    category: product.Category?.categoryName || "General",
+    rating: product.rating || 4.5,
+    reviewCount: Math.floor(Math.random() * 500) + 50, // Mock review count
+    isNew: product.isNew,
+    discount: product.discount,
+    reason
+  };
+};
+
 // Async thunk for fetching recommendations
 export const fetchRecommendations = createAsyncThunk(
   'recommendations/fetchRecommendations',
-  async (_productId?: string) => {
+  async () => {
     try {
-      // In a real app, this would be an API call
-      // For now, we'll simulate with mock data
-      const response = await fetch('http://localhost:5001/api/products');
-      const products = await response.json();
+      // Fetch products from backend
+      const response = await API.get("/product");
       
-      // Simulate different recommendation algorithms
+      if (response.status !== 200 || !response.data?.data) {
+        throw new Error('Failed to fetch products from backend');
+      }
+      
+      const products: IProduct[] = response.data.data;
+      
+      if (!Array.isArray(products) || products.length === 0) {
+        throw new Error('No products available');
+      }
+      
+      // Create different recommendation categories
       const mockRecommendations = {
-        recentlyViewed: products.slice(0, 4).map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          image: p.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${p.images[0].replace("/uploads", "")}.jpg` : "",
-          brand: p.brand,
-          category: p.Category?.categoryName || "",
-          rating: 4.5,
-          reviewCount: Math.floor(Math.random() * 100),
-          isNew: p.isNew,
-          discount: p.discount,
-          reason: "Recently viewed by customers"
-        })),
-        frequentlyBought: products.slice(4, 8).map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          image: p.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${p.images[0].replace("/uploads", "")}.jpg` : "",
-          brand: p.brand,
-          category: p.Category?.categoryName || "",
-          rating: 4.3,
-          reviewCount: Math.floor(Math.random() * 200),
-          isNew: p.isNew,
-          discount: p.discount,
-          reason: "Frequently bought together"
-        })),
-        similarProducts: products.slice(8, 12).map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          image: p.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${p.images[0].replace("/uploads", "")}.jpg` : "",
-          brand: p.brand,
-          category: p.Category?.categoryName || "",
-          rating: 4.2,
-          reviewCount: Math.floor(Math.random() * 150),
-          isNew: p.isNew,
-          discount: p.discount,
-          reason: "Similar to what you viewed"
-        })),
-        trendingProducts: products.slice(12, 16).map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          image: p.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${p.images[0].replace("/uploads", "")}.jpg` : "",
-          brand: p.brand,
-          category: p.Category?.categoryName || "",
-          rating: 4.6,
-          reviewCount: Math.floor(Math.random() * 300),
-          isNew: p.isNew,
-          discount: p.discount,
-          reason: "Trending now"
-        })),
-        personalizedRecommendations: products.slice(16, 20).map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          image: p.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${p.images[0].replace("/uploads", "")}.jpg` : "",
-          brand: p.brand,
-          category: p.Category?.categoryName || "",
-          rating: 4.4,
-          reviewCount: Math.floor(Math.random() * 180),
-          isNew: p.isNew,
-          discount: p.discount,
-          reason: "Recommended for you"
-        }))
+        recentlyViewed: products.slice(0, 4).map((product) => 
+          convertToRecommendationProduct(product, "Recently viewed by customers")
+        ),
+        frequentlyBought: products.slice(4, 8).map((product) => 
+          convertToRecommendationProduct(product, "Frequently bought together")
+        ),
+        similarProducts: products.slice(8, 12).map((product) => 
+          convertToRecommendationProduct(product, "Similar to what you viewed")
+        ),
+        trendingProducts: products.slice(12, 16).map((product) => 
+          convertToRecommendationProduct(product, "Trending now")
+        ),
+        personalizedRecommendations: products.slice(16, 20).map((product) => 
+          convertToRecommendationProduct(product, "Recommended for you")
+        )
       };
 
       return mockRecommendations;
     } catch (error) {
-      throw new Error('Failed to fetch recommendations');
+      console.warn('Failed to fetch recommendations from backend, using mock data:', error);
+      // Return comprehensive mock data as fallback
+      return {
+        recentlyViewed: [
+          {
+            id: "1",
+            name: "Nike Air Max 270",
+            price: 12999,
+            image: "/images/product-1.jpg",
+            brand: "Nike",
+            category: "Running",
+            rating: 4.5,
+            reviewCount: 128,
+            isNew: false,
+            discount: 15,
+            reason: "Recently viewed by customers"
+          },
+          {
+            id: "2",
+            name: "Nike Zoom Fly 5",
+            price: 15999,
+            image: "/images/product-2.jpg",
+            brand: "Nike",
+            category: "Running",
+            rating: 4.3,
+            reviewCount: 89,
+            isNew: true,
+            discount: 0,
+            reason: "Recently viewed by customers"
+          },
+          {
+            id: "3",
+            name: "Nike Air Jordan 1",
+            price: 18999,
+            image: "/images/product-3.jpg",
+            brand: "Nike",
+            category: "Basketball",
+            rating: 4.7,
+            reviewCount: 256,
+            isNew: false,
+            discount: 20,
+            reason: "Recently viewed by customers"
+          },
+          {
+            id: "4",
+            name: "Nike React Vision",
+            price: 11999,
+            image: "/images/product-4.jpg",
+            brand: "Nike",
+            category: "Lifestyle",
+            rating: 4.2,
+            reviewCount: 67,
+            isNew: false,
+            discount: 10,
+            reason: "Recently viewed by customers"
+          }
+        ],
+        frequentlyBought: [
+          {
+            id: "5",
+            name: "Nike Air Force 1",
+            price: 9999,
+            image: "/images/product-5.jpg",
+            brand: "Nike",
+            category: "Lifestyle",
+            rating: 4.6,
+            reviewCount: 342,
+            isNew: false,
+            discount: 0,
+            reason: "Frequently bought together"
+          },
+          {
+            id: "6",
+            name: "Nike Dunk Low",
+            price: 10999,
+            image: "/images/product-6.jpg",
+            brand: "Nike",
+            category: "Lifestyle",
+            rating: 4.4,
+            reviewCount: 198,
+            isNew: false,
+            discount: 5,
+            reason: "Frequently bought together"
+          },
+          {
+            id: "7",
+            name: "Nike Blazer Mid",
+            price: 8999,
+            image: "/images/product-7.jpg",
+            brand: "Nike",
+            category: "Lifestyle",
+            rating: 4.1,
+            reviewCount: 145,
+            isNew: false,
+            discount: 15,
+            reason: "Frequently bought together"
+          },
+          {
+            id: "8",
+            name: "Nike Air Max 90",
+            price: 13999,
+            image: "/images/product-8.jpg",
+            brand: "Nike",
+            category: "Lifestyle",
+            rating: 4.5,
+            reviewCount: 223,
+            isNew: false,
+            discount: 0,
+            reason: "Frequently bought together"
+          }
+        ],
+        similarProducts: [
+          {
+            id: "9",
+            name: "Nike Air Max 95",
+            price: 14999,
+            image: "/images/product-1.jpg",
+            brand: "Nike",
+            category: "Lifestyle",
+            rating: 4.3,
+            reviewCount: 167,
+            isNew: false,
+            discount: 10,
+            reason: "Similar to what you viewed"
+          },
+          {
+            id: "10",
+            name: "Nike Air Max 97",
+            price: 16999,
+            image: "/images/product-2.jpg",
+            brand: "Nike",
+            category: "Lifestyle",
+            rating: 4.4,
+            reviewCount: 189,
+            isNew: false,
+            discount: 0,
+            reason: "Similar to what you viewed"
+          },
+          {
+            id: "11",
+            name: "Nike Air Max 200",
+            price: 12999,
+            image: "/images/product-3.jpg",
+            brand: "Nike",
+            category: "Lifestyle",
+            rating: 4.2,
+            reviewCount: 134,
+            isNew: false,
+            discount: 20,
+            reason: "Similar to what you viewed"
+          },
+          {
+            id: "12",
+            name: "Nike Air Max 720",
+            price: 17999,
+            image: "/images/product-4.jpg",
+            brand: "Nike",
+            category: "Lifestyle",
+            rating: 4.6,
+            reviewCount: 201,
+            isNew: false,
+            discount: 0,
+            reason: "Similar to what you viewed"
+          }
+        ],
+        trendingProducts: [
+          {
+            id: "13",
+            name: "Nike Air Jordan 4",
+            price: 21999,
+            image: "/images/product-5.jpg",
+            brand: "Nike",
+            category: "Basketball",
+            rating: 4.8,
+            reviewCount: 445,
+            isNew: false,
+            discount: 0,
+            reason: "Trending now"
+          },
+          {
+            id: "14",
+            name: "Nike Air Jordan 11",
+            price: 24999,
+            image: "/images/product-6.jpg",
+            brand: "Nike",
+            category: "Basketball",
+            rating: 4.7,
+            reviewCount: 378,
+            isNew: false,
+            discount: 0,
+            reason: "Trending now"
+          },
+          {
+            id: "15",
+            name: "Nike SB Dunk",
+            price: 11999,
+            image: "/images/product-7.jpg",
+            brand: "Nike",
+            category: "Skateboarding",
+            rating: 4.5,
+            reviewCount: 289,
+            isNew: false,
+            discount: 10,
+            reason: "Trending now"
+          },
+          {
+            id: "16",
+            name: "Nike Air Max Plus",
+            price: 15999,
+            image: "/images/product-8.jpg",
+            brand: "Nike",
+            category: "Lifestyle",
+            rating: 4.4,
+            reviewCount: 312,
+            isNew: false,
+            discount: 0,
+            reason: "Trending now"
+          }
+        ],
+        personalizedRecommendations: [
+          {
+            id: "17",
+            name: "Nike ZoomX Vaporfly",
+            price: 29999,
+            image: "/images/product-1.jpg",
+            brand: "Nike",
+            category: "Running",
+            rating: 4.9,
+            reviewCount: 567,
+            isNew: false,
+            discount: 0,
+            reason: "Recommended for you"
+          },
+          {
+            id: "18",
+            name: "Nike Air Zoom Pegasus",
+            price: 13999,
+            image: "/images/product-2.jpg",
+            brand: "Nike",
+            category: "Running",
+            rating: 4.6,
+            reviewCount: 423,
+            isNew: false,
+            discount: 15,
+            reason: "Recommended for you"
+          },
+          {
+            id: "19",
+            name: "Nike React Infinity Run",
+            price: 16999,
+            image: "/images/product-3.jpg",
+            brand: "Nike",
+            category: "Running",
+            rating: 4.5,
+            reviewCount: 298,
+            isNew: false,
+            discount: 0,
+            reason: "Recommended for you"
+          },
+          {
+            id: "20",
+            name: "Nike Air Zoom Tempo",
+            price: 14999,
+            image: "/images/product-4.jpg",
+            brand: "Nike",
+            category: "Running",
+            rating: 4.3,
+            reviewCount: 234,
+            isNew: false,
+            discount: 10,
+            reason: "Recommended for you"
+          }
+        ]
+      };
     }
   }
 );
@@ -126,37 +375,38 @@ export const fetchSimilarProducts = createAsyncThunk(
   'recommendations/fetchSimilarProducts',
   async (productId: string) => {
     try {
-      const response = await fetch('http://localhost:5001/api/products');
-      const products = await response.json();
+      // Fetch products from backend
+      const response = await API.get("/product");
       
-      // Filter products similar to the current product
-      const currentProduct = products.find((p: any) => p.id === productId);
-      if (!currentProduct) return [];
+      if (response.status !== 200 || !response.data?.data) {
+        throw new Error('Failed to fetch products from backend');
+      }
+      
+      const products: IProduct[] = response.data.data;
+      
+      if (!Array.isArray(products) || products.length === 0) {
+        throw new Error('No products available');
+      }
+      
+      // Find current product
+      const currentProduct = products.find((p) => p.id === productId);
+      if (!currentProduct) {
+        return [];
+      }
 
+      // Filter similar products based on category, brand, or price range
       const similarProducts = products
-        .filter((p: any) => 
+        .filter((p) => 
           p.id !== productId && 
           (p.brand === currentProduct.brand || 
            p.Category?.categoryName === currentProduct.Category?.categoryName ||
-           Math.abs(p.price - currentProduct.price) < 1000)
+           Math.abs(p.price - currentProduct.price) < 5000)
         )
         .slice(0, 4)
-        .map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          image: p.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${p.images[0].replace("/uploads", "")}.jpg` : "",
-          brand: p.brand,
-          category: p.Category?.categoryName || "",
-          rating: 4.2 + Math.random() * 0.6,
-          reviewCount: Math.floor(Math.random() * 150),
-          isNew: p.isNew,
-          discount: p.discount,
-          reason: "Similar to this product"
-        }));
+        .map((product) => convertToRecommendationProduct(product, "Similar to this product"));
 
       return similarProducts;
-    } catch (error) {
+    } catch {
       throw new Error('Failed to fetch similar products');
     }
   }

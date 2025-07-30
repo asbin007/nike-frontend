@@ -36,11 +36,11 @@ socket.on("connect", () => {
   console.log("Socket connected:", socket.id);
 });
 
-socket.on("connect_error", (error: any) => {
+socket.on("connect_error", (error: Error) => {
   console.error("Socket connection error:", error);
 });
 
-socket.on("error", (error: any) => {
+socket.on("error", (error: Error) => {
   console.error("Socket error:", error);
 });
 const App = () => {

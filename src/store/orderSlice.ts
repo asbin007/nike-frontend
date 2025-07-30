@@ -3,7 +3,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Status } from "../globals/types/types";
 import { APIS } from "../globals/http";
 import { AppDispatch } from "./store";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 interface IProduct {
   productId: string;
@@ -33,7 +33,7 @@ export interface IOrder {
 export enum PaymentMethod {
   Esewa = "esewa",
   Khalti = "khalti",
-  Cod = "cod",
+  COD = "cod",
 }
 
 // Interface for backend API
@@ -167,7 +167,7 @@ const orderSlice = createSlice({
               Payment: {
                 ...item.Payment,
                 paymentStatus: status,
-                paymentMethod: item.Payment?.paymentMethod ?? PaymentMethod.Cod,
+                paymentMethod: item.Payment?.paymentMethod ?? PaymentMethod.COD,
                 pidx: item.Payment?.pidx, // Preserve existing pidx
               },
             }
@@ -303,7 +303,7 @@ export function cancelOrderAPI(id: string) {
   return async function cancelOrderAPIThunk(dispatch: AppDispatch) {
     try {
       const response = await APIS.patch("/order/cancel-order/" + id);
-      if (response.status === 201) {
+      if (response.status === 200) {
         dispatch(setStatus(Status.SUCCESS));
         dispatch(updateOrderStatusToCancel({ orderId: id }));
       } else {

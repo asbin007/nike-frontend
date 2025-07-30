@@ -4,7 +4,7 @@ import { logout } from "../../store/authSlice";
 import { Link, useNavigate } from "react-router-dom";
 import { fetchCartItems } from "../../store/cartSlice";
 import toast from "react-hot-toast";
-import { Search, Menu, X, ShoppingBag, User, Heart, ChevronDown, Settings, LogOut, BarChart3 } from "lucide-react";
+import { Search, Menu, X, ShoppingBag, User, Heart, ChevronDown, Settings, LogOut, BarChart3, Lock } from "lucide-react";
 import { gsap } from "gsap";
 
 export default function Navbar() {
@@ -179,10 +179,10 @@ export default function Navbar() {
   return (
     <header className={`sticky top-0 z-50 transition-all duration-300 ${
       isScrolled 
-        ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-100' 
+        ? 'bg-white/98 backdrop-blur-lg shadow-xl border-b border-gray-100' 
         : 'bg-white shadow-sm'
     }`}>
-      <div className="container mx-auto px-4 lg:px-6">
+      <div className="w-screen px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 lg:h-20">
           {/* Logo */}
           <Link 
@@ -190,85 +190,75 @@ export default function Navbar() {
             ref={logoRef}
             onMouseEnter={handleLogoHover}
             onMouseLeave={handleLogoLeave}
-            className="relative group cursor-pointer flex-shrink-0"
+            className="relative group cursor-pointer flex-shrink-0 mr-8"
           >
             <div className="flex items-center space-x-3">
-              {/* Animated logo icon */}
+              {/* Professional logo icon */}
               <div className="relative">
-                <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110">
+                <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110">
                   <span className="text-white font-bold text-lg lg:text-xl">S</span>
                 </div>
-                {/* Floating particles */}
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 animate-pulse"></div>
-                <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-pink-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 animate-pulse" style={{animationDelay: '0.5s'}}></div>
-                <div className="absolute top-1/2 -right-2 w-1.5 h-1.5 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 animate-pulse" style={{animationDelay: '1s'}}></div>
+                {/* Subtle glow effect */}
+                <div className="absolute inset-0 bg-blue-400 rounded-xl opacity-0 group-hover:opacity-20 blur-lg transition-opacity duration-300"></div>
               </div>
               
-              {/* Animated text */}
+              {/* Professional text */}
               <span 
                 ref={logoTextRef}
-                className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent group-hover:from-indigo-700 group-hover:via-purple-700 group-hover:to-pink-700 transition-all duration-300"
+                className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent group-hover:from-indigo-700 group-hover:via-purple-700 group-hover:to-pink-700 transition-all duration-300 tracking-tight"
               >
                 ShoeMart
               </span>
             </div>
-            
-            {/* Glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 rounded-xl opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-8">
-            <Link 
-              to="/" 
-              className="font-medium text-gray-700 hover:text-indigo-600 transition-all duration-200 relative group"
-            >
-              Home
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-600 group-hover:w-full transition-all duration-300"></span>
-            </Link>
-
+          <nav className="hidden lg:flex items-center space-x-6 ml-8">
             <Link 
               to="/all-shoes" 
               className="font-semibold text-indigo-600 hover:text-indigo-700 transition-all duration-200 relative group bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg"
             >
               All Shoes
-              <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-indigo-600"></span>
+              <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-full h-0.5 bg-indigo-600"></span>
             </Link>
+            
             <Link 
               to="/man" 
-              className="font-medium text-gray-700 hover:text-indigo-600 transition-all duration-200 relative group"
+              className="font-medium text-gray-700 hover:text-indigo-600 transition-all duration-200 relative group px-3 py-2 rounded-lg hover:bg-indigo-50"
             >
               Men
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-600 group-hover:w-full transition-all duration-300"></span>
+              <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0.5 bg-indigo-600 group-hover:w-full transition-all duration-300"></span>
             </Link>
+            
             <Link 
               to="/women" 
-              className="font-medium text-gray-700 hover:text-indigo-600 transition-all duration-200 relative group"
+              className="font-medium text-gray-700 hover:text-indigo-600 transition-all duration-200 relative group px-3 py-2 rounded-lg hover:bg-indigo-50"
             >
               Women
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-600 group-hover:w-full transition-all duration-300"></span>
+              <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0.5 bg-indigo-600 group-hover:w-full transition-all duration-300"></span>
             </Link>
+            
             <Link 
               to="/collections" 
-              className="font-medium text-gray-700 hover:text-indigo-600 transition-all duration-200 relative group"
+              className="font-medium text-gray-700 hover:text-indigo-600 transition-all duration-200 relative group px-3 py-2 rounded-lg hover:bg-indigo-50"
             >
               Collections
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-600 group-hover:w-full transition-all duration-300"></span>
+              <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0.5 bg-indigo-600 group-hover:w-full transition-all duration-300"></span>
             </Link>
           </nav>
 
           {/* Right Side Actions */}
-          <div className="flex items-center gap-3 lg:gap-6">
+          <div className="flex items-center gap-4 lg:gap-6">
             {/* Desktop Search */}
             <form
               onSubmit={handleSearch}
-              className="hidden md:flex items-center gap-3 bg-gray-50 hover:bg-gray-100 rounded-2xl px-4 py-2.5 w-64 lg:w-80 border border-gray-200 focus-within:border-indigo-300 focus-within:bg-white transition-all duration-200"
+              className="hidden md:flex items-center gap-3 bg-gray-50 hover:bg-gray-100 rounded-xl px-4 py-2.5 w-64 lg:w-80 border border-gray-200 focus-within:border-indigo-300 focus-within:bg-white transition-all duration-200 shadow-sm"
             >
               <Search className="h-4 w-4 text-gray-500" />
               <input
                 type="text"
                 placeholder="Search for shoes, brands..."
-                className="border-0 bg-transparent focus:outline-none placeholder:text-gray-400 text-sm w-full"
+                className="border-0 bg-transparent focus:outline-none placeholder:text-gray-400 text-sm w-full font-medium"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -277,35 +267,39 @@ export default function Navbar() {
             {/* Action Buttons */}
             <div className="flex items-center gap-2 lg:gap-4">
               {/* Wishlist */}
-              <Link to="/wishlist" className="p-2.5 rounded-full hover:bg-gray-100 transition-colors duration-200 relative group">
-                <Heart className="h-5 w-5 text-gray-600 group-hover:text-red-500 transition-colors duration-200" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium">
-                  {wishlistItems?.length || 0}
-                </span>
-              </Link>
+                                <Link to="/wishlist" className="p-2.5 rounded-xl hover:bg-gray-100 transition-colors duration-200 relative group">
+                    <Heart className="h-5 w-5 text-gray-600 group-hover:text-red-500 transition-colors duration-200" />
+                    {wishlistItems?.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium min-w-[18px] text-center">
+                        {wishlistItems.length}
+                      </span>
+                    )}
+                  </Link>
 
-              {/* Comparison */}
-              <Link to="/comparison" className="p-2.5 rounded-full hover:bg-gray-100 transition-colors duration-200 relative group">
-                <BarChart3 className="h-5 w-5 text-gray-600 group-hover:text-blue-500 transition-colors duration-200" />
-                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium">
-                  {comparisonProducts?.length || 0}
-                </span>
-              </Link>
+                  {/* Comparison */}
+                  <Link to="/comparison" className="p-2.5 rounded-xl hover:bg-gray-100 transition-colors duration-200 relative group">
+                    <BarChart3 className="h-5 w-5 text-gray-600 group-hover:text-indigo-500 transition-colors duration-200" />
+                    {comparisonProducts?.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-indigo-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium min-w-[18px] text-center">
+                        {comparisonProducts.length}
+                      </span>
+                    )}
+                  </Link>
 
-              {/* Cart */}
-              <div className="relative">
-                <Link to="/my-cart" onClick={handleCartClick}>
-                  <button className="p-2.5 rounded-full hover:bg-gray-100 transition-colors duration-200 relative group">
-                    <ShoppingBag className="h-5 w-5 text-gray-600 group-hover:text-indigo-600 transition-colors duration-200" />
-                  </button>
-                </Link>
+                  {/* Cart */}
+                  <div className="relative">
+                    <Link to="/my-cart" onClick={handleCartClick}>
+                      <button className="p-2.5 rounded-xl hover:bg-gray-100 transition-colors duration-200 relative group">
+                        <ShoppingBag className="h-5 w-5 text-gray-600 group-hover:text-indigo-600 transition-colors duration-200" />
+                      </button>
+                    </Link>
 
-                {isLogin && cartItems?.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded-full font-medium animate-pulse">
-                    {cartItems.length}
-                  </span>
-                )}
-              </div>
+                    {isLogin && cartItems?.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded-full font-medium min-w-[18px] text-center animate-pulse">
+                        {cartItems.length}
+                      </span>
+                    )}
+                  </div>
 
               {/* User Menu */}
               <div className="relative" ref={userMenuRef}>
@@ -313,25 +307,26 @@ export default function Navbar() {
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={toggleUserMenu}
-                      className="flex items-center gap-2 p-2.5 rounded-full hover:bg-gray-100 transition-colors duration-200"
+                      className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-100 transition-colors duration-200"
                     >
-                      <User className="h-5 w-5 text-gray-600" />
-                      <span className="hidden sm:block text-sm font-medium text-gray-700">User</span>
+                      <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center">
+                        <User className="h-5 w-5 text-white" />
+                      </div>
                       <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} />
                     </button>
                     
                     {/* User Dropdown Menu */}
                     {showUserMenu && (
-                      <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                      <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50">
                         <div className="px-4 py-3 border-b border-gray-100">
-                          <p className="text-sm font-medium text-gray-900">Welcome back!</p>
-                          <p className="text-xs text-gray-500">{user.email  }</p>
+                          <p className="text-sm font-semibold text-gray-900">Welcome back!</p>
+                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
                         </div>
                         
                         <Link 
                           to="/profile" 
                           onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                          className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
                         >
                           <User className="h-4 w-4" />
                           My Profile
@@ -340,16 +335,25 @@ export default function Navbar() {
                         <Link 
                           to="/my-orders" 
                           onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                          className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
                         >
                           <ShoppingBag className="h-4 w-4" />
                           My Orders
                         </Link>
                         
                         <Link 
+                          to="/forgot-password" 
+                          onClick={() => setShowUserMenu(false)}
+                          className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
+                        >
+                          <Lock className="h-4 w-4" />
+                          Forgot Password
+                        </Link>
+                        
+                        <Link 
                           to="/settings" 
                           onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                          className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
                         >
                           <Settings className="h-4 w-4" />
                           Settings
@@ -370,17 +374,17 @@ export default function Navbar() {
                 ) : (
                   <Link
                     to="/login"
-                    className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
+                    className="hidden sm:flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
                   >
                     <User className="h-4 w-4" />
-                    Login
+                    Sign In
                   </Link>
                 )}
               </div>
 
               {/* Mobile Menu Button */}
               <button
-                className="lg:hidden p-2.5 rounded-full hover:bg-gray-100 transition-colors duration-200"
+                className="lg:hidden p-2.5 rounded-xl hover:bg-gray-100 transition-colors duration-200"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
                 {mobileMenuOpen ? (
@@ -395,111 +399,113 @@ export default function Navbar() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-gray-200 bg-white/95 backdrop-blur-md">
+          <div className="lg:hidden border-t border-gray-200 bg-white/98 backdrop-blur-lg">
             <div className="py-4 space-y-4">
               {/* Mobile Search */}
-              <form
-                onSubmit={handleSearch}
-                className="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3 mx-4 border border-gray-200 focus-within:border-indigo-300 focus-within:bg-white transition-all duration-200"
-              >
-                <Search className="h-4 w-4 text-gray-500" />
-                <input
-                  type="text"
-                  placeholder="Search for shoes, brands..."
-                  className="border-0 bg-transparent focus:outline-none placeholder:text-gray-400 text-sm w-full"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </form>
+                              <form
+                  onSubmit={handleSearch}
+                  className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 mx-4 border border-gray-200 focus-within:border-indigo-300 focus-within:bg-white transition-all duration-200"
+                >
+                  <Search className="h-4 w-4 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="Search for shoes, brands..."
+                    className="border-0 bg-transparent focus:outline-none placeholder:text-gray-400 text-sm w-full font-medium"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </form>
 
-                            {/* Mobile Navigation Links */}
-              <nav className="flex flex-col space-y-1 px-4">
-                <Link 
-                  to="/" 
-                  onClick={() => setMobileMenuOpen(false)} 
-                  className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 py-3 px-4 rounded-xl transition-all duration-200"
-                >
-                Home
-              </Link>
-
-                <Link 
-                  to="/all-shoes" 
-                  onClick={() => setMobileMenuOpen(false)} 
-                  className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 py-3 px-4 rounded-xl transition-all duration-200"
-                >
-                  All Shoes
-                </Link>
-                <Link 
-                  to="/man" 
-                  onClick={() => setMobileMenuOpen(false)} 
-                  className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 py-3 px-4 rounded-xl transition-all duration-200"
-                >
-                  Men
-                </Link>
-                <Link 
-                  to="/women" 
-                  onClick={() => setMobileMenuOpen(false)} 
-                  className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 py-3 px-4 rounded-xl transition-all duration-200"
-                >
-                  Women
-                </Link>
-                <Link 
-                  to="/collections" 
-                  onClick={() => setMobileMenuOpen(false)} 
-                  className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 py-3 px-4 rounded-xl transition-all duration-200"
-                >
-                  Collections
-                </Link>
-                <Link 
-                  to="/wishlist" 
-                  onClick={() => setMobileMenuOpen(false)} 
-                  className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-between"
-                >
-                  <span>Wishlist</span>
-                  <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                    {wishlistItems?.length || 0}
-                  </span>
-                </Link>
-                <Link 
-                  to="/comparison" 
-                  onClick={() => setMobileMenuOpen(false)} 
-                  className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-between"
-                >
-                  <span>Compare Products</span>
-                  <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-                    {comparisonProducts?.length || 0}
-                  </span>
-                </Link>
-                {isLogin && (
+                {/* Mobile Navigation Links */}
+                <nav className="flex flex-col space-y-1 px-4">
                   <Link 
-                    to="/my-orders" 
+                    to="/all-shoes" 
                     onClick={() => setMobileMenuOpen(false)} 
-                    className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 py-3 px-4 rounded-xl transition-all duration-200"
+                    className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 py-3 px-4 rounded-xl transition-all duration-200"
                   >
-                    My Orders
+                    All Shoes
                   </Link>
-                )}
-              </nav>
+                  
+                  <Link 
+                    to="/man" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 py-3 px-4 rounded-xl transition-all duration-200"
+                  >
+                    Men
+                  </Link>
+                  
+                  <Link 
+                    to="/women" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 py-3 px-4 rounded-xl transition-all duration-200"
+                  >
+                    Women
+                  </Link>
+                  
+                  <Link 
+                    to="/collections" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 py-3 px-4 rounded-xl transition-all duration-200"
+                  >
+                    Collections
+                  </Link>
+                  
+                  <Link 
+                    to="/wishlist" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-between"
+                  >
+                    <span>Wishlist</span>
+                    {wishlistItems?.length > 0 && (
+                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                        {wishlistItems.length}
+                      </span>
+                    )}
+                  </Link>
+                  
+                  <Link 
+                    to="/comparison" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-between"
+                  >
+                    <span>Compare Products</span>
+                    {comparisonProducts?.length > 0 && (
+                      <span className="bg-indigo-500 text-white text-xs px-2 py-1 rounded-full">
+                        {comparisonProducts.length}
+                      </span>
+                    )}
+                  </Link>
+                  
+                  {isLogin && (
+                    <Link 
+                      to="/my-orders" 
+                      onClick={() => setMobileMenuOpen(false)} 
+                      className="font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 py-3 px-4 rounded-xl transition-all duration-200"
+                    >
+                      My Orders
+                    </Link>
+                  )}
+                </nav>
 
-              {/* Mobile Auth Buttons */}
-              <div className="px-4 pt-4 border-t border-gray-200">
-                {isLogin ? (
-                  <button
-                    onClick={handleLogout}
-                    className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-4 rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg"
-                  >
-                    Logout
-                  </button>
-                ) : (
-                  <Link
-                    to="/login"
-                    className="block w-full text-center bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 px-4 rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Login
-                  </Link>
-                )}
-              </div>
+                {/* Mobile Auth Buttons */}
+                <div className="px-4 pt-4 border-t border-gray-200">
+                  {isLogin ? (
+                    <button
+                      onClick={handleLogout}
+                      className="w-full bg-red-600 text-white py-3 px-4 rounded-xl hover:bg-red-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg"
+                    >
+                      Sign Out
+                    </button>
+                  ) : (
+                    <Link
+                      to="/login"
+                      className="block w-full text-center bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Sign In
+                    </Link>
+                  )}
+                </div>
             </div>
           </div>
         )}

@@ -3,6 +3,23 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { removeFromComparison, clearComparison } from '../../store/comparisonSlice';
 import { addToCart } from '../../store/cartSlice';
 import { addToWishlist } from '../../store/wishlistSlice';
+interface ComparisonProduct {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  brand: string;
+  category: string;
+  rating?: number;
+  reviewCount?: number;
+  inStock?: boolean;
+  totalStock?: number;
+  isNew?: boolean;
+  sizes?: string[];
+  colors?: string[];
+  description?: string;
+
+}
 import { X, ShoppingCart, Heart, Star, Check, X as XIcon, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -23,7 +40,7 @@ const ProductComparison: React.FC = () => {
     toast.success("Comparison cleared");
   };
 
-  const handleAddToCart = (product: any) => {
+  const handleAddToCart = (product: ComparisonProduct) => {
     if (!isLoggedIn) {
       toast.error("Please log in to add to cart");
       return;
@@ -32,13 +49,13 @@ const ProductComparison: React.FC = () => {
     // Add with default selections
     dispatch(addToCart(
       product.id,
-      product.size?.[0] || "Default",
-      product.color?.[0] || "Default"
+      product.sizes?.[0] || "Default",
+      product.colors?.[0] || "Default"
     ));
     toast.success("Added to cart");
   };
 
-  const handleAddToWishlist = (product: any) => {
+  const handleAddToWishlist = (product: ComparisonProduct) => {
     if (!isLoggedIn) {
       toast.error("Please log in to add to wishlist");
       return;
@@ -51,7 +68,7 @@ const ProductComparison: React.FC = () => {
       image: product.image,
       rating: product.rating || 4.5,
       reviews: product.reviewCount || 0,
-      inStock: product.inStock,
+      inStock: product.inStock || true,
       category: product.category,
       brand: product.brand,
     };
@@ -95,6 +112,7 @@ const ProductComparison: React.FC = () => {
     { key: 'description', label: 'Description', type: 'text' },
   ];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderSpecValue = (product: any, spec: any) => {
     const value = product[spec.key];
 

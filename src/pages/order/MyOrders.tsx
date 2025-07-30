@@ -9,7 +9,7 @@ import {
   checkKhaltiPaymentStatus,
 } from "../../store/orderSlice";
 import { Package, Search, Clock, CheckCircle, XCircle, Truck, CreditCard, Eye } from "lucide-react";
-import { OrderStatus } from "./types";
+import { OrderStatus, PaymentStatus } from "./types";
 import { OrderSkeleton } from "../../components/SkeletonLoader";
 
 function MyOrder() {
@@ -30,11 +30,6 @@ function MyOrder() {
     ? newItems 
     : newItems.filter(item => item.orderStatus === selectedStatus);
 
-  // Show skeleton while loading
-  if (!items || items.length === 0) {
-    return <OrderSkeleton />;
-  }
-
   useEffect(() => {
     dispatch(fetchMyOrders());
     
@@ -49,19 +44,19 @@ function MyOrder() {
   
   useEffect(() => {
     // Socket event listeners for real-time updates
-    const handleStatusUpdate = (data: any) => {
+    const handleStatusUpdate = (data: { status: string; userId: string; orderId: string }) => {
       console.log("Status update received:", data);
       dispatch(updateOrderStatusinSlice({
-        status: data.status,
+        status: data.status as OrderStatus,
         userId: data.userId,
         orderId: data.orderId
       }));
     };
 
-    const handlePaymentStatusUpdate = (data: any) => {
+    const handlePaymentStatusUpdate = (data: { status: string; orderId: string; paymentId: string }) => {
       console.log("Payment status update received:", data);
       dispatch(updatePaymentStatusinSlice({
-        status: data.status,
+        status: data.status as PaymentStatus,
         orderId: data.orderId,
         paymentId: data.paymentId
       }));
@@ -78,17 +73,22 @@ function MyOrder() {
     };
   }, [dispatch]);
 
+  // Show skeleton while loading
+  if (!items || items.length === 0) {
+    return <OrderSkeleton />;
+  }
+
   const getStatusInfo = (status: string) => {
-    switch (status) {
-      case OrderStatus.Pending:
+    switch (status?.toLowerCase()) {
+      case OrderStatus.Pending.toLowerCase():
         return { icon: Clock, color: "text-yellow-600", bgColor: "bg-yellow-100", borderColor: "border-yellow-200" };
-      case OrderStatus.Preparation:
+      case OrderStatus.Preparation.toLowerCase():
         return { icon: Package, color: "text-blue-600", bgColor: "bg-blue-100", borderColor: "border-blue-200" };
-      case OrderStatus.Ontheway:
+      case OrderStatus.Ontheway.toLowerCase():
         return { icon: Truck, color: "text-purple-600", bgColor: "bg-purple-100", borderColor: "border-purple-200" };
-      case OrderStatus.Delivered:
+      case OrderStatus.Delivered.toLowerCase():
         return { icon: CheckCircle, color: "text-green-600", bgColor: "bg-green-100", borderColor: "border-green-200" };
-      case OrderStatus.Cancelled:
+      case OrderStatus.Cancelled.toLowerCase():
         return { icon: XCircle, color: "text-red-600", bgColor: "bg-red-100", borderColor: "border-red-200" };
       default:
         return { icon: Clock, color: "text-gray-600", bgColor: "bg-gray-100", borderColor: "border-gray-200" };

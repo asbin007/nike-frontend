@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { fetchRecommendations, fetchSimilarProducts } from '../store/recommendationsSlice';
+import { fetchRecommendations, fetchSimilarProducts, RecommendationProduct } from '../store/recommendationsSlice';
 import { addToCart } from '../store/cartSlice';
 import { addToWishlist } from '../store/wishlistSlice';
 import { Link } from 'react-router-dom';
@@ -42,9 +42,9 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
     if (type === 'similarProducts' && productId) {
       dispatch(fetchSimilarProducts(productId));
     } else {
-      dispatch(fetchRecommendations(productId));
+      dispatch(fetchRecommendations());
     }
-  }, [dispatch, type, productId]);
+  }, [dispatch, type, productId]); // Only re-run when these dependencies change
 
   const getRecommendations = () => {
     switch (type) {
@@ -118,7 +118,7 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
     }
   };
 
-  const handleAddToCart = (product: any) => {
+  const handleAddToCart = (product: RecommendationProduct) => {
     if (!isLoggedIn) {
       toast.error("Please log in to add to cart");
       return;
@@ -126,13 +126,13 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
     
     dispatch(addToCart(
       product.id,
-      product.size?.[0] || "Default",
-      product.color?.[0] || "Default"
+      "Default", // Default size
+      "Default"  // Default color
     ));
     toast.success("Added to cart");
   };
 
-  const handleAddToWishlist = (product: any) => {
+  const handleAddToWishlist = (product: RecommendationProduct) => {
     if (!isLoggedIn) {
       toast.error("Please log in to add to wishlist");
       return;
@@ -145,7 +145,7 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
       image: product.image,
       rating: product.rating || 4.5,
       reviews: product.reviewCount || 0,
-      inStock: product.inStock,
+      inStock: true, // Default to true for recommendations
       category: product.category,
       brand: product.brand,
     };

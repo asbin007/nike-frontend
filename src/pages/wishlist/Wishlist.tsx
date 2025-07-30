@@ -15,7 +15,7 @@ export default function Wishlist() {
     toast.success("Removed from wishlist");
   };
 
-  const handleAddToCart = async (_product: WishlistItem) => {
+  const handleAddToCart = async () => {
     if (!isLoggedIn) {
       toast.error("Please log in to add to cart");
       return;
@@ -30,7 +30,7 @@ export default function Wishlist() {
   };
 
   const moveToCart = (product: WishlistItem) => {
-    handleAddToCart(product);
+    handleAddToCart();
     handleRemoveFromWishlist(product.id);
   };
 
@@ -39,8 +39,8 @@ export default function Wishlist() {
     toast.success("Wishlist cleared");
   };
 
-  // Show skeleton while loading
-  if (!wishlistItems || wishlistItems.length === 0) {
+  // Show skeleton while loading (only if items are undefined, not empty)
+  if (!wishlistItems) {
     return <WishlistSkeleton />;
   }
 

@@ -27,6 +27,7 @@ function MyOrderDetail() {
 
   // Socket event listeners for real-time updates
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleStatusUpdate = (data: any) => {
       console.log("Status update received in details:", data);
       if (data.orderId === id) {
@@ -40,6 +41,7 @@ function MyOrderDetail() {
       }
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handlePaymentStatusUpdate = (data: any) => {
       console.log("Payment status update received in details:", data);
       if (data.orderId === id) {

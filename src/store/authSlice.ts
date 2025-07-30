@@ -69,13 +69,48 @@ const authSlice = createSlice({
 export const { setUser, setStatus, setToken, logout } = authSlice.actions;
 export default authSlice.reducer;
 
-export function registerUser(data: IUser) {
+export function registerUser(data: { username: string; email: string; password: string }) {
   return async function registerUserThunk(dispatch: AppDispatch) {
     try {
       const res = await API.post("/auth/register", data);
       console.log(res);
       if (res.status === 201) {
-        dispatch(setUser(data));
+        // Store registration data for OTP verification
+        localStorage.setItem("pendingRegistration", JSON.stringify({
+          userId: res.data.userId,
+          email: res.data.email,
+          username: data.username
+        }));
+        dispatch(setStatus(Status.SUCCESS));
+      } else dispatch(setStatus(Status.ERROR));
+    } catch (error) {
+      console.log(error);
+      dispatch(setStatus(Status.ERROR));
+    }
+  };
+}
+
+export function verifyOtp(data: { email: string; otp: string }) {
+  return async function verifyOtpThunk(dispatch: AppDispatch) {
+    try {
+      const res = await API.post("/auth/verify-otp", data);
+      if (res.status === 200) {
+        // Clear pending registration
+        localStorage.removeItem("pendingRegistration");
+        dispatch(setStatus(Status.SUCCESS));
+      } else dispatch(setStatus(Status.ERROR));
+    } catch (error) {
+      console.log(error);
+      dispatch(setStatus(Status.ERROR));
+    }
+  };
+}
+
+export function resendOtp(data: { email: string }) {
+  return async function resendOtpThunk(dispatch: AppDispatch) {
+    try {
+      const res = await API.post("/auth/resend-otp", data);
+      if (res.status === 200) {
         dispatch(setStatus(Status.SUCCESS));
       } else dispatch(setStatus(Status.ERROR));
     } catch (error) {
@@ -121,18 +156,22 @@ export function loginUser(data: ILoginUser) {
   };
 }
 
-export function forgotPassword(data: { email: string; otp: string }) {
+export function forgotPassword(data: { email: string }) {
   return async function forgotPasswordThunk(dispatch: AppDispatch) {
     try {
-      const res = await APIS.post("/auth/forgot-password", data);
+      dispatch(setStatus(Status.LOADING));
+      const res = await API.post("/auth/forgot-password", data);
       console.log(res);
-      if (res.status === 201) {
-        dispatch(setUser(res.data));
+      if (res.status === 201 || res.status === 200) {
         dispatch(setStatus(Status.SUCCESS));
-      } else dispatch(setStatus(Status.ERROR));
+      } else {
+        dispatch(setStatus(Status.ERROR));
+      }
     } catch (error) {
       console.log(error);
       dispatch(setStatus(Status.ERROR));
+      // You can throw the error to be handled by the component
+      throw error;
     }
   };
 }
@@ -140,18 +179,76 @@ export function forgotPassword(data: { email: string; otp: string }) {
 export function resetPassword(data: IResetPassword) {
   return async function resetPasswordThunk(dispatch: AppDispatch) {
     try {
-      const res = await APIS.post("/auth/reset-password", data);
+      dispatch(setStatus(Status.LOADING));
+      const res = await API.post("/auth/reset-password", data);
       console.log(res);
-      if (res.status === 201) {
-        dispatch(setUser(res.data));
+      if (res.status === 201 || res.status === 200) {
         dispatch(setStatus(Status.SUCCESS));
-      } else dispatch(setStatus(Status.ERROR));
+      } else {
+        dispatch(setStatus(Status.ERROR));
+      }
+    } catch (error) {
+      console.log(error);
+      dispatch(setStatus(Status.ERROR));
+      throw error;
+    }
+  };
+}
+export function adminLogin(data: { email: string; password: string; role: string }) {
+  return async function adminLoginThunk(dispatch: AppDispatch) {
+    try {
+      const response = await API.post("/auth/logins", data);
+      if (response.status === 201) {
+        const { token } = response.data;
+        if (token) {
+          localStorage.setItem("tokenauth", token);
+          localStorage.setItem("adminToken", token);
+          dispatch(setStatus(Status.SUCCESS));
+        } else {
+          dispatch(setStatus(Status.ERROR));
+        }
+      } else {
+        dispatch(setStatus(Status.ERROR));
+      }
     } catch (error) {
       console.log(error);
       dispatch(setStatus(Status.ERROR));
     }
   };
 }
+
+export function fetchUsers() {
+  return async function fetchUsersThunk() {
+    try {
+      const response = await APIS.get("/auth/users");
+      if (response.status === 201) {
+        return response.data.data;
+      } else {
+        throw new Error("Failed to fetch users");
+      }
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  };
+}
+
+export function deleteUser(id: string) {
+  return async function deleteUserThunk(dispatch: AppDispatch) {
+    try {
+      const response = await APIS.delete(`/auth/users/${id}`);
+      if (response.status === 201) {
+        dispatch(setStatus(Status.SUCCESS));
+      } else {
+        dispatch(setStatus(Status.ERROR));
+      }
+    } catch (error) {
+      console.log(error);
+      dispatch(setStatus(Status.ERROR));
+    }
+  };
+}
+
 export function loadUserFromStorage() {
   return function loadUserThunk(dispatch: AppDispatch) {
     const token = localStorage.getItem("tokenauth");
