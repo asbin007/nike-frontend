@@ -13,7 +13,7 @@ function Checkout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
-    PaymentMethod.Cod
+    PaymentMethod.COD
   );
 
   const total = data.reduce(
@@ -31,7 +31,7 @@ function Checkout() {
     zipcode: "",
     email: "",
     totalPrice: 0,
-    paymentMethod: PaymentMethod.Cod,
+    paymentMethod: PaymentMethod.COD,
     Shoe: [],
   });
 
@@ -87,7 +87,7 @@ function Checkout() {
     await dispatch(orderItem(finalData));
     
     // Show appropriate message based on payment method
-    if (paymentMethod === PaymentMethod.Cod) {
+    if (paymentMethod === PaymentMethod.COD) {
       toast.success("Order created successfully! Pay on delivery.", {
         duration: 3000,
         position: "top-center",
@@ -241,14 +241,14 @@ function Checkout() {
                     }
                     className="mt-1 px-4 py-2 rounded-md bg-gray-100 text-sm w-full"
                   >
-                    <option value={PaymentMethod.Cod}>COD</option>
+                    <option value={PaymentMethod.COD}>COD</option>
                     <option value={PaymentMethod.Khalti}>Khalti</option>
                     <option value={PaymentMethod.Esewa}>Esewa</option>
                   </select>
                 </div>
               </div>
               <div className="flex gap-4 max-md:flex-col mt-8">
-                {paymentMethod === PaymentMethod.Cod && (
+                {paymentMethod === PaymentMethod.COD && (
                   <button
                     type="submit"
                     className="rounded-md px-4 py-2.5 w-full text-sm bg-blue-600 hover:bg-blue-700 text-white"

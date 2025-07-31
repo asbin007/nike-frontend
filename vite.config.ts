@@ -16,5 +16,36 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true
+  },
+  build: {
+    // Optimize build performance
+    target: 'esnext',
+    minify: 'terser',
+    sourcemap: false,
+    // Reduce bundle size
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          redux: ['@reduxjs/toolkit', 'react-redux'],
+          router: ['react-router-dom'],
+          ui: ['lucide-react', 'framer-motion'],
+          utils: ['axios', 'socket.io-client']
+        }
+      }
+    }
+  },
+  // Optimize dependencies
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      '@reduxjs/toolkit',
+      'react-redux',
+      'react-router-dom',
+      'axios',
+      'lucide-react'
+    ]
   }
 })
