@@ -23,6 +23,9 @@ import Wishlist from "./pages/wishlist/Wishlist";
 import ProductComparison from "./pages/comparison/ProductComparison";
 import ChatWidget from "./components/ChatWidget";
 
+// Add version for deployment tracking
+const APP_VERSION = "1.0.1";
+
 export const socket = io("http://localhost:5001", {
   auth: {
     token: localStorage.getItem("tokenauth"),
@@ -46,6 +49,10 @@ socket.on("error", (error: Error) => {
 const App = () => {
   const dispatch = useAppDispatch();
 
+  // Log version for deployment tracking
+  useEffect(() => {
+    console.log(`Nike Frontend App Version: ${APP_VERSION}`);
+  }, []);
 
   useEffect(() => {
     dispatch(loadUserFromStorage());
