@@ -7,6 +7,8 @@ import { Link } from 'react-router-dom';
 import { Star, ShoppingCart, Heart, TrendingUp, Eye, Users, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+
+//Recommendation system
 interface ProductRecommendationsProps {
   type?: 'recentlyViewed' | 'frequentlyBought' | 'similarProducts' | 'trendingProducts' | 'personalized';
   productId?: string;
