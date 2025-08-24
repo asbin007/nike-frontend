@@ -7,16 +7,20 @@ import {
   updateOrderStatusinSlice,
   updatePaymentStatusinSlice,
   checkKhaltiPaymentStatus,
+  refreshOrders,
 } from "../../store/orderSlice";
-import { Package, Search, Clock, CheckCircle, XCircle, Truck, CreditCard, Eye } from "lucide-react";
+import { Package, Search, Clock, CheckCircle, XCircle, Truck, CreditCard, Eye, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { OrderStatus, PaymentStatus } from "./types";
 import { OrderSkeleton } from "../../components/SkeletonLoader";
+import toast from "react-hot-toast";
 
 function MyOrder() {
   const dispatch = useAppDispatch();
   const { items } = useAppSelector((store) => store.orders);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [isSocketConnected, setIsSocketConnected] = useState<boolean>(false);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   const newItems = items.filter(
     (item) =>
@@ -40,36 +44,120 @@ function MyOrder() {
       dispatch(checkKhaltiPaymentStatus(pidx));
       localStorage.removeItem('khalti_pidx');
     }
+    
+    // Auto-refresh orders every 60 seconds for real-time updates
+    const autoRefreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing orders (60s interval)');
+      dispatch(refreshOrders());
+      setLastUpdate(new Date());
+    }, 60000);
+    
+    // Cleanup interval on unmount
+    return () => clearInterval(autoRefreshInterval);
   }, [dispatch]);
   
   useEffect(() => {
+    // Update socket connection status
+    const updateConnectionStatus = () => {
+      setIsSocketConnected(socket.connected);
+    };
+    
+    updateConnectionStatus();
+    
     // Socket event listeners for real-time updates
     const handleStatusUpdate = (data: { status: string; userId: string; orderId: string }) => {
-      console.log("Status update received:", data);
-      dispatch(updateOrderStatusinSlice({
-        status: data.status as OrderStatus,
-        userId: data.userId,
-        orderId: data.orderId
-      }));
+      console.log("🔄 MyOrders: Order status update received:", data);
+      try {
+        dispatch(updateOrderStatusinSlice({
+          status: data.status as OrderStatus,
+          userId: data.userId,
+          orderId: data.orderId
+        }));
+        
+        setLastUpdate(new Date());
+        toast.success(`Order status updated to: ${data.status}`);
+      } catch (error) {
+        console.error("Error updating order status:", error);
+        toast.error("Failed to update order status");
+        // Fallback to manual refresh
+        dispatch(refreshOrders());
+      }
     };
 
     const handlePaymentStatusUpdate = (data: { status: string; orderId: string; paymentId: string }) => {
-      console.log("Payment status update received:", data);
-      dispatch(updatePaymentStatusinSlice({
-        status: data.status as PaymentStatus,
-        orderId: data.orderId,
-        paymentId: data.paymentId
-      }));
+      console.log("🔄 MyOrders: Payment status update received:", data);
+      try {
+        dispatch(updatePaymentStatusinSlice({
+          status: data.status as PaymentStatus,
+          orderId: data.orderId,
+          paymentId: data.paymentId
+        }));
+        
+        setLastUpdate(new Date());
+        toast.success(`Payment status updated to: ${data.status}`);
+      } catch (error) {
+        console.error("Error updating payment status:", error);
+        toast.error("Failed to update payment status");
+        // Fallback to manual refresh
+        dispatch(refreshOrders());
+      }
     };
 
-    // Add event listeners
-    socket.on("statusUpdated", handleStatusUpdate);
-    socket.on("paymentStatusUpdated", handlePaymentStatusUpdate);
+    // Add event listeners function
+    const addEventListeners = () => {
+      if (socket.connected) {
+        // Order status events
+        socket.on("statusUpdated", handleStatusUpdate);
+        socket.on("orderStatusUpdated", handleStatusUpdate);
+        socket.on("orderUpdated", handleStatusUpdate);
+        socket.on("orderStatusChange", handleStatusUpdate);
+        
+        // Payment status events
+        socket.on("paymentStatusUpdated", handlePaymentStatusUpdate);
+        socket.on("paymentUpdated", handlePaymentStatusUpdate);
+        socket.on("paymentStatusChange", handlePaymentStatusUpdate);
+        
+        // General order events
+        socket.on("orderChange", () => {
+          console.log("🔄 Order change detected, refreshing orders...");
+          dispatch(refreshOrders());
+          setLastUpdate(new Date());
+        });
+        
+        console.log("✅ MyOrders: WebSocket event listeners added");
+        setIsSocketConnected(true);
+      } else {
+        console.warn("⚠️ MyOrders: Socket not connected, cannot add event listeners");
+        setIsSocketConnected(false);
+      }
+    };
+
+    // Add listeners immediately if connected
+    addEventListeners();
+    
+    // Add listeners when socket connects
+    socket.on("connect", () => {
+      addEventListeners();
+      setIsSocketConnected(true);
+    });
+    
+    socket.on("disconnect", () => {
+      setIsSocketConnected(false);
+    });
 
     // Cleanup function
     return () => {
+      socket.off("connect", addEventListeners);
+      socket.off("disconnect");
       socket.off("statusUpdated", handleStatusUpdate);
+      socket.off("orderStatusUpdated", handleStatusUpdate);
+      socket.off("orderUpdated", handleStatusUpdate);
+      socket.off("orderStatusChange", handleStatusUpdate);
       socket.off("paymentStatusUpdated", handlePaymentStatusUpdate);
+      socket.off("paymentUpdated", handlePaymentStatusUpdate);
+      socket.off("paymentStatusChange", handlePaymentStatusUpdate);
+      socket.off("orderChange");
+      console.log("🔄 MyOrders: Socket event listeners removed");
     };
   }, [dispatch]);
 
@@ -106,6 +194,12 @@ function MyOrder() {
     }
   };
 
+  const handleManualRefresh = () => {
+    dispatch(refreshOrders());
+    setLastUpdate(new Date());
+    toast.success("Orders refreshed manually");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
       <div className="max-w-7xl mx-auto">
@@ -119,6 +213,18 @@ function MyOrder() {
               <div>
                 <h1 className="text-3xl font-bold text-gray-800">My Orders</h1>
                 <p className="text-gray-600 mt-1">Track and manage your orders</p>
+                <div className="flex items-center space-x-2 mt-2">
+                  <div className={`flex items-center space-x-1 ${isSocketConnected ? 'text-green-600' : 'text-red-600'}`}>
+                    {isSocketConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+                    <span className="text-sm font-medium">
+                      {isSocketConnected ? 'Real-time connected' : 'Manual mode'}
+                    </span>
+                  </div>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-sm text-gray-500">
+                    Last updated: {lastUpdate.toLocaleTimeString()}
+                  </span>
+                </div>
               </div>
             </div>
             
@@ -133,6 +239,15 @@ function MyOrder() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
             </div>
+            
+            {/* Refresh Button */}
+            <button
+              onClick={handleManualRefresh}
+              className="flex items-center space-x-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors duration-200"
+            >
+              <RefreshCw className="w-5 h-5" />
+              <span className="font-medium">Refresh</span>
+            </button>
           </div>
 
           {/* Status Filter */}
@@ -311,7 +426,7 @@ function MyOrder() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Delivered</p>
                   <p className="text-2xl font-bold text-gray-800">
-                    {filteredItems.length}
+                    {filteredItems.filter(item => item.orderStatus?.toLowerCase() === OrderStatus.Delivered.toLowerCase()).length}
                   </p>
                 </div>
                 <div className="bg-green-100 p-3 rounded-full">
@@ -325,7 +440,7 @@ function MyOrder() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Pending</p>
                   <p className="text-2xl font-bold text-gray-800">
-                    {filteredItems.length}
+                    {filteredItems.filter(item => item.orderStatus?.toLowerCase() === OrderStatus.Pending.toLowerCase()).length}
                   </p>
                 </div>
                 <div className="bg-yellow-100 p-3 rounded-full">

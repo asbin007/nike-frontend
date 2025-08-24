@@ -4,6 +4,7 @@ import { Status } from "../globals/types/types";
 import { APIS } from "../globals/http";
 import { AppDispatch } from "./store";
 import toast from "react-hot-toast";
+import { socket } from "../App";
 
 interface IProduct {
   productId: string;
@@ -141,13 +142,34 @@ const orderSlice = createSlice({
       }>
     ) {
       const { status, orderId } = action.payload;
-      const updateOrder = state.items.map((order) =>
-        order.id == orderId
-          ? { ...order, orderStatus: status as unknown as Status }
-          : order
-      );
-      console.log(updateOrder, "UO");
-      state.items = updateOrder;
+      
+      // Update items array - check both id and orderId
+      const updatedItems = state.items.map((order) => {
+        if (order.id === orderId || order.orderId === orderId) {
+          console.log(`Updating order ${order.id} status from ${order.orderStatus} to ${status}`);
+          return { ...order, orderStatus: status as unknown as Status };
+        }
+        return order;
+      });
+      
+      // Update orderDetails array
+      const updatedDetails = state.orderDetails.map((detail) => {
+        if (detail.orderId === orderId && detail.Order) {
+          console.log(`Updating order detail ${detail.orderId} status from ${detail.Order.orderStatus} to ${status}`);
+          return {
+            ...detail,
+            Order: {
+              ...detail.Order,
+              orderStatus: status,
+            },
+          };
+        }
+        return detail;
+      });
+
+      console.log("Order status updated successfully:", { orderId, status, updatedItemsCount: updatedItems.length });
+      state.items = updatedItems;
+      state.orderDetails = updatedDetails;
     },
 
     updatePaymentStatusinSlice(
@@ -160,22 +182,27 @@ const orderSlice = createSlice({
     ) {
       const { status, orderId } = action.payload;
 
-      const updatedItems = state.items.map((item) =>
-        item.orderId === orderId
-          ? {
-              ...item,
-              Payment: {
-                ...item.Payment,
-                paymentStatus: status,
-                paymentMethod: item.Payment?.paymentMethod ?? PaymentMethod.COD,
-                pidx: item.Payment?.pidx, // Preserve existing pidx
-              },
-            }
-          : item
-      );
+      // Update items array - check both orderId and id
+      const updatedItems = state.items.map((item) => {
+        if (item.orderId === orderId || item.id === orderId) {
+          console.log(`Updating payment status for order ${item.id} from ${item.Payment?.paymentStatus} to ${status}`);
+          return {
+            ...item,
+            Payment: {
+              ...item.Payment,
+              paymentStatus: status,
+              paymentMethod: item.Payment?.paymentMethod ?? PaymentMethod.COD,
+              pidx: item.Payment?.pidx, // Preserve existing pidx
+            },
+          };
+        }
+        return item;
+      });
 
+      // Update orderDetails array
       const updatedDetails = state.orderDetails.map((detail) => {
         if (detail.orderId === orderId && detail.Order) {
+          console.log(`Updating payment status for order detail ${detail.orderId} from ${detail.Order.Payment?.paymentStatus} to ${status}`);
           return {
             ...detail,
             Order: {
@@ -190,6 +217,7 @@ const orderSlice = createSlice({
         return detail;
       });
 
+      console.log("Payment status updated successfully:", { orderId, status, updatedItemsCount: updatedItems.length });
       state.items = updatedItems;
       state.orderDetails = updatedDetails;
     },
@@ -312,6 +340,359 @@ export function cancelOrderAPI(id: string) {
     } catch (error) {
       console.log(error);
       dispatch(setStatus(Status.ERROR));
+    }
+  };
+}
+
+// Function to manually refresh orders when socket updates fail
+export function refreshOrders() {
+  return async function refreshOrdersThunk(dispatch: AppDispatch) {
+    try {
+      console.log("🔄 Manually refreshing orders...");
+      const response = await APIS.get("/order");
+      if (response.status === 201) {
+        dispatch(setStatus(Status.SUCCESS));
+        dispatch(setItems(response.data.data));
+        console.log("✅ Orders refreshed successfully");
+        toast.success("Orders refreshed successfully");
+      } else {
+        dispatch(setStatus(Status.ERROR));
+        toast.error("Failed to refresh orders");
+      }
+    } catch (error) {
+      console.log("❌ Error refreshing orders:", error);
+      dispatch(setStatus(Status.ERROR));
+      toast.error("Failed to refresh orders");
+    }
+  };
+}
+
+// Auto-refresh orders every 60 seconds for real-time updates
+export function startAutoRefresh() {
+  return function startAutoRefreshThunk(dispatch: AppDispatch) {
+    const interval = setInterval(() => {
+      console.log("🔄 Auto-refreshing orders (60s interval)");
+      dispatch(refreshOrders());
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  };
+}
+
+// Function to update order status via API when WebSocket fails
+export function updateOrderStatusAPI(orderId: string, status: OrderStatus) {
+  return async function updateOrderStatusAPIThunk(dispatch: AppDispatch) {
+    try {
+      console.log(`Updating order status via API: ${orderId} -> ${status}`);
+      const response = await APIS.patch(`/order/status/${orderId}`, { status });
+      
+      if (response.status === 200) {
+        // Update local state
+        dispatch(updateOrderStatusinSlice({
+          status,
+          userId: "admin",
+          orderId
+        }));
+        
+        console.log("Order status updated successfully via API");
+        toast.success(`Order status updated to: ${status}`);
+        return true;
+      } else {
+        console.error("Failed to update order status via API");
+        toast.error("Failed to update order status");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error updating order status via API:", error);
+      toast.error("Failed to update order status");
+      return false;
+    }
+  };
+}
+
+// Function to update payment status via API when WebSocket fails
+export function updatePaymentStatusAPI(orderId: string, status: PaymentStatus) {
+  return async function updatePaymentStatusAPIThunk(dispatch: AppDispatch) {
+    try {
+      console.log(`Updating payment status via API: ${orderId} -> ${status}`);
+      const response = await APIS.patch(`/order/payment/${orderId}`, { status });
+      
+      if (response.status === 200) {
+        // Update local state
+        dispatch(updatePaymentStatusinSlice({
+          status,
+          orderId,
+          paymentId: orderId
+        }));
+        
+        console.log("Payment status updated successfully via API");
+        toast.success(`Payment status updated to: ${status}`);
+        return true;
+      } else {
+        console.error("Failed to update payment status via API");
+        toast.error("Failed to update payment status");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error updating payment status via API:", error);
+      toast.error("Failed to update payment status");
+      return false;
+    }
+  };
+}
+
+// WebSocket function to update order status with fallback to API
+export function updateOrderStatusWebSocket(orderId: string, status: OrderStatus, userId: string) {
+  return async function updateOrderStatusWebSocketThunk(dispatch: AppDispatch) {
+    try {
+      console.log(`📤 Sending order status update via WebSocket: ${JSON.stringify({ status, orderId, userId })}`);
+      
+      // Try WebSocket first
+      if (socket && socket.connected) {
+        socket.emit("updateOrderStatus", { status, orderId, userId });
+        
+        // Wait for response or timeout
+        const timeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("WebSocket timeout")), 5000)
+        );
+        
+        const response = new Promise((resolve, reject) => {
+          const successHandler = (data: unknown) => {
+            console.log("✅ Order status updated via WebSocket:", data);
+            resolve(data);
+          };
+          
+          const errorHandler = (error: unknown) => {
+            console.log("❌ WebSocket error received:", error);
+            reject(error);
+          };
+          
+          socket.once("orderStatusUpdated", successHandler);
+          socket.once("statusUpdated", successHandler);
+          socket.once("error", errorHandler);
+        });
+        
+        try {
+          await Promise.race([response, timeout]);
+          // WebSocket succeeded
+          dispatch(updateOrderStatusinSlice({ status, userId, orderId }));
+          toast.success(`Order status updated to: ${status}`);
+          return true;
+        } catch {
+          console.log("🔄 WebSocket failed, falling back to API");
+          // Fallback to API
+          return await dispatch(updateOrderStatusAPI(orderId, status));
+        }
+      } else {
+        console.log("🔄 WebSocket not connected, using API");
+        return await dispatch(updateOrderStatusAPI(orderId, status));
+      }
+    } catch (error) {
+      console.error("❌ Failed to update order status:", error);
+      toast.error("Failed to update order status");
+      return false;
+    }
+  };
+}
+
+// WebSocket function to update payment status with fallback to API
+export function updatePaymentStatusWebSocket(orderId: string, status: PaymentStatus, paymentId: string) {
+  return async function updatePaymentStatusWebSocketThunk(dispatch: AppDispatch) {
+    try {
+      console.log(`📤 Sending payment status update via WebSocket: ${JSON.stringify({ status, orderId, paymentId })}`);
+      
+      // Try WebSocket first
+      if (socket && socket.connected) {
+        socket.emit("updatePaymentStatus", { status, orderId, paymentId });
+        
+        // Wait for response or timeout
+        const timeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("WebSocket timeout")), 5000)
+        );
+        
+        const response = new Promise((resolve, reject) => {
+          const successHandler = (data: unknown) => {
+            console.log("✅ Payment status updated via WebSocket:", data);
+            resolve(data);
+          };
+          
+          const errorHandler = (error: unknown) => {
+            console.log("❌ WebSocket error received:", error);
+            reject(error);
+          };
+          
+          socket.once("paymentStatusUpdated", successHandler);
+          socket.once("paymentUpdated", successHandler);
+          socket.once("error", errorHandler);
+        });
+        
+        try {
+          await Promise.race([response, timeout]);
+          // WebSocket succeeded
+          dispatch(updatePaymentStatusinSlice({ status, orderId, paymentId }));
+          toast.success(`Payment status updated to: ${status}`);
+          return true;
+        } catch {
+          console.log("🔄 WebSocket failed, falling back to API");
+          // Fallback to API
+          return await dispatch(updatePaymentStatusAPI(orderId, status));
+        }
+      } else {
+        console.log("🔄 WebSocket not connected, using API");
+        return await dispatch(updatePaymentStatusAPI(orderId, status));
+      }
+    } catch (error) {
+      console.error("❌ Failed to update payment status:", error);
+      toast.error("Failed to update payment status");
+      return false;
+    }
+  };
+}
+
+// Enhanced function to listen for real-time updates from admin panel
+export function listenForAdminUpdates() {
+  return function listenForAdminUpdatesThunk(dispatch: AppDispatch) {
+    console.log("🎧 Setting up admin update listeners...");
+    
+    const handleOrderStatusUpdate = (data: { status: string; userId: string; orderId: string }) => {
+      console.log("🔄 Admin order status update received:", data);
+      try {
+        dispatch(updateOrderStatusinSlice({
+          status: data.status as OrderStatus,
+          userId: data.userId,
+          orderId: data.orderId
+        }));
+        toast.success(`Order status updated to: ${data.status}`);
+      } catch (error) {
+        console.error("Error updating order status from admin:", error);
+        dispatch(refreshOrders());
+      }
+    };
+
+    const handlePaymentStatusUpdate = (data: { status: string; orderId: string; paymentId: string }) => {
+      console.log("🔄 Admin payment status update received:", data);
+      try {
+        dispatch(updatePaymentStatusinSlice({
+          status: data.status as PaymentStatus,
+          orderId: data.orderId,
+          paymentId: data.paymentId
+        }));
+        toast.success(`Payment status updated to: ${data.status}`);
+      } catch (error) {
+        console.error("Error updating payment status from admin:", error);
+        dispatch(refreshOrders());
+      }
+    };
+
+    // Listen for multiple event names that admin panel might emit
+    if (socket && socket.connected) {
+      // Order status events
+      socket.on("adminOrderStatusUpdate", handleOrderStatusUpdate);
+      socket.on("adminOrderUpdate", handleOrderStatusUpdate);
+      socket.on("orderStatusChanged", handleOrderStatusUpdate);
+      socket.on("statusUpdated", handleOrderStatusUpdate);
+      socket.on("orderStatusUpdated", handleOrderStatusUpdate);
+      
+      // Payment status events
+      socket.on("adminPaymentStatusUpdate", handlePaymentStatusUpdate);
+      socket.on("adminPaymentUpdate", handlePaymentStatusUpdate);
+      socket.on("paymentStatusChanged", handlePaymentStatusUpdate);
+      socket.on("paymentStatusUpdated", handlePaymentStatusUpdate);
+      socket.on("paymentUpdated", handlePaymentStatusUpdate);
+      
+      // General admin events
+      socket.on("adminUpdate", () => {
+        console.log("🔄 Admin update detected, refreshing orders...");
+        dispatch(refreshOrders());
+      });
+      
+      console.log("✅ Admin update listeners added successfully");
+    } else {
+      console.warn("⚠️ Socket not connected, cannot add admin update listeners");
+    }
+    
+    // Return cleanup function
+    return () => {
+      if (socket) {
+        socket.off("adminOrderStatusUpdate", handleOrderStatusUpdate);
+        socket.off("adminOrderUpdate", handleOrderStatusUpdate);
+        socket.off("orderStatusChanged", handleOrderStatusUpdate);
+        socket.off("statusUpdated", handleOrderStatusUpdate);
+        socket.off("orderStatusUpdated", handleOrderStatusUpdate);
+        socket.off("adminPaymentStatusUpdate", handlePaymentStatusUpdate);
+        socket.off("adminPaymentUpdate", handlePaymentStatusUpdate);
+        socket.off("paymentStatusChanged", handlePaymentStatusUpdate);
+        socket.off("paymentStatusUpdated", handlePaymentStatusUpdate);
+        socket.off("paymentUpdated", handlePaymentStatusUpdate);
+        socket.off("adminUpdate");
+        console.log("🔄 Admin update listeners removed");
+      }
+    };
+  };
+}
+
+// Simple function to update order status via API (for admin panel)
+export function updateOrderStatusDirect(orderId: string, status: OrderStatus) {
+  return async function updateOrderStatusDirectThunk(dispatch: AppDispatch) {
+    try {
+      console.log(`🔄 Updating order status directly: ${orderId} -> ${status}`);
+      
+      // Update via API
+      const response = await APIS.patch(`/order/status/${orderId}`, { status });
+      
+      if (response.status === 200) {
+        // Update local state
+        dispatch(updateOrderStatusinSlice({
+          status,
+          userId: "admin",
+          orderId
+        }));
+        
+        console.log("✅ Order status updated successfully");
+        toast.success(`Order status updated to: ${status}`);
+        return true;
+      } else {
+        console.error("❌ Failed to update order status");
+        toast.error("Failed to update order status");
+        return false;
+      }
+    } catch (error) {
+      console.error("❌ Error updating order status:", error);
+      toast.error("Failed to update order status");
+      return false;
+    }
+  };
+}
+
+// Simple function to update payment status via API (for admin panel)
+export function updatePaymentStatusDirect(orderId: string, status: PaymentStatus) {
+  return async function updatePaymentStatusDirectThunk(dispatch: AppDispatch) {
+    try {
+      console.log(`🔄 Updating payment status directly: ${orderId} -> ${status}`);
+      
+      // Update via API
+      const response = await APIS.patch(`/order/payment/${orderId}`, { status });
+      
+      if (response.status === 200) {
+        // Update local state
+        dispatch(updatePaymentStatusinSlice({
+          status,
+          orderId,
+          paymentId: orderId
+        }));
+        
+        console.log("✅ Payment status updated successfully");
+        toast.success(`Payment status updated to: ${status}`);
+        return true;
+      } else {
+        console.error("❌ Failed to update payment status");
+        toast.error("Failed to update payment status");
+        return false;
+      }
+    } catch (error) {
+      console.error("❌ Error updating payment status:", error);
+      toast.error("Failed to update payment status");
+      return false;
     }
   };
 }
