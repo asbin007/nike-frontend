@@ -84,7 +84,8 @@ const ProductDetail = () => {
         image: product.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${product.images[0].replace("/uploads", "")}.jpg` : "",
         rating: averageRating,
         reviews: review.length,
-        inStock: product.isStock || false,
+        inStock: (product.totalStock && product.totalStock > 0) || product.isStock || false,
+        totalStock: product.totalStock,
         category: product.Category?.categoryName,
         brand: product.brand,
       };

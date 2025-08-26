@@ -68,9 +68,10 @@ const ProductComparison: React.FC = () => {
       image: product.image,
       rating: product.rating || 4.5,
       reviews: product.reviewCount || 0,
-      inStock: product.inStock || true,
-      category: product.category,
-      brand: product.brand,
+                             inStock: (product.totalStock && product.totalStock > 0) || product.inStock || true,
+        totalStock: product.totalStock,
+        category: product.category,
+        brand: product.brand,
     };
     dispatch(addToWishlist(wishlistItem));
     toast.success("Added to wishlist");

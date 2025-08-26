@@ -13,6 +13,7 @@ export interface RecommendationProduct {
   reviewCount?: number;
   isNew?: boolean;
   discount?: number;
+  totalStock?: number;
   reason: string; // Why this product is recommended
 }
 
@@ -49,6 +50,7 @@ const convertToRecommendationProduct = (product: IProduct, reason: string): Reco
     reviewCount: Math.floor(Math.random() * 500) + 50, // Mock review count
     isNew: product.isNew,
     discount: product.discount,
+    totalStock: product.totalStock,
     reason
   };
 };
@@ -107,6 +109,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 128,
             isNew: false,
             discount: 15,
+            totalStock: 45,
             reason: "Recently viewed by customers"
           },
           {
@@ -120,6 +123,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 89,
             isNew: true,
             discount: 0,
+            totalStock: 32,
             reason: "Recently viewed by customers"
           },
           {
@@ -133,6 +137,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 256,
             isNew: false,
             discount: 20,
+            totalStock: 28,
             reason: "Recently viewed by customers"
           },
           {
@@ -146,6 +151,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 67,
             isNew: false,
             discount: 10,
+            totalStock: 15,
             reason: "Recently viewed by customers"
           }
         ],
@@ -161,6 +167,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 342,
             isNew: false,
             discount: 0,
+            totalStock: 67,
             reason: "Frequently bought together"
           },
           {
@@ -174,6 +181,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 198,
             isNew: false,
             discount: 5,
+            totalStock: 43,
             reason: "Frequently bought together"
           },
           {
@@ -187,6 +195,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 145,
             isNew: false,
             discount: 15,
+            totalStock: 38,
             reason: "Frequently bought together"
           },
           {
@@ -200,6 +209,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 223,
             isNew: false,
             discount: 0,
+            totalStock: 52,
             reason: "Frequently bought together"
           }
         ],
@@ -215,6 +225,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 167,
             isNew: false,
             discount: 10,
+            totalStock: 41,
             reason: "Similar to what you viewed"
           },
           {
@@ -228,6 +239,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 189,
             isNew: false,
             discount: 0,
+            totalStock: 33,
             reason: "Similar to what you viewed"
           },
           {
@@ -241,6 +253,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 134,
             isNew: false,
             discount: 20,
+            totalStock: 19,
             reason: "Similar to what you viewed"
           },
           {
@@ -254,6 +267,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 201,
             isNew: false,
             discount: 0,
+            totalStock: 27,
             reason: "Similar to what you viewed"
           }
         ],
@@ -269,6 +283,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 445,
             isNew: false,
             discount: 0,
+            totalStock: 14,
             reason: "Trending now"
           },
           {
@@ -282,6 +297,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 378,
             isNew: false,
             discount: 0,
+            totalStock: 8,
             reason: "Trending now"
           },
           {
@@ -294,6 +310,7 @@ export const fetchRecommendations = createAsyncThunk(
             rating: 4.5,
             reviewCount: 289,
             isNew: false,
+            totalStock: 22,
             discount: 10,
             reason: "Trending now"
           },
@@ -308,6 +325,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 312,
             isNew: false,
             discount: 0,
+            totalStock: 35,
             reason: "Trending now"
           }
         ],
@@ -323,6 +341,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 567,
             isNew: false,
             discount: 0,
+            totalStock: 12,
             reason: "Recommended for you"
           },
           {
@@ -336,6 +355,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 423,
             isNew: false,
             discount: 15,
+            totalStock: 48,
             reason: "Recommended for you"
           },
           {
@@ -349,6 +369,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 298,
             isNew: false,
             discount: 0,
+            totalStock: 31,
             reason: "Recommended for you"
           },
           {
@@ -362,6 +383,7 @@ export const fetchRecommendations = createAsyncThunk(
             reviewCount: 234,
             isNew: false,
             discount: 10,
+            totalStock: 26,
             reason: "Recommended for you"
           }
         ]

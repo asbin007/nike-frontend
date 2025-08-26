@@ -13,6 +13,7 @@ export interface WishlistItem {
   discount?: number;
   category?: string;
   brand?: string;
+  totalStock?: number; // Add totalStock for better stock management
 }
 
 interface WishlistState {
@@ -51,6 +52,30 @@ const wishlistSlice = createSlice({
     setStatus: (state, action: PayloadAction<Status>) => {
       state.status = action.payload;
     },
+
+    // Add new action to update stock status
+    updateWishlistItemStock: (state, action: PayloadAction<{ id: string; inStock: boolean; totalStock?: number }>) => {
+      const item = state.items.find(item => item.id === action.payload.id);
+      if (item) {
+        item.inStock = action.payload.inStock;
+        if (action.payload.totalStock !== undefined) {
+          item.totalStock = action.payload.totalStock;
+        }
+      }
+    },
+
+    // Add action to sync all wishlist items with current product stock
+    syncWishlistStock: (state, action: PayloadAction<{ id: string; inStock: boolean; totalStock?: number }[]>) => {
+      action.payload.forEach(({ id, inStock, totalStock }) => {
+        const item = state.items.find(item => item.id === id);
+        if (item) {
+          item.inStock = inStock;
+          if (totalStock !== undefined) {
+            item.totalStock = totalStock;
+          }
+        }
+      });
+    },
   },
 });
 
@@ -60,6 +85,8 @@ export const {
   clearWishlist,
   setWishlistItems,
   setStatus,
+  updateWishlistItemStock,
+  syncWishlistStock,
 } = wishlistSlice.actions;
 
 export default wishlistSlice.reducer; 

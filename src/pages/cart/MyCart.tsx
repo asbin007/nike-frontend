@@ -4,6 +4,7 @@ import { deleteCart, updateCart } from "../../store/cartSlice";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
 import { CartSkeleton } from "../../components/SkeletonLoader";
+import CouponInput from "../../components/CouponInput";
 
 function MyCart() {
   const { data } = useAppSelector((store) => store.cart);
@@ -160,6 +161,19 @@ function MyCart() {
                   Checkout
                 </button>
               </Link>
+            </div>
+            
+            {/* Coupon Input */}
+            <div className="mt-4">
+              <CouponInput 
+                cartTotal={subTotal}
+                cartItems={data.map(item => ({
+                  id: item.Shoe.id,
+                  brand: item.Shoe.name.split(' ')[0], // Extract brand from name
+                  price: item.Shoe.price,
+                  quantity: item.quantity
+                }))}
+              />
             </div>
           </div>
         </div>

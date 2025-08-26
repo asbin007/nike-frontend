@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchRecommendations, fetchSimilarProducts, RecommendationProduct } from '../store/recommendationsSlice';
 import { addToCart } from '../store/cartSlice';
 import { addToWishlist } from '../store/wishlistSlice';
+import { Status } from '../globals/types/types';
 import { Link } from 'react-router-dom';
 import { Star, ShoppingCart, Heart, TrendingUp, Eye, Users, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -33,8 +34,11 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
     similarProducts, 
     trendingProducts, 
     personalizedRecommendations,
-    loading 
+    loading,
+    error
   } = useAppSelector((store) => store.recommendations);
+  
+  const cartStatus = useAppSelector((store) => store.cart.status);
   
   const isLoggedIn = useAppSelector((store) => !!store.auth.user.token || !!localStorage.getItem("tokenauth"));
 
@@ -118,21 +122,29 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
     }
   };
 
-  const handleAddToCart = (product: RecommendationProduct) => {
+  const handleAddToCart = async (product: RecommendationProduct) => {
     if (!isLoggedIn) {
       toast.error("Please log in to add to cart");
       return;
     }
     
-    dispatch(addToCart(
-      product.id,
-      "Default", // Default size
-      "Default"  // Default color
-    ));
-    toast.success("Added to cart");
+    try {
+      // For recommendations, we'll add with default size/color and redirect to product detail
+      // where user can select proper size/color
+      await dispatch(addToCart({
+        productId: product.id,
+        size: "Default", // Default size
+        color: "Default"  // Default color
+      })).unwrap();
+      
+      toast.success("Added to cart! Visit product page to select size & color.");
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      toast.error("Failed to add to cart. Please try again.");
+    }
   };
 
-  const handleAddToWishlist = (product: RecommendationProduct) => {
+    const handleAddToWishlist = (product: RecommendationProduct) => {
     if (!isLoggedIn) {
       toast.error("Please log in to add to wishlist");
       return;
@@ -145,7 +157,8 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
       image: product.image,
       rating: product.rating || 4.5,
       reviews: product.reviewCount || 0,
-      inStock: true, // Default to true for recommendations
+      inStock: (product.totalStock && product.totalStock > 0) || true, // Check stock first, default to true for recommendations
+      totalStock: product.totalStock || 0,
       category: product.category,
       brand: product.brand,
     };
@@ -171,6 +184,8 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
                 <div className="bg-gray-200 h-48 rounded-lg mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded mb-2"></div>
                 <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-8 bg-gray-200 rounded mt-4"></div>
               </div>
             ))}
           </div>
@@ -179,8 +194,43 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
     );
   }
 
+  if (error) {
+    return (
+      <div className={`py-12 ${className}`}>
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+              <p className="text-red-600 text-lg mb-2">Failed to load recommendations</p>
+              <p className="text-red-500 text-sm">{error}</p>
+              <button 
+                onClick={() => {
+                  if (type === 'similarProducts' && productId) {
+                    dispatch(fetchSimilarProducts(productId));
+                  } else {
+                    dispatch(fetchRecommendations());
+                  }
+                }}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (recommendations.length === 0) {
-    return null;
+    return (
+      <div className={`py-12 ${className}`}>
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <p className="text-gray-500 text-lg">No recommendations available at the moment.</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -204,19 +254,27 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {recommendations.map((product) => (
             <div key={product.id} className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden">
-              {/* Badges */}
-              <div className="absolute top-3 left-3 flex space-x-2 z-10">
-                {product.isNew && (
-                  <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-md">
-                    New
-                  </span>
-                )}
-                {product.discount && (
-                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md">
-                    -{product.discount}%
-                  </span>
-                )}
-              </div>
+                             {/* Badges */}
+               <div className="absolute top-3 left-3 flex space-x-2 z-10">
+                 {product.isNew && (
+                   <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-md">
+                     New
+                   </span>
+                 )}
+                 {product.discount && (
+                   <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md">
+                     -{product.discount}%
+                   </span>
+                 )}
+                 {/* Stock Status Badge */}
+                 {product.totalStock !== undefined && (
+                   <span className={`text-white text-xs font-bold px-2 py-1 rounded-md ${
+                     product.totalStock > 0 ? 'bg-green-500' : 'bg-red-500'
+                   }`}>
+                     {product.totalStock > 0 ? 'In Stock' : 'Out of Stock'}
+                   </span>
+                 )}
+               </div>
 
               {/* Reason Badge */}
               {showReason && (
@@ -231,22 +289,31 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
               <Link to={`/men/${product.brand}/${product.id}`}>
                 <div className="relative h-48 overflow-hidden">
                   <img
-                    src={product.image}
+                    src={product.image.startsWith('http') ? product.image : 
+                         product.image.startsWith('/images/') ? product.image : 
+                         `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${product.image.replace("/uploads", "")}.jpg`}
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "/images/product-1.jpg"; // Fallback image
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
               </Link>
 
-              {/* Product Info */}
-              <div className="p-6">
-                <div className="mb-3">
-                  <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2">
-                    {product.name}
-                  </h3>
-                  <p className="text-gray-500 text-sm">{product.brand}</p>
-                </div>
+                               {/* Product Info */}
+                 <div className="p-6">
+                   <div className="mb-3">
+                     <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2">
+                       {product.name}
+                     </h3>
+                     <div className="flex items-center justify-between">
+                       <p className="text-gray-500 text-sm">{product.brand}</p>
+                       <p className="text-gray-400 text-xs">{product.category}</p>
+                     </div>
+                   </div>
 
                 {/* Rating */}
                 <div className="flex items-center mb-3">
@@ -277,22 +344,42 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleAddToCart(product)}
-                    className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    Add to Cart
-                  </button>
-                  <button
-                    onClick={() => handleAddToWishlist(product)}
-                    className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                  >
-                    <Heart className="w-4 h-4" />
-                  </button>
-                </div>
+                                 {/* Action Buttons */}
+                 <div className="flex space-x-2">
+                                       <button
+                      onClick={() => handleAddToCart(product)}
+                      disabled={product.totalStock !== undefined && product.totalStock <= 0 || cartStatus === Status.LOADING}
+                      className={`flex-1 py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                        product.totalStock !== undefined && product.totalStock <= 0
+                          ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                          : cartStatus === Status.LOADING
+                          ? 'bg-indigo-400 text-white cursor-wait'
+                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                      }`}
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      {product.totalStock !== undefined && product.totalStock <= 0 
+                        ? 'Out of Stock' 
+                        : cartStatus === Status.LOADING 
+                        ? 'Adding...' 
+                        : 'Add to Cart'
+                      }
+                    </button>
+                   <button
+                     onClick={() => handleAddToWishlist(product)}
+                     className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                     title="Add to Wishlist"
+                   >
+                     <Heart className="w-4 h-4" />
+                   </button>
+                   <Link
+                     to={`/men/${product.brand}/${product.id}`}
+                     className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                     title="View Details"
+                   >
+                     <Eye className="w-4 h-4" />
+                   </Link>
+                 </div>
               </div>
 
               {/* Hover Effect */}

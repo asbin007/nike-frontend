@@ -1,6 +1,6 @@
 // src/store/cartSlice.ts
 import { AppDispatch } from "./store";
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { Status } from "../globals/types/types";
 import { APIS } from "../globals/http";
 
@@ -66,35 +66,46 @@ const cartSlice = createSlice({
       }
     },
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(addToCart.pending, (state) => {
+        state.status = Status.LOADING;
+      })
+      .addCase(addToCart.fulfilled, (state, action) => {
+        state.status = Status.SUCCESS;
+        state.data = action.payload;
+      })
+      .addCase(addToCart.rejected, (state) => {
+        state.status = Status.ERROR;
+      });
+  },
 });
 
 export const { setCart, setStatus, setUpdateCart, setDeleteCartItem } =
   cartSlice.actions;
 export default cartSlice.reducer;
 
-export function addToCart(productId: string, size: string, color: string) {
-  return async function addToCartThunk(dispatch: AppDispatch) {
+export const addToCart = createAsyncThunk(
+  'cart/addToCart',
+  async ({ productId, size, color }: { productId: string; size: string; color: string }) => {
     try {
       const res = await APIS.post("/cart", {
         productId,
         size,
-        color, // Added color
+        color,
         quantity: 1,
       });
       if (res.status === 201) {
-        dispatch(setStatus(Status.SUCCESS));
-        dispatch(setCart(res.data.data));
+        return res.data.data;
       } else {
-        dispatch(setStatus(Status.ERROR));
         throw new Error("Failed to add to cart");
       }
     } catch (error) {
-      dispatch(setStatus(Status.ERROR));
       console.log(error);
       throw error;
     }
-  };
-}
+  }
+);
 
 export function fetchCartItems() {
   return async function fetchCartItemsThunk(dispatch: AppDispatch) {

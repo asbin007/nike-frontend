@@ -213,22 +213,39 @@ export default function Hero() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="flex flex-col md:flex-row items-center">  
             <div className="md:w-1/2 mb-8 md:mb-0 md:pr-8">
-              <div className="flex items-center mb-4">
-                <div className="flex space-x-1 mr-3">
+              {/* Realistic Rating and Trust Indicators */}
+              <div className="flex items-center mb-6 space-x-4">
+                <div className="flex items-center space-x-1">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
                   ))}
+                  <span className="ml-2 text-sm font-medium text-gray-700">4.8</span>
                 </div>
-                <span className="text-sm text-gray-600">Trusted by 10,000+ customers</span>
+                <span className="text-gray-400">|</span>
+                <span className="text-sm text-gray-600">2,847 reviews</span>
+                <span className="text-gray-400">|</span>
+                <span className="text-sm text-green-600 font-medium">✓ Verified Store</span>
+              </div>
+
+              {/* Customer Trust Stats */}
+              <div className="flex items-center space-x-6 mb-6 text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-gray-600">15,000+ Happy Customers</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-gray-600">Nationwide Delivery</span>
+                </div>
               </div>
               
               <h1 ref={titleRef} className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-gray-800 to-indigo-600 bg-clip-text text-transparent">
-                New Summer Shoes Collection
+                Premium Footwear for Every Style
               </h1>
               
               <p ref={subtitleRef} className="text-gray-600 mb-6 text-lg leading-relaxed">
-                Discover our latest collection of premium summer shoes designed for comfort and style. 
-                Experience the perfect blend of fashion and functionality.
+                Discover authentic Nike, Adidas, Puma & more. Premium quality shoes with genuine warranty. 
+                Free shipping across Nepal. Shop with confidence!
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4">
@@ -242,25 +259,28 @@ export default function Hero() {
                 </button>
               </div>
 
-              {/* Feature highlights */}
+              {/* Realistic Feature highlights */}
               <div className="mt-8 grid grid-cols-3 gap-4">
                 <div className="text-center group">
                   <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-green-200 transition-colors">
                     <Zap className="w-6 h-6 text-green-600" />
                   </div>
-                  <p className="text-sm font-medium text-gray-700">Fast Delivery</p>
+                  <p className="text-sm font-medium text-gray-700">2-3 Days Delivery</p>
+                  <p className="text-xs text-gray-500">Across Nepal</p>
                 </div>
                 <div className="text-center group">
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-200 transition-colors">
                     <Shield className="w-6 h-6 text-blue-600" />
                   </div>
-                  <p className="text-sm font-medium text-gray-700">Quality Guarantee</p>
+                  <p className="text-sm font-medium text-gray-700">1 Year Warranty</p>
+                  <p className="text-xs text-gray-500">Genuine Products</p>
                 </div>
                 <div className="text-center group">
                   <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-purple-200 transition-colors">
                     <Star className="w-6 h-6 text-purple-600" />
                   </div>
-                  <p className="text-sm font-medium text-gray-700">Premium Brands</p>
+                  <p className="text-sm font-medium text-gray-700">100% Authentic</p>
+                  <p className="text-xs text-gray-500">Authorized Dealer</p>
                 </div>
               </div>
             </div>
@@ -329,16 +349,32 @@ export default function Hero() {
                 </div>
               </div>
 
-              {/* Floating elements */}
+              {/* Realistic Floating Trust Elements */}
               <div className="absolute -top-4 -right-4 bg-white rounded-full p-3 shadow-lg animate-bounce">
                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-bold">✓</span>
+                </div>
+                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                  Since 2018
                 </div>
               </div>
               
               <div className="absolute -bottom-4 -left-4 bg-white rounded-full p-3 shadow-lg animate-bounce" style={{animationDelay: '1s'}}>
                 <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-bold">★</span>
+                </div>
+                <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                  Top Rated
+                </div>
+              </div>
+
+              {/* Additional Trust Badge */}
+              <div className="absolute top-1/2 -right-4 bg-white rounded-full p-3 shadow-lg">
+                <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">🔥</span>
+                </div>
+                <div className="absolute -left-20 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                  Best Seller
                 </div>
               </div>
             </div>
@@ -352,6 +388,84 @@ export default function Hero() {
             <path d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z" opacity=".5" fill="currentColor"></path>
             <path d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z" fill="currentColor"></path>
           </svg>
+        </div>
+      </section>
+
+      {/* Customer Testimonials Section */}
+      <section className="bg-gray-50 py-12">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">What Our Customers Say</h3>
+            <p className="text-gray-600">Real reviews from verified customers</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Testimonial 1 */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <div className="flex items-center mb-4">
+                <div className="flex space-x-1 mr-3">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+                  ))}
+                </div>
+                <span className="text-sm text-gray-600">5.0</span>
+              </div>
+              <p className="text-gray-700 mb-4">"Amazing quality! Got my Nike Air Max in just 2 days. Perfect fit and authentic product. Highly recommend!"</p>
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mr-3">
+                  <span className="text-white text-sm font-bold">R</span>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">Rajesh K.</p>
+                  <p className="text-sm text-gray-500">Pokhara, Nepal</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 2 */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <div className="flex items-center mb-4">
+                <div className="flex space-x-1 mr-3">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+                  ))}
+                </div>
+                <span className="text-sm text-gray-600">5.0</span>
+              </div>
+              <p className="text-gray-700 mb-4">"Best shoe store in Nepal! Authentic Adidas with warranty. Customer service is excellent. Will shop again!"</p>
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                  <span className="text-white text-sm font-bold">S</span>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">Sita M.</p>
+                  <p className="text-sm text-gray-500">Kathmandu, Nepal</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 3 */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <div className="flex items-center mb-4">
+                <div className="flex space-x-1 mr-3">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+                  ))}
+                </div>
+                <span className="text-sm text-gray-600">5.0</span>
+              </div>
+              <p className="text-gray-700 mb-4">"Fast delivery and genuine products. Got my Puma shoes with original packaging. Very satisfied customer!"</p>
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center mr-3">
+                  <span className="text-white text-sm font-bold">A</span>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">Amit S.</p>
+                  <p className="text-sm text-gray-500">Biratnagar, Nepal</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

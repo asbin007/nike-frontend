@@ -1,37 +1,102 @@
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { Heart, ShoppingCart, Trash2, Star, Eye } from "lucide-react";
+import { Heart, ShoppingCart, Trash2, Star, Eye, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
-import { removeFromWishlist, clearWishlist, WishlistItem } from "../../store/wishlistSlice";
+import { removeFromWishlist, clearWishlist, WishlistItem, syncWishlistStock } from "../../store/wishlistSlice";
+import { fetchProducts } from "../../store/productSlice";
 import toast from "react-hot-toast";
 import { WishlistSkeleton } from "../../components/SkeletonLoader";
+import { useEffect, useState } from "react";
 
 export default function Wishlist() {
   const dispatch = useAppDispatch();
-  const isLoggedIn = useAppSelector((store) => !!store.auth.user.token || !!localStorage.getItem("token"));
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { items: wishlistItems } = useAppSelector((store) => store.wishlist);
+  const { products: allProducts } = useAppSelector((store) => store.products);
+
+  // Function to refresh stock status
+  const refreshStockStatus = async () => {
+    setIsRefreshing(true);
+    try {
+      // Fetch latest product data
+      await dispatch(fetchProducts());
+      
+      // Sync wishlist items with current product stock
+      const stockUpdates = wishlistItems.map(item => {
+        const currentProduct = allProducts.find(p => p.id === item.id);
+        if (currentProduct) {
+          // Use totalStock to determine actual stock status
+          const actualInStock = (currentProduct.totalStock && currentProduct.totalStock > 0) || currentProduct.isStock || false;
+          return {
+            id: item.id,
+            inStock: actualInStock,
+            totalStock: currentProduct.totalStock
+          };
+        }
+        return {
+          id: item.id,
+          inStock: item.inStock,
+          totalStock: item.totalStock
+        };
+      });
+      
+      dispatch(syncWishlistStock(stockUpdates));
+      toast.success("Stock status updated!");
+    } catch {
+      toast.error("Failed to update stock status");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Refresh stock status when component mounts
+  useEffect(() => {
+    if (wishlistItems.length > 0) {
+      refreshStockStatus();
+    }
+  }, []);
+
+  // Function to fix stock status for existing items
+  const fixStockStatus = () => {
+    const fixedItems = wishlistItems.map(item => {
+      // If totalStock is available, use it to determine stock status
+      if (item.totalStock !== undefined) {
+        const shouldBeInStock = item.totalStock > 0;
+        if (shouldBeInStock !== item.inStock) {
+          return {
+            ...item,
+            inStock: shouldBeInStock
+          };
+        }
+      }
+      return item;
+    });
+    
+    // Only update if there are changes
+    const hasChanges = fixedItems.some((item, index) => item.inStock !== wishlistItems[index].inStock);
+    if (hasChanges) {
+      dispatch(syncWishlistStock(fixedItems.map(item => ({
+        id: item.id,
+        inStock: item.inStock,
+        totalStock: item.totalStock
+      }))));
+      toast.success("Stock status corrected!");
+    }
+  };
 
   const handleRemoveFromWishlist = (productId: string) => {
     dispatch(removeFromWishlist(productId));
     toast.success("Removed from wishlist");
   };
 
-  const handleAddToCart = async () => {
-    if (!isLoggedIn) {
-      toast.error("Please log in to add to cart");
+  const moveToCart = (product: WishlistItem) => {
+    if (!product.inStock) {
+      toast.error("This product is out of stock");
       return;
     }
-
-    try {
-      // Add to cart logic here - you can implement this later
-      toast.success("Added to cart successfully!");
-    } catch {
-      toast.error("Failed to add to cart");
-    }
-  };
-
-  const moveToCart = (product: WishlistItem) => {
-    handleAddToCart();
-    handleRemoveFromWishlist(product.id);
+    
+    // Redirect to ProductDetail page where user can select size and color
+    // The route should match your existing product detail route structure
+    window.location.href = `/men/${product.brand}/${product.id}`;
   };
 
   const handleClearWishlist = () => {
@@ -49,14 +114,37 @@ export default function Wishlist() {
       <div className="container mx-auto px-4 lg:px-6">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 bg-red-100 rounded-full">
-              <Heart className="h-6 w-6 text-red-500" fill="currentColor" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-red-100 rounded-full">
+                <Heart className="h-6 w-6 text-red-500" fill="currentColor" />
+              </div>
+              <div>
+                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900">My Wishlist</h1>
+                <p className="text-gray-600 mt-1">Save your favorite products for later</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-gray-900">My Wishlist</h1>
-              <p className="text-gray-600 mt-1">Save your favorite products for later</p>
-            </div>
+            
+            {/* Stock Management Buttons */}
+            {wishlistItems.length > 0 && (
+              <div className="flex gap-2">
+                <button
+                  onClick={fixStockStatus}
+                  className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors duration-200"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Fix Stock Status
+                </button>
+                <button
+                  onClick={refreshStockStatus}
+                  disabled={isRefreshing}
+                  className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Updating...' : 'Refresh Stock'}
+                </button>
+              </div>
+            )}
           </div>
           
           {/* Stats */}
@@ -124,7 +212,9 @@ export default function Wishlist() {
             {wishlistItems.map((product) => (
               <div
                 key={product.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group"
+                className={`bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-lg transition-all duration-300 group ${
+                  !product.inStock ? 'border-red-200 bg-red-50' : 'border-gray-200'
+                }`}
               >
                 {/* Product Image */}
                 <div className="relative aspect-square overflow-hidden bg-gray-100">
@@ -134,7 +224,9 @@ export default function Wishlist() {
                       : `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${product.image.replace("/uploads", "")}.jpg`
                     }
                     alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
+                      !product.inStock ? 'opacity-60' : ''
+                    }`}
                     onError={(e) => {
                       e.currentTarget.src = "https://via.placeholder.com/300x300?text=No+Image";
                     }}
@@ -166,6 +258,7 @@ export default function Wishlist() {
                           ? 'bg-indigo-500 text-white hover:bg-indigo-600'
                           : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
+                                             title={product.inStock ? 'View Product Details' : 'Out of Stock'}
                     >
                       <ShoppingCart className="h-4 w-4" />
                     </button>
@@ -173,6 +266,7 @@ export default function Wishlist() {
                     <button
                       onClick={() => handleRemoveFromWishlist(product.id)}
                       className="p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all duration-200"
+                      title="Remove from Wishlist"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -215,6 +309,32 @@ export default function Wishlist() {
                       </span>
                     )}
                   </div>
+
+                  {/* Stock Information */}
+                  {product.totalStock !== undefined && (
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Available Stock:</span>
+                        <span className={`font-medium ${
+                          product.totalStock > 10 ? 'text-green-600' : 
+                          product.totalStock > 0 ? 'text-orange-600' : 'text-red-600'
+                        }`}>
+                          {product.totalStock} units
+                        </span>
+                      </div>
+                      {product.totalStock <= 10 && product.totalStock > 0 && (
+                        <div className="mt-1 text-xs text-orange-600">
+                          Low stock! Order soon.
+                        </div>
+                      )}
+                      {/* Debug Info */}
+                      <div className="mt-1 text-xs text-gray-500">
+                        Stock Status: {product.inStock ? 'In Stock' : 'Out of Stock'} | 
+                        Total Stock: {product.totalStock} | 
+                        isStock: {product.inStock ? 'true' : 'false'}
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Action Buttons */}
                   <div className="flex gap-2">
@@ -227,13 +347,14 @@ export default function Wishlist() {
                           : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                       }`}
                     >
-                      <ShoppingCart className="h-4 w-4" />
-                      Move to Cart
+                                             <ShoppingCart className="h-4 w-4" />
+                       {product.inStock ? 'View Details' : 'Out of Stock'}
                     </button>
                     
                     <button
                       onClick={() => handleRemoveFromWishlist(product.id)}
                       className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                      title="Remove from Wishlist"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -249,16 +370,16 @@ export default function Wishlist() {
           <div className="mt-8 bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Bulk Actions</h3>
             <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => {
-                  const inStockItems = wishlistItems.filter(item => item.inStock);
-                  inStockItems.forEach(item => moveToCart(item));
-                }}
-                className="flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200"
-              >
-                <ShoppingCart className="h-4 w-4" />
-                Move All to Cart
-              </button>
+                             <button
+                                   onClick={() => {
+                    // Redirect to collections page to browse all products
+                    window.location.href = "/collections";
+                  }}
+                 className="flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200"
+               >
+                 <Eye className="h-4 w-4" />
+                 View All Products ({wishlistItems.filter(item => item.inStock).length} items)
+               </button>
               
               <button
                 onClick={handleClearWishlist}
@@ -273,4 +394,4 @@ export default function Wishlist() {
       </div>
     </div>
   );
-} 
+}

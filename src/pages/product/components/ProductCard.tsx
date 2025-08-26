@@ -42,7 +42,8 @@ const ProductCard: React.FC<ICardProps> = ({ product }) => {
         image: product.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${product.images[0].replace("/uploads", "")}.jpg` : "",
         rating: 4.5, // Default rating
         reviews: 0, // Default reviews
-        inStock: product.isStock || false,
+        inStock: (product.totalStock && product.totalStock > 0) || product.isStock || false,
+        totalStock: product.totalStock,
         category: product.Category?.categoryName,
         brand: product.brand,
       };
@@ -74,7 +75,7 @@ const ProductCard: React.FC<ICardProps> = ({ product }) => {
         brand: product.brand,
         category: product.Category?.categoryName || "",
         description: product.description?.[0] || "",
-        inStock: product.isStock || false,
+        inStock: (product.totalStock && product.totalStock > 0) || product.isStock || false,
         totalStock: product.totalStock || 0,
 
         color: product.colors || [],

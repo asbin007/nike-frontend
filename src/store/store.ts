@@ -8,6 +8,7 @@ import chatBoxSlice from './chatBoxSlice'
 import wishlistSlice from './wishlistSlice'
 import comparisonSlice from './comparisonSlice'
 import recommendationsSlice from './recommendationsSlice'
+import couponSlice from './couponSlice'
 
 const store = configureStore({
     reducer : {
@@ -20,6 +21,7 @@ const store = configureStore({
         wishlist: wishlistSlice,
         comparison: comparisonSlice,
         recommendations: recommendationsSlice,
+        coupon: couponSlice,
     }
 })
 

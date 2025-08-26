@@ -26,13 +26,85 @@ const ChatWidget: React.FC = () => {
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   
+  // Draggable state
+  const [position, setPosition] = useState({ 
+    x: window.innerWidth - 100, 
+    y: window.innerHeight - 100 
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
 
   // Fetch admin users on component mount
   useEffect(() => {
     dispatch(fetchAdminUsers());
   }, [dispatch]);
+
+  // Drag event handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.target === chatRef.current || chatRef.current?.contains(e.target as Node)) {
+      setIsDragging(true);
+      const rect = chatRef.current?.getBoundingClientRect();
+      if (rect) {
+        setDragOffset({
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        });
+      }
+    }
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+      
+      // Keep chat widget within viewport bounds
+      const maxX = window.innerWidth - (chatRef.current?.offsetWidth || 400);
+      const maxY = window.innerHeight - (chatRef.current?.offsetHeight || 500);
+      
+      setPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY))
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Add global mouse event listeners
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragOffset, handleMouseMove, handleMouseUp]);
+
+  // Handle window resize to keep chat widget within bounds
+  useEffect(() => {
+    const handleResize = () => {
+      const maxX = window.innerWidth - (chatRef.current?.offsetWidth || 400);
+      const maxY = window.innerHeight - (chatRef.current?.offsetHeight || 500);
+      
+      setPosition(prev => ({
+        x: Math.min(prev.x, maxX),
+        y: Math.min(prev.y, maxY)
+      }));
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Scroll to bottom
   useEffect(() => {
@@ -344,19 +416,27 @@ const ChatWidget: React.FC = () => {
 
   if (!isOpen) {
     return (
-      <div className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50">
+      <div 
+        ref={chatRef}
+        className="fixed z-50"
+        style={{
+          left: position.x,
+          top: position.y
+        }}
+      >
         <button
           onClick={handleOpenChat}
+          onMouseDown={handleMouseDown}
           className="relative bg-white hover:bg-gray-50 text-gray-700 p-3 md:p-4 rounded-2xl shadow-xl border border-gray-200 flex items-center justify-center transition-all duration-300 transform hover:scale-105 group"
           aria-label="Chat with Support"
         >
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <div className="w-3 h-3 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse"></div>
-              <MessageCircle className="w-6 h-6 text-blue-600" />
+                      <div className="flex items-center space-x-3">
+              <div className="relative">
+                <div className="w-3 h-3 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse"></div>
+                <MessageCircle className="w-6 h-6 text-blue-600" />
+              </div>
+              <span className="text-sm font-medium">Need Help?</span>
             </div>
-            <span className="text-sm font-medium">Need Help?</span>
-          </div>
           {unreadCount > 0 && (
             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
               {unreadCount > 9 ? '9+' : unreadCount}
@@ -368,12 +448,22 @@ const ChatWidget: React.FC = () => {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50">
+    <div 
+      ref={chatRef}
+      className="fixed z-50"
+      style={{
+        left: position.x,
+        top: position.y
+      }}
+    >
       <div className={`bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transition-all duration-300 ${
         isMinimized ? 'w-72 md:w-80 h-16' : 'w-80 md:w-96 h-[400px] md:h-[500px] max-h-[60vh] md:max-h-[70vh]'
       }`}>
         {/* Header */}
-        <div className="p-4 bg-white border-b border-gray-100">
+        <div 
+          className="p-4 bg-white border-b border-gray-100"
+          onMouseDown={handleMouseDown}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="relative">
