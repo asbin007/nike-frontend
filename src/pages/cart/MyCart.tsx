@@ -39,7 +39,7 @@ function MyCart() {
     }
   }, [data, navigate]);
 
-  // Show skeleton while loading
+  // Show skeleton while loading the page
   if (!data || data.length === 0) {
     return <CartSkeleton />;
   }
