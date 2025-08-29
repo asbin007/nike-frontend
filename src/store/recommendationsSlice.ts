@@ -37,6 +37,21 @@ const initialState: RecommendationsState = {
   error: null,
 };
 
+// Helper function to filter products based on criteria (like ProductFilters)
+const filterProducts = (products: IProduct[], currentProduct: IProduct, excludeId: string): IProduct[] => {
+  return products.filter((product) => {
+    // Exclude the current product
+    if (product.id === excludeId) return false;
+    
+    // Use the same logic as ProductFilters: filter by brand and collection
+    const matchBrand = product.brand.toLowerCase() === currentProduct.brand.toLowerCase();
+    const matchCollection = product.Collection?.collectionName.toLowerCase() === currentProduct.Collection?.collectionName.toLowerCase();
+    
+    // Return products that match either brand OR collection (like ProductFilters)
+    return matchBrand || matchCollection;
+  });
+};
+
 // Helper function to convert IProduct to RecommendationProduct
 const convertToRecommendationProduct = (product: IProduct, reason: string): RecommendationProduct => {
   return {
@@ -397,6 +412,8 @@ export const fetchSimilarProducts = createAsyncThunk(
   'recommendations/fetchSimilarProducts',
   async (productId: string) => {
     try {
+      console.log('Fetching similar products for product ID:', productId);
+      
       // Fetch products from backend
       const response = await API.get("/product");
       
@@ -410,26 +427,46 @@ export const fetchSimilarProducts = createAsyncThunk(
         throw new Error('No products available');
       }
       
+      console.log('Total products fetched:', products.length);
+      
       // Find current product
-      const currentProduct = products.find((p) => p.id === productId);
+      const currentProduct = products.find((p) => String(p.id) === String(productId));
       if (!currentProduct) {
+        console.warn('Current product not found for similar products');
         return [];
       }
 
-      // Filter similar products based on category, brand, or price range
-      const similarProducts = products
-        .filter((p) => 
-          p.id !== productId && 
-          (p.brand === currentProduct.brand || 
-           p.Category?.categoryName === currentProduct.Category?.categoryName ||
-           Math.abs(p.price - currentProduct.price) < 5000)
-        )
+      console.log('Current product found:', currentProduct.name, 'Category:', currentProduct.Category?.categoryName, 'Brand:', currentProduct.brand);
+
+      // Use the filterProducts function to get similar products
+      const filteredSimilarProducts = filterProducts(products, currentProduct, String(productId));
+      
+      console.log('Similar products found:', filteredSimilarProducts.length);
+      console.log('Current product:', {
+        name: currentProduct.name,
+        brand: currentProduct.brand,
+        collection: currentProduct.Collection?.collectionName
+      });
+      
+      // If no similar products found, return trending products as fallback
+      if (filteredSimilarProducts.length === 0) {
+        console.log('No similar products found, using trending products as fallback');
+        const trendingFallback = products
+          .filter(p => p.id !== String(productId))
+          .slice(0, 4)
+          .map((product) => convertToRecommendationProduct(product, "Popular product"));
+        return trendingFallback;
+      }
+      
+      // Take the first 4 similar products and convert them
+      const similarProducts = filteredSimilarProducts
         .slice(0, 4)
         .map((product) => convertToRecommendationProduct(product, "Similar to this product"));
 
       return similarProducts;
-    } catch {
-      throw new Error('Failed to fetch similar products');
+    } catch (error) {
+      console.error('Error fetching similar products:', error);
+      throw new Error(`Failed to fetch similar products: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 );

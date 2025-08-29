@@ -47,11 +47,11 @@ const ProductComparison: React.FC = () => {
     }
     
     // Add with default selections
-    dispatch(addToCart(
-      product.id,
-      product.sizes?.[0] || "Default",
-      product.colors?.[0] || "Default"
-    ));
+    dispatch(addToCart({
+      productId: product.id,
+      size: product.sizes?.[0] || "Default",
+      color: product.colors?.[0] || "Default"
+    }));
     toast.success("Added to cart");
   };
 

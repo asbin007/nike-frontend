@@ -1,13 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { fetchRecommendations, fetchSimilarProducts, RecommendationProduct } from '../store/recommendationsSlice';
+import { fetchRecommendations, RecommendationProduct } from '../store/recommendationsSlice';
 import { addToCart } from '../store/cartSlice';
 import { addToWishlist } from '../store/wishlistSlice';
 import { Status } from '../globals/types/types';
 import { Link } from 'react-router-dom';
 import { Star, ShoppingCart, Heart, TrendingUp, Eye, Users, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
-
+import ProductFilters from '../pages/product/components/ProductFilters';
 
 //Recommendation system
 interface ProductRecommendationsProps {
@@ -33,7 +33,6 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
   const { 
     recentlyViewed, 
     frequentlyBought, 
-    similarProducts, 
     trendingProducts, 
     personalizedRecommendations,
     loading,
@@ -44,13 +43,58 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
   
   const isLoggedIn = useAppSelector((store) => !!store.auth.user.token || !!localStorage.getItem("tokenauth"));
 
+  // Local loading state for refresh button
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  // Update last updated time when data changes
   useEffect(() => {
-    if (type === 'similarProducts' && productId) {
-      dispatch(fetchSimilarProducts(productId));
-    } else {
+    if (!loading && trendingProducts.length > 0) {
+      setLastUpdated(new Date());
+    }
+  }, [trendingProducts.length, loading]);
+
+  useEffect(() => {
+    if (type !== 'similarProducts') {
       dispatch(fetchRecommendations());
     }
-  }, [dispatch, type, productId]); // Only re-run when these dependencies change
+  }, [dispatch, type]);
+
+  // Refresh data periodically for real-time updates
+  useEffect(() => {
+    if (type === 'similarProducts') return; // Don't auto-refresh similar products
+    
+    const interval = setInterval(() => {
+      dispatch(fetchRecommendations());
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [dispatch, type]);
+
+  // If it's similar products, use ProductFilters component
+  if (type === 'similarProducts') {
+    return (
+      <section className={`py-12 bg-gradient-to-br from-gray-50 to-white ${className}`}>
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-medium mb-4">
+              <Sparkles className="w-5 h-5" />
+              <span>Similar Products</span>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Similar Products
+            </h2>
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              You might also like these products
+            </p>
+          </div>
+          
+          {/* Use ProductFilters for similar products */}
+          <ProductFilters />
+        </div>
+      </section>
+    );
+  }
 
   const getRecommendations = () => {
     switch (type) {
@@ -58,8 +102,6 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
         return recentlyViewed.slice(0, maxProducts);
       case 'frequentlyBought':
         return frequentlyBought.slice(0, maxProducts);
-      case 'similarProducts':
-        return similarProducts.slice(0, maxProducts);
       case 'trendingProducts':
         return trendingProducts.slice(0, maxProducts);
       case 'personalized':
@@ -77,8 +119,6 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
         return 'Recently Viewed';
       case 'frequentlyBought':
         return 'Frequently Bought Together';
-      case 'similarProducts':
-        return 'Similar Products';
       case 'trendingProducts':
         return 'Trending Now';
       case 'personalized':
@@ -96,8 +136,6 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
         return 'Continue shopping from where you left off';
       case 'frequentlyBought':
         return 'Customers often buy these together';
-      case 'similarProducts':
-        return 'You might also like these products';
       case 'trendingProducts':
         return 'Most popular products right now';
       case 'personalized':
@@ -113,8 +151,6 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
         return <Eye className="w-5 h-5" />;
       case 'frequentlyBought':
         return <Users className="w-5 h-5" />;
-      case 'similarProducts':
-        return <Sparkles className="w-5 h-5" />;
       case 'trendingProducts':
         return <TrendingUp className="w-5 h-5" />;
       case 'personalized':
@@ -125,32 +161,65 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
   };
 
   const handleAddToCart = async (product: RecommendationProduct) => {
+    console.log('🛒 handleAddToCart called with product:', product);
+    console.log('🛒 User logged in status:', isLoggedIn);
+    
     if (!isLoggedIn) {
+      console.log('❌ User not logged in, showing error toast');
       toast.error("Please log in to add to cart");
       return;
     }
     
     try {
-      // For recommendations, we'll add with default size/color and redirect to product detail
-      // where user can select proper size/color
-      await dispatch(addToCart({
+      console.log('🛒 Dispatching addToCart with:', {
+        productId: product.id,
+        size: "Default",
+        color: "Default"
+      });
+      
+      // Add to cart and redirect to product detail page
+      const result = await dispatch(addToCart({
         productId: product.id,
         size: "Default", // Default size
         color: "Default"  // Default color
       })).unwrap();
       
-      toast.success("Added to cart! Visit product page to select size & color.");
+      console.log('✅ Add to cart successful:', result);
+      toast.success("Added to cart! Redirecting to product page...");
+      
+      // Redirect to product detail page after adding to cart
+      setTimeout(() => {
+        window.location.href = `/product/${product.id}`;
+      }, 1000);
+      
     } catch (error) {
-      console.error('Failed to add to cart:', error);
+      console.error('❌ Failed to add to cart:', error);
       toast.error("Failed to add to cart. Please try again.");
     }
   };
 
-    const handleAddToWishlist = (product: RecommendationProduct) => {
+  const handleAddToWishlist = (product: RecommendationProduct) => {
+    console.log('❤️ handleAddToWishlist called with product:', product);
+    console.log('❤️ User logged in status:', isLoggedIn);
+    
     if (!isLoggedIn) {
+      console.log('❌ User not logged in, showing error toast');
       toast.error("Please log in to add to wishlist");
       return;
     }
+
+    console.log('❤️ Creating wishlist item:', {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      rating: product.rating || 4.5,
+      reviews: product.reviewCount || 0,
+      inStock: (product.totalStock && product.totalStock > 0) || true,
+      totalStock: product.totalStock || 0,
+      category: product.category,
+      brand: product.brand,
+    });
 
     const wishlistItem = {
       id: product.id,
@@ -164,11 +233,19 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
       category: product.category,
       brand: product.brand,
     };
+    
     dispatch(addToWishlist(wishlistItem));
+    console.log('✅ Added to wishlist successfully');
     toast.success("Added to wishlist");
   };
 
   const recommendations = getRecommendations();
+
+  // Debug logging
+  console.log('ProductRecommendations render - type:', type);
+  console.log('ProductRecommendations render - productId:', productId);
+  console.log('ProductRecommendations render - final recommendations:', recommendations);
+  console.log('ProductRecommendations render - loading:', loading);
 
   if (loading) {
     return (
@@ -203,18 +280,20 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
           <div className="text-center">
             <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
               <p className="text-red-600 text-lg mb-2">Failed to load recommendations</p>
-              <p className="text-red-500 text-sm">{error}</p>
+              <p className="text-red-500 text-sm mb-4">{error}</p>
               <button 
-                onClick={() => {
-                  if (type === 'similarProducts' && productId) {
-                    dispatch(fetchSimilarProducts(productId));
-                  } else {
+                onClick={async () => {
+                  setIsRefreshing(true);
+                  try {
                     dispatch(fetchRecommendations());
+                  } finally {
+                    setIsRefreshing(false);
                   }
                 }}
-                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                disabled={isRefreshing}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                Try Again
+                {isRefreshing ? 'Retrying...' : 'Try Again'}
               </button>
             </div>
           </div>
@@ -250,6 +329,38 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
           <p className="text-gray-600 text-lg max-w-2xl mx-auto">
             {getSubtitle()}
           </p>
+          
+          {/* Refresh Button */}
+          <button
+            onClick={async () => {
+              setIsRefreshing(true);
+              try {
+                await dispatch(fetchRecommendations());
+              } finally {
+                setIsRefreshing(false);
+              }
+            }}
+            disabled={isRefreshing || loading}
+            className="mt-4 inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh recommendations"
+          >
+            <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+          
+          {/* Last Updated Indicator */}
+          <div className="mt-2 text-sm text-gray-500">
+            Last updated: {lastUpdated.toLocaleTimeString()}
+            <span className="ml-2 inline-flex items-center">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="ml-1">Live</span>
+            </span>
+            <span className="ml-4 text-xs text-gray-400">
+              Auto-refresh every 30s
+            </span>
+          </div>
         </div>
 
         {/* Products Grid */}
@@ -288,7 +399,7 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
               )}
 
               {/* Product Image */}
-              <Link to={`/men/${product.brand}/${product.id}`}>
+              <Link to={`/product/${product.id}`}>
                 <div className="relative h-48 overflow-hidden">
                   <img
                     src={product.image.startsWith('http') ? product.image : 
@@ -349,7 +460,12 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
                                  {/* Action Buttons */}
                  <div className="flex space-x-2">
                                        <button
-                      onClick={() => handleAddToCart(product)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('🛒 Add to Cart button clicked for:', product);
+                        handleAddToCart(product);
+                      }}
                       disabled={product.totalStock !== undefined && product.totalStock <= 0 || cartStatus === Status.LOADING}
                       className={`flex-1 py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 ${
                         product.totalStock !== undefined && product.totalStock <= 0
@@ -368,14 +484,19 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
                       }
                     </button>
                    <button
-                     onClick={() => handleAddToWishlist(product)}
+                     onClick={(e) => {
+                       e.preventDefault();
+                       e.stopPropagation();
+                       console.log('❤️ Add to Wishlist button clicked for:', product);
+                       handleAddToWishlist(product);
+                     }}
                      className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
                      title="Add to Wishlist"
                    >
                      <Heart className="w-4 h-4" />
                    </button>
                    <Link
-                     to={`/men/${product.brand}/${product.id}`}
+                     to={`/product/${product.id}`}
                      className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
                      title="View Details"
                    >

@@ -58,7 +58,7 @@ const ProductDetail = () => {
       alert("Please select a size and color before adding to cart.");
       return;
     } else {
-      await dispatch(addToCart(product.id, selectedSize, selectedColor));
+      await dispatch(addToCart({ productId: product.id, size: selectedSize, color: selectedColor }));
       navigate("/");
     }
   };

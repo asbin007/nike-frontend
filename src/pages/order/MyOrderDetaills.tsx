@@ -27,7 +27,6 @@ function MyOrderDetail() {
 
   // Socket event listeners for real-time updates
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleStatusUpdate = (data: any) => {
       console.log("Status update received in details:", data);
       if (data.orderId === id) {
@@ -41,7 +40,6 @@ function MyOrderDetail() {
       }
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handlePaymentStatusUpdate = (data: any) => {
       console.log("Payment status update received in details:", data);
       if (data.orderId === id) {
@@ -122,7 +120,8 @@ function MyOrderDetail() {
   }
 
   const order = orderDetails[0];
-  const statusInfo = getStatusInfo(order?.Order?.orderStatus || "");
+  const customer: any = (order as any)?.Order || (order as any)?.order || {};
+  const statusInfo = getStatusInfo(customer?.orderStatus || "");
   const StatusIcon = statusInfo.icon;
 
   return (
@@ -160,7 +159,7 @@ function MyOrderDetail() {
               <div className={`flex items-center space-x-2 px-4 py-2 rounded-full ${statusInfo.bgColor}`}>
                 <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
                 <span className={`font-semibold ${statusInfo.color}`}>
-                  {order?.Order?.orderStatus || "N/A"}
+                  {customer?.orderStatus || "N/A"}
                 </span>
               </div>
               
@@ -200,14 +199,14 @@ function MyOrderDetail() {
                       index !== orderDetails.length - 1 ? 'border-b border-gray-200 mb-4' : ''
                     } hover:bg-gray-50 transition-colors`}
                   >
-                    <div className="w-full md:w-32 flex-shrink-0">
+                                        <div className="w-full md:w-32 flex-shrink-0">
                       {(() => {
                         const images = od?.Shoe?.images;
-                        console.log("Processing images for product:", od?.Shoe?.name);
-                        console.log("Images array:", images);
+                        console.log("🔍 Product:", od?.Shoe?.name);
+                        console.log("🔍 Images array:", images);
                         
                         if (!images || !Array.isArray(images) || images.length === 0) {
-                          console.log("No valid images found");
+                          console.log("❌ No valid images found");
                           return (
                             <div className="w-full h-32 bg-gray-200 rounded-xl flex items-center justify-center">
                               <Package className="w-8 h-8 text-gray-400" />
@@ -216,26 +215,26 @@ function MyOrderDetail() {
                         }
 
                         const firstImage = images[0];
-                        console.log("First image path:", firstImage);
+                        console.log("🔍 First image:", firstImage);
                         let imageUrl = "";
                         
                         if (typeof firstImage === 'string') {
                           if (firstImage.startsWith('http')) {
                             imageUrl = firstImage;
-                            console.log("Using direct URL:", imageUrl);
+                            console.log("✅ Using direct URL:", imageUrl);
                           } else {
-                            // Dynamic extension handling - remove hardcoded .jpg
+                            // Try multiple image formats
                             const cleanPath = firstImage.replace("/uploads", "");
-                            console.log("Clean path:", cleanPath);
+                            console.log("🔍 Clean path:", cleanPath);
                             
-                            // Try without extension first (supports multiple formats)
+                            // First try without extension
                             imageUrl = `https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${cleanPath}`;
-                            console.log("Generated Cloudinary URL (no extension):", imageUrl);
+                            console.log("🔍 Generated URL (no extension):", imageUrl);
                           }
                         }
 
                         if (!imageUrl) {
-                          console.log("No valid image URL generated");
+                          console.log("❌ No valid image URL generated");
                           return (
                             <div className="w-full h-32 bg-gray-200 rounded-xl flex items-center justify-center">
                               <Package className="w-8 h-8 text-gray-400" />
@@ -245,49 +244,39 @@ function MyOrderDetail() {
 
                         return (
                           <div className="relative group">
-                            {/* Loading State */}
-                            <div className="w-full h-32 bg-gray-100 rounded-xl flex items-center justify-center">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                            </div>
-                            
                             <img
                               className="w-full h-32 object-cover rounded-xl shadow-md group-hover:shadow-lg transition-shadow"
                               src={imageUrl}
                               alt={od?.Shoe?.name || "Product Image"}
                               onLoad={() => {
-                                console.log("Image loaded successfully:", imageUrl);
+                                console.log("✅ Image loaded successfully:", imageUrl);
                               }}
                               onError={(e) => {
-                                console.log("Image failed to load:", imageUrl);
-                                console.log("Error event:", e);
-                                
-                                // Robust error handling with multiple fallback attempts
+                                console.log("❌ Image failed to load:", imageUrl);
                                 const cleanPath = firstImage.replace("/uploads", "");
                                 
                                 // Try with .jpg extension
                                 const jpgUrl = `https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${cleanPath}.jpg`;
-                                console.log("Trying with .jpg extension:", jpgUrl);
+                                console.log("🔄 Trying with .jpg extension:", jpgUrl);
                                 
                                 if (e.currentTarget.src !== jpgUrl) {
                                   e.currentTarget.src = jpgUrl;
                                 } else {
                                   // Try with .png extension
                                   const pngUrl = `https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${cleanPath}.png`;
-                                  console.log("Trying with .png extension:", pngUrl);
+                                  console.log("🔄 Trying with .png extension:", pngUrl);
                                   
                                   if (e.currentTarget.src !== pngUrl) {
                                     e.currentTarget.src = pngUrl;
                                   } else {
                                     // Final fallback to placeholder
-                                    console.log("All attempts failed, using placeholder");
+                                    console.log("❌ All attempts failed, using placeholder");
                                     e.currentTarget.src = "https://via.placeholder.com/300x300?text=No+Image";
                                   }
                                 }
                               }}
-
                             />
                             
-                            {/* Overlay Removal - Only show on hover */}
                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-5 transition-all rounded-xl pointer-events-none"></div>
                           </div>
                         );
@@ -397,7 +386,7 @@ function MyOrderDetail() {
                     <User className="w-5 h-5 text-gray-600" />
                     <div>
                       <p className="font-semibold text-gray-800">
-                        {order?.Order?.firstName || "N/A"} {order?.Order?.lastName || "N/A"}
+                        {customer?.firstName || "N/A"} {customer?.lastName || "N/A"}
                       </p>
                       <p className="text-sm text-gray-600">Full Name</p>
                     </div>
@@ -406,8 +395,16 @@ function MyOrderDetail() {
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <Phone className="w-5 h-5 text-gray-600" />
                     <div>
-                      <p className="font-semibold text-gray-800">{order?.Order?.phoneNumber || "N/A"}</p>
+                      <p className="font-semibold text-gray-800">{customer?.phoneNumber || "N/A"}</p>
                       <p className="text-sm text-gray-600">Phone Number</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-gray-600"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-1 4l-7 4L5 8V6l7 4 7-4v2z"/></svg>
+                    <div>
+                      <p className="font-semibold text-gray-800">{customer?.email || "N/A"}</p>
+                      <p className="text-sm text-gray-600">Email</p>
                     </div>
                   </div>
                   
@@ -416,7 +413,7 @@ function MyOrderDetail() {
                     <div>
                       <p className="font-semibold text-gray-800">Shipping Address</p>
                       <p className="text-sm text-gray-600">
-                        {order?.Order?.addressLine || "N/A"}, {order?.Order?.city || "N/A"}, {order?.Order?.state || "N/A"}
+                        {customer?.addressLine || "N/A"}, {customer?.street || "N/A"}, {customer?.city || "N/A"}, {customer?.state || "N/A"} {customer?.zipcode ? `(ZIP: ${customer?.zipcode})` : ""}
                       </p>
                     </div>
                   </div>
@@ -426,12 +423,12 @@ function MyOrderDetail() {
                     <div className="space-y-3">
                       <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                         <div className="w-5 h-5 text-gray-600">
-                          {order.Order.Payment.paymentMethod === 'khalti' && (
+                          {order?.Order?.Payment?.paymentMethod === 'khalti' && (
                             <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                             </svg>
                           )}
-                          {order.Order.Payment.paymentMethod === 'cod' && (
+                          {order?.Order?.Payment?.paymentMethod === 'cod' && (
                             <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                               <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
                             </svg>
@@ -439,9 +436,9 @@ function MyOrderDetail() {
                         </div>
                         <div>
                           <p className="font-semibold text-gray-800">
-                            {order.Order.Payment.paymentMethod === 'khalti' ? 'Khalti Payment' : 
-                             order.Order.Payment.paymentMethod === 'cod' ? 'Cash on Delivery' : 
-                             order.Order.Payment.paymentMethod}
+                            {order?.Order?.Payment?.paymentMethod === 'khalti' ? 'Khalti Payment' : 
+                             order?.Order?.Payment?.paymentMethod === 'cod' ? 'Cash on Delivery' : 
+                             order?.Order?.Payment?.paymentMethod}
                           </p>
                           <p className="text-sm text-gray-600">Payment Method</p>
                         </div>
@@ -449,7 +446,7 @@ function MyOrderDetail() {
                       
                       <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                         <div className="w-5 h-5 text-gray-600">
-                          {order.Order.Payment.paymentStatus === 'paid' ? (
+                          {order?.Order?.Payment?.paymentStatus === 'paid' ? (
                             <CheckCircle className="w-5 h-5 text-green-600" />
                           ) : (
                             <XCircle className="w-5 h-5 text-red-600" />
@@ -457,7 +454,7 @@ function MyOrderDetail() {
                         </div>
                         <div>
                           <p className="font-semibold text-gray-800">
-                            {order.Order.Payment.paymentStatus === 'paid' ? 'Payment Completed' : 'Payment Pending'}
+                            {order?.Order?.Payment?.paymentStatus === 'paid' ? 'Payment Completed' : 'Payment Pending'}
                           </p>
                           <p className="text-sm text-gray-600">Payment Status</p>
                         </div>

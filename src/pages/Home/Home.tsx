@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { TextPlugin } from "gsap/TextPlugin";
-import { useAppDispatch } from "../../store/hooks";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { checkKhaltiPaymentStatus } from "../../store/orderSlice";
+import { fetchAllReviews } from "../../store/reviewSlice";
 
 import Footer from "../../globals/components/Footer";
 import Features from "../features/Features";
 import ProductFilters from "../product/components/ProductFilters";
 import PromoBanners from "../promoBanner/PromoBanner";
 import ProductRecommendations from "../../components/ProductRecommendations";
+import RealTimeReviews from "../../components/RealTimeReviews";
 import { ArrowRight, Star, Zap, Shield, ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
 
 // Register GSAP plugins
@@ -17,6 +19,7 @@ gsap.registerPlugin(ScrollTrigger, TextPlugin);
 
 export default function Hero() {
   const dispatch = useAppDispatch();
+  const { review } = useAppSelector((state) => state.reviews);
   const heroRef = useRef(null);
   const titleRef = useRef(null);
   const subtitleRef = useRef(null);
@@ -69,6 +72,11 @@ export default function Hero() {
       dispatch(checkKhaltiPaymentStatus(pidx));
       localStorage.removeItem('khalti_pidx');
     }
+  }, [dispatch]);
+
+  // Fetch all reviews for real-time display
+  useEffect(() => {
+    dispatch(fetchAllReviews());
   }, [dispatch]);
 
   useEffect(() => {
@@ -222,7 +230,9 @@ export default function Hero() {
                   <span className="ml-2 text-sm font-medium text-gray-700">4.8</span>
                 </div>
                 <span className="text-gray-400">|</span>
-                <span className="text-sm text-gray-600">2,847 reviews</span>
+                <span className="text-sm text-gray-600">
+                  <span className="font-medium text-blue-600">{review.length || 0}</span> live reviews
+                </span>
                 <span className="text-gray-400">|</span>
                 <span className="text-sm text-green-600 font-medium">✓ Verified Store</span>
               </div>
@@ -283,6 +293,51 @@ export default function Hero() {
                   <p className="text-xs text-gray-500">Authorized Dealer</p>
                 </div>
               </div>
+
+              {/* Live Review Preview */}
+              {review.length > 0 && (
+                <div className="mt-6 p-4 bg-white/80 backdrop-blur-sm rounded-lg border border-gray-200/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-gray-600">LIVE REVIEW</span>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-red-500">LIVE</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex space-x-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i} 
+                          className={`w-3 h-3 ${
+                            i < (review[0]?.rating || 5) 
+                              ? 'text-yellow-400 fill-current' 
+                              : 'text-gray-300'
+                          }`} 
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-600">{review[0]?.rating || 5}.0</span>
+                    <span className="text-xs text-gray-500">•</span>
+                    <span className="text-xs text-gray-600 italic">
+                      "{review[0]?.comment?.substring(0, 30) || 'Amazing quality! Perfect fit...'}..."
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Real-time Notification */}
+              {review.length > 0 && (
+                <div className="mt-3 flex items-center space-x-2 text-xs text-gray-500">
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                  <span>
+                    Latest review from <span className="font-medium text-blue-600">{review[0]?.User?.username || 'Anonymous'}</span> 
+                    {review[0]?.createdAt && (
+                      <span> {new Date(review[0].createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
             
             <div className="md:w-1/2 relative">
@@ -355,7 +410,7 @@ export default function Hero() {
                   <span className="text-white text-sm font-bold">✓</span>
                 </div>
                 <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                  Since 2018
+                  Since 2025
                 </div>
               </div>
               
@@ -391,80 +446,16 @@ export default function Hero() {
         </div>
       </section>
 
-      {/* Customer Testimonials Section */}
+      {/* Real-Time Customer Reviews Section */}
       <section className="bg-gray-50 py-12">
         <div className="container mx-auto px-4">
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">What Our Customers Say</h3>
-            <p className="text-gray-600">Real reviews from verified customers</p>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Live Customer Reviews</h3>
+            <p className="text-gray-600">Real-time feedback from our verified customers</p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Testimonial 1 */}
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="flex items-center mb-4">
-                <div className="flex space-x-1 mr-3">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
-                  ))}
-                </div>
-                <span className="text-sm text-gray-600">5.0</span>
-              </div>
-              <p className="text-gray-700 mb-4">"Amazing quality! Got my Nike Air Max in just 2 days. Perfect fit and authentic product. Highly recommend!"</p>
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mr-3">
-                  <span className="text-white text-sm font-bold">R</span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Rajesh K.</p>
-                  <p className="text-sm text-gray-500">Pokhara, Nepal</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Testimonial 2 */}
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="flex items-center mb-4">
-                <div className="flex space-x-1 mr-3">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
-                  ))}
-                </div>
-                <span className="text-sm text-gray-600">5.0</span>
-              </div>
-              <p className="text-gray-700 mb-4">"Best shoe store in Nepal! Authentic Adidas with warranty. Customer service is excellent. Will shop again!"</p>
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                  <span className="text-white text-sm font-bold">S</span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Sita M.</p>
-                  <p className="text-sm text-gray-500">Kathmandu, Nepal</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Testimonial 3 */}
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="flex items-center mb-4">
-                <div className="flex space-x-1 mr-3">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
-                  ))}
-                </div>
-                <span className="text-sm text-gray-600">5.0</span>
-              </div>
-              <p className="text-gray-700 mb-4">"Fast delivery and genuine products. Got my Puma shoes with original packaging. Very satisfied customer!"</p>
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center mr-3">
-                  <span className="text-white text-sm font-bold">A</span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Amit S.</p>
-                  <p className="text-sm text-gray-500">Biratnagar, Nepal</p>
-                </div>
-              </div>
-            </div>
+          <div className="max-w-2xl mx-auto">
+            <RealTimeReviews />
           </div>
         </div>
       </section>

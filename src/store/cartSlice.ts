@@ -48,7 +48,7 @@ const cartSlice = createSlice({
     },
     setUpdateCart(state: IInitialData, action: PayloadAction<ICartUpdateItem>) {
       const index = state.data.findIndex(
-        (item) => item.Shoe.id === action.payload.productId
+        (item) => item.productId === action.payload.productId
       );
       if (index !== -1) {
         state.data[index].quantity = action.payload.quantity;
@@ -127,7 +127,9 @@ export function fetchCartItems() {
 export function updateCart(productId: string, quantity: number) {
   return async function updateCartThunk(dispatch: AppDispatch) {
     try {
-      const res = await APIS.patch("/cart/"+ productId, {  quantity });
+      const res = await APIS.patch("/cart/"+ productId, { 
+        quantity 
+      });
       if (res.status === 201) {
         dispatch(setStatus(Status.SUCCESS));
         dispatch(setUpdateCart({ productId, quantity }));

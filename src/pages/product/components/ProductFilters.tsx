@@ -47,6 +47,13 @@ const ProductFilters = () => {
     return matchBrand && matchCollection;
   });
 
+  // Sort: recent items first (by createdAt desc; fallback to updatedAt or keep order)
+  const filteredSorted = [...filtered].sort((a: any, b: any) => {
+    const aTime = new Date(a?.createdAt || a?.updatedAt || 0).getTime();
+    const bTime = new Date(b?.createdAt || b?.updatedAt || 0).getTime();
+    return bTime - aTime;
+  });
+
   const handleBrandClick = (selectedBrand: string) => {
     setActiveBrand(selectedBrand);
     
@@ -75,7 +82,7 @@ const ProductFilters = () => {
       const cardWidth = container.querySelector('.product-card')?.clientWidth || 300;
       const gap = 32; // gap-8 = 32px
       const cardsPerView = Math.floor(container.clientWidth / (cardWidth + gap));
-      const maxSlides = Math.max(0, filtered.length - cardsPerView);
+      const maxSlides = Math.max(0, filteredSorted.length - cardsPerView);
       
       setCurrentSlide(prev => Math.min(prev + 1, maxSlides));
       
@@ -128,7 +135,7 @@ const ProductFilters = () => {
           const cardWidth = container.querySelector('.product-card')?.clientWidth || 300;
           const gap = 32;
           const cardsPerView = Math.floor(container.clientWidth / (cardWidth + gap));
-          const maxSlides = Math.max(0, filtered.length - cardsPerView);
+          const maxSlides = Math.max(0, filteredSorted.length - cardsPerView);
           
           if (currentSlide >= maxSlides) {
             setCurrentSlide(0);
@@ -227,7 +234,7 @@ const ProductFilters = () => {
           // Slider View
           <div className="relative">
             {/* Navigation Arrows */}
-            {filtered.length > 4 && (
+            {filteredSorted.length > 4 && (
               <>
                 <button
                   onClick={prevSlide}
@@ -250,8 +257,8 @@ const ProductFilters = () => {
               className="flex gap-8 overflow-x-auto scrollbar-hide scroll-smooth pb-4"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {filtered.length > 0 ? (
-                filtered.map((product) => (
+              {filteredSorted.length > 0 ? (
+                filteredSorted.map((product) => (
                   <div 
                     key={product.id} 
                     className="product-card flex-shrink-0 w-80 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
@@ -280,9 +287,9 @@ const ProductFilters = () => {
             </div>
 
             {/* Slider Dots */}
-            {filtered.length > 4 && (
+            {filteredSorted.length > 4 && (
               <div className="flex justify-center mt-6 space-x-2">
-                {Array.from({ length: Math.ceil(filtered.length / 4) }).map((_, index) => (
+                {Array.from({ length: Math.ceil(filteredSorted.length / 4) }).map((_, index) => (
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
@@ -299,8 +306,8 @@ const ProductFilters = () => {
         ) : (
           // Grid View
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {filtered.length > 0 ? (
-              filtered.map((product) => (
+            {filteredSorted.length > 0 ? (
+              filteredSorted.map((product) => (
                 <div 
                   key={product.id}
                   className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
@@ -333,7 +340,7 @@ const ProductFilters = () => {
         <div className="mt-12 text-center">
           <div className="bg-white rounded-xl shadow-lg p-6 max-w-md mx-auto">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {filtered.length} Product{filtered.length !== 1 ? 's' : ''} Found
+              {filteredSorted.length} Product{filteredSorted.length !== 1 ? 's' : ''} Found
             </h3>
             <p className="text-gray-600 mb-4">
               {collection && `Showing ${collection} collection products`}

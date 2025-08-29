@@ -54,8 +54,7 @@ export interface IData {
   email: string;
   totalPrice: number;
   paymentMethod: PaymentMethod;
-  Shoe: IBackendProduct[]; // Changed to match backend expectation
-}
+  Shoe: IBackendProduct[]; }
 
 const initialState: IOrder = {
   status: Status.LOADING,

@@ -88,25 +88,25 @@ function MyCart() {
                         <td className="py-4 text-sm">रु{item.Shoe.price}</td>
                         <td className="py-4">
                           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                            <button
-                              className="border rounded-md py-1 px-3"
-                              onClick={() =>
-                                handleUpdate(item.Shoe.id, item.quantity - 1)
-                              }
-                            >
-                              -
-                            </button>
-                            <span className="w-8 text-center text-sm">
-                              {item.quantity}
-                            </span>
-                            <button
-                              className="border rounded-md py-1 px-3"
-                              onClick={() =>
-                                handleUpdate(item.Shoe.id, item.quantity + 1)
-                              }
-                            >
-                              +
-                            </button>
+                                                         <button
+                               className="border rounded-md py-1 px-3"
+                               onClick={() =>
+                                 handleUpdate(item.productId, item.quantity - 1)
+                               }
+                             >
+                               -
+                             </button>
+                             <span className="w-8 text-center text-sm">
+                               {item.quantity}
+                             </span>
+                             <button
+                               className="border rounded-md py-1 px-3"
+                               onClick={() =>
+                                 handleUpdate(item.productId, item.quantity + 1)
+                               }
+                             >
+                               +
+                             </button>
                           </div>
                         </td>
                         <td className="py-4 text-sm">
@@ -115,7 +115,7 @@ function MyCart() {
                         <td className="py-4">
                           <button
                             className="bg-red-600 hover:bg-red-800 text-white py-1 px-3 rounded-md text-sm"
-                            onClick={() => handleDelete(item.Shoe.id)}
+                            onClick={() => handleDelete(item.productId)}
                           >
                             X
                           </button>

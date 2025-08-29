@@ -137,9 +137,68 @@ app.post('/api/cart', (req, res) => {
 });
 
 app.get('/api/cart', (req, res) => {
-  // Mock cart data
+  // Mock cart data with size and color
+  const mockCartData = [
+    {
+      id: "1",
+      productId: "1",
+      userId: "1",
+      quantity: 2,
+      size: "42",
+      color: "Black",
+      Shoe: {
+        id: "1",
+        name: "Nike Air Max 270",
+        images: "/images/product-1.jpg",
+        price: 15000
+      }
+    },
+    {
+      id: "2", 
+      productId: "2",
+      userId: "1",
+      quantity: 1,
+      size: "40",
+      color: "White",
+      Shoe: {
+        id: "2",
+        name: "Nike Zoom Fly",
+        images: "/images/product-2.jpg",
+        price: 18000
+      }
+    }
+  ];
+  
   res.status(201).json({
-    data: []
+    data: mockCartData
+  });
+});
+
+app.patch('/api/cart/:id', (req, res) => {
+  const { quantity } = req.body;
+  
+  if (!quantity) {
+    return res.status(400).json({
+      message: "Please provide quantity"
+    });
+  }
+  
+  // Mock cart update
+  res.status(201).json({
+    message: "Cart item updated successfully",
+    data: {
+      quantity
+    }
+  });
+});
+
+app.delete('/api/cart/:id', (req, res) => {
+  const { id } = req.params;
+  
+  // Mock cart item deletion
+  res.status(201).json({
+    message: "Cart item deleted successfully",
+    id
   });
 });
 

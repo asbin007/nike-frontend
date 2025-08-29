@@ -98,6 +98,57 @@ export function createReview(data: IData) {
   };
 }
 
+// Add function to fetch all reviews for real-time display
+export function fetchAllReviews() {
+  return async function fetchAllReviewsThunk(dispatch: AppDispatch) {
+    dispatch(setStatus(Status.LOADING));
+
+    try {
+      const res = await API.get(`/review`);
+
+      if (res.status === 200) {
+        const reviewArray = Array.isArray(res.data.data)
+          ? res.data.data
+          : res.data.data?.reviews || [];
+        dispatch(setReview(reviewArray));
+        dispatch(setStatus(Status.SUCCESS));
+        console.log("All reviews fetched:", reviewArray);
+      } else {
+        dispatch(setStatus(Status.ERROR));
+      }
+    } catch (error) {
+      console.error("Fetch all reviews error:", error);
+      dispatch(setStatus(Status.ERROR));
+    }
+  };
+}
+
+// Add function to fetch recent reviews for hero page
+export function fetchRecentReviews(limit: number = 3) {
+  return async function fetchRecentReviewsThunk(dispatch: AppDispatch) {
+    dispatch(setStatus(Status.LOADING));
+
+    try {
+      const res = await API.get(`/review/recent?limit=${limit}`);
+
+      if (res.status === 200) {
+        const reviewArray = Array.isArray(res.data.data)
+          ? res.data.data
+          : res.data.data?.reviews || [];
+        dispatch(setReview(reviewArray));
+        dispatch(setStatus(Status.SUCCESS));
+        console.log("Recent reviews:", reviewArray);
+      } else {
+        dispatch(setStatus(Status.ERROR));
+      }
+    } catch (error) {
+      console.error("Fetch recent reviews error:", error);
+      // If the endpoint doesn't exist, we'll use a fallback approach
+      dispatch(setStatus(Status.ERROR));
+    }
+  };
+}
+
 // Add these new thunks
 export function editReview(
   reviewId: string,
