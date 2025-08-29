@@ -15,7 +15,14 @@ const io = socketIo(server, {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+  credentials: true,
+}));
+// Explicitly handle preflight
+app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -199,6 +206,17 @@ app.delete('/api/cart/:id', (req, res) => {
   res.status(201).json({
     message: "Cart item deleted successfully",
     id
+  });
+});
+
+// --- Orders (mock) ---
+app.patch('/api/order/cancel-order/:id', (req, res) => {
+  const { id } = req.params;
+  // Mock cancel implementation
+  return res.status(200).json({
+    message: 'Order cancelled successfully',
+    orderId: id,
+    status: 'cancelled',
   });
 });
 

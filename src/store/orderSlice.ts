@@ -333,12 +333,16 @@ export function cancelOrderAPI(id: string) {
       if (response.status === 200) {
         dispatch(setStatus(Status.SUCCESS));
         dispatch(updateOrderStatusToCancel({ orderId: id }));
+        toast.success("Order cancelled successfully");
+        // Refresh order details to reflect latest server state
+        dispatch(fetchMyOrderDetails(id));
       } else {
         dispatch(setStatus(Status.ERROR));
       }
     } catch (error) {
       console.log(error);
       dispatch(setStatus(Status.ERROR));
+      toast.error("Failed to cancel order");
     }
   };
 }

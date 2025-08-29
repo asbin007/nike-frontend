@@ -11,6 +11,15 @@ import { ProductDetailSkeleton } from "../../components/SkeletonLoader";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Heart } from "lucide-react";
 import toast from "react-hot-toast";
 
+const CLOUDINARY_VERSION = "v1750340657";
+
+function buildCloudinaryUrl(imagePath: string, preferExt: 'jpg' | 'png' = 'jpg') {
+  if (!imagePath) return "";
+  if (imagePath.startsWith("http")) return imagePath;
+  const cleanPath = imagePath.replace("/uploads", "");
+  return `https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${cleanPath}.${preferExt}`;
+}
+
 const ProductDetail = () => {
   const { id } = useParams();
   const dispatch = useAppDispatch();
@@ -39,12 +48,7 @@ const ProductDetail = () => {
   // Set initial selected image when product loads
   useEffect(() => {
     if (product?.images && Array.isArray(product.images) && product.images.length > 0 && typeof product.images[0] === "string") {
-      setSelectedImage(
-        `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${product.images[0].replace(
-          "/uploads",
-          ""
-        )}.jpg`
-      );
+      setSelectedImage(buildCloudinaryUrl(product.images[0], 'jpg'));
     }
   }, [product]);
 
@@ -124,12 +128,7 @@ const ProductDetail = () => {
     if (productImages.length > 1) {
       const nextIndex = (currentImageIndex + 1) % productImages.length;
       setCurrentImageIndex(nextIndex);
-      setSelectedImage(
-        `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${productImages[nextIndex].replace(
-          "/uploads",
-          ""
-        )}.jpg`
-      );
+      setSelectedImage(buildCloudinaryUrl(productImages[nextIndex], 'jpg'));
     }
   };
 
@@ -137,22 +136,12 @@ const ProductDetail = () => {
     if (productImages.length > 1) {
       const prevIndex = currentImageIndex === 0 ? productImages.length - 1 : currentImageIndex - 1;
       setCurrentImageIndex(prevIndex);
-      setSelectedImage(
-        `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${productImages[prevIndex].replace(
-          "/uploads",
-          ""
-        )}.jpg`
-      );
+      setSelectedImage(buildCloudinaryUrl(productImages[prevIndex], 'jpg'));
     }
   };
 
   const handleImageClick = (image: string, index: number) => {
-    setSelectedImage(
-      `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${image.replace(
-        "/uploads",
-        ""
-      )}.jpg`
-    );
+    setSelectedImage(buildCloudinaryUrl(image, 'jpg'));
     setCurrentImageIndex(index);
   };
 
@@ -211,6 +200,13 @@ const ProductDetail = () => {
                     transformOrigin: 'center',
                   }}
                   onClick={toggleZoom}
+                  onError={(e) => {
+                    // Try png fallback once
+                    const src = e.currentTarget.src;
+                    if (src.endsWith('.jpg')) {
+                      e.currentTarget.src = src.replace('.jpg', '.png');
+                    }
+                  }}
                 />
                 
                 {/* Zoom Controls */}
@@ -274,12 +270,15 @@ const ProductDetail = () => {
                       type="button"
                     >
                       <img
-                        src={`https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${image.replace(
-                          "/uploads",
-                          ""
-                        )}.jpg`}
+                        src={buildCloudinaryUrl(image, 'jpg')}
                         alt={`Thumbnail ${idx + 1}`}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const src = e.currentTarget.src;
+                          if (src.endsWith('.jpg')) {
+                            e.currentTarget.src = src.replace('.jpg', '.png');
+                          }
+                        }}
                       />
                     </button>
                   ))}

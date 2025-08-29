@@ -11,14 +11,14 @@ function MyCart() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  const handleUpdate = (productId: string, quantity: number) => {
+  const handleUpdate = (id: string, quantity: number) => {
     if (quantity > 0) {
-      dispatch(updateCart(productId, quantity));
+      dispatch(updateCart(id, quantity));
     }
   };
 
-  const handleDelete = (productId: string) => {
-    dispatch(deleteCart(productId));
+  const handleDelete = (id: string) => {
+    dispatch(deleteCart(id));
   };
 
   const subTotal = data.reduce(
@@ -72,7 +72,7 @@ function MyCart() {
                     )}.jpg`;
 
                     return (
-                      <tr key={item.Shoe.id} className="border-t">
+                      <tr key={item.id} className="border-t">
                         <td className="py-4">
                           <div className="flex items-center gap-2">
                             <img
@@ -91,7 +91,7 @@ function MyCart() {
                                                          <button
                                className="border rounded-md py-1 px-3"
                                onClick={() =>
-                                 handleUpdate(item.productId, item.quantity - 1)
+                                 handleUpdate(item.id, item.quantity - 1)
                                }
                              >
                                -
@@ -102,7 +102,7 @@ function MyCart() {
                              <button
                                className="border rounded-md py-1 px-3"
                                onClick={() =>
-                                 handleUpdate(item.productId, item.quantity + 1)
+                                 handleUpdate(item.id, item.quantity + 1)
                                }
                              >
                                +
@@ -115,7 +115,7 @@ function MyCart() {
                         <td className="py-4">
                           <button
                             className="bg-red-600 hover:bg-red-800 text-white py-1 px-3 rounded-md text-sm"
-                            onClick={() => handleDelete(item.productId)}
+                            onClick={() => handleDelete(item.id)}
                           >
                             X
                           </button>

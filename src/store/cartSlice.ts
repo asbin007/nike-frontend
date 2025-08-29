@@ -22,7 +22,7 @@ interface IData {
 }
 
 interface ICartUpdateItem {
-  productId: string;
+  id: string;
   quantity: number;
 }
 
@@ -48,7 +48,7 @@ const cartSlice = createSlice({
     },
     setUpdateCart(state: IInitialData, action: PayloadAction<ICartUpdateItem>) {
       const index = state.data.findIndex(
-        (item) => item.productId === action.payload.productId
+        (item) => item.id === action.payload.id
       );
       if (index !== -1) {
         state.data[index].quantity = action.payload.quantity;
@@ -56,10 +56,10 @@ const cartSlice = createSlice({
     },
     setDeleteCartItem(
       state: IInitialData,
-      action: PayloadAction<{ productId: string }>
+      action: PayloadAction<{ id: string }>
     ) {
       const index = state.data.findIndex(
-        (i) => i.productId === action.payload.productId
+        (i) => i.id === action.payload.id
       );
       if (index !== -1) {
         state.data.splice(index, 1);
@@ -95,7 +95,7 @@ export const addToCart = createAsyncThunk(
         color,
         quantity: 1,
       });
-      if (res.status === 201) {
+      if (res.status >= 200 && res.status < 300) {
         return res.data.data;
       } else {
         throw new Error("Failed to add to cart");
@@ -111,7 +111,7 @@ export function fetchCartItems() {
   return async function fetchCartItemsThunk(dispatch: AppDispatch) {
     try {
       const response = await APIS.get("/cart");
-      if (response.status === 201) {
+      if (response.status >= 200 && response.status < 300) {
         dispatch(setStatus(Status.SUCCESS));
         dispatch(setCart(response.data.data));
       } else {
@@ -124,32 +124,33 @@ export function fetchCartItems() {
   };
 }
 
-export function updateCart(productId: string, quantity: number) {
+export function updateCart(id: string, quantity: number) {
   return async function updateCartThunk(dispatch: AppDispatch) {
+    // Optimistic update first
+    dispatch(setUpdateCart({ id, quantity }));
     try {
-      const res = await APIS.patch("/cart/"+ productId, { 
-        quantity 
-      });
-      if (res.status === 201) {
+      const res = await APIS.patch("/cart/" + id, { quantity });
+      if (res.status >= 200 && res.status < 300) {
         dispatch(setStatus(Status.SUCCESS));
-        dispatch(setUpdateCart({ productId, quantity }));
       } else {
         dispatch(setStatus(Status.ERROR));
       }
     } catch (error) {
       dispatch(setStatus(Status.ERROR));
       console.log(error);
+      // Optional: refetch to restore server truth if needed
+      // return dispatch<any>(fetchCartItems() as any);
     }
   };
 }
 
-export function deleteCart(productId: string) {
+export function deleteCart(id: string) {
   return async function deleteCartThunk(dispatch: AppDispatch) {
     try {
-      const res = await APIS.delete("/cart/" + productId);
-      if (res.status === 201) {
+      const res = await APIS.delete("/cart/" + id);
+      if (res.status >= 200 && res.status < 300) {
         dispatch(setStatus(Status.SUCCESS));
-        dispatch(setDeleteCartItem({ productId }));
+        dispatch(setDeleteCartItem({ id }));
       } else {
         dispatch(setStatus(Status.ERROR));
       }

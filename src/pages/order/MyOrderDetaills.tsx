@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { useEffect, useState } from "react";
 import { cancelOrderAPI, fetchMyOrderDetails, updateOrderStatusinSlice, updatePaymentStatusinSlice } from "../../store/orderSlice";
-import { OrderStatus } from "./types";
+import { IOrderDetail, OrderStatus, PaymentStatus } from "./types";
 import { Package, Truck, CheckCircle, XCircle, Clock, MapPin, Phone, User, Calendar } from "lucide-react";
 import { socket } from "../../App";
 const CLOUDINARY_VERSION = "v1750340657"; 
@@ -27,7 +27,7 @@ function MyOrderDetail() {
 
   // Socket event listeners for real-time updates
   useEffect(() => {
-    const handleStatusUpdate = (data: any) => {
+    const handleStatusUpdate = (data: { status: OrderStatus; userId: string; orderId: string }) => {
       console.log("Status update received in details:", data);
       if (data.orderId === id) {
         dispatch(updateOrderStatusinSlice({
@@ -40,11 +40,11 @@ function MyOrderDetail() {
       }
     };
 
-    const handlePaymentStatusUpdate = (data: any) => {
+    const handlePaymentStatusUpdate = (data: { status: PaymentStatus | string; orderId: string; paymentId: string }) => {
       console.log("Payment status update received in details:", data);
       if (data.orderId === id) {
         dispatch(updatePaymentStatusinSlice({
-          status: data.status,
+          status: data.status as PaymentStatus,
           orderId: data.orderId,
           paymentId: data.paymentId
         }));
@@ -119,8 +119,8 @@ function MyOrderDetail() {
     );
   }
 
-  const order = orderDetails[0];
-  const customer: any = (order as any)?.Order || (order as any)?.order || {};
+  const order = orderDetails[0] as IOrderDetail;
+  const customer = (order as IOrderDetail)?.Order as IOrderDetail['Order'];
   const statusInfo = getStatusInfo(customer?.orderStatus || "");
   const StatusIcon = statusInfo.icon;
 
@@ -199,85 +199,50 @@ function MyOrderDetail() {
                       index !== orderDetails.length - 1 ? 'border-b border-gray-200 mb-4' : ''
                     } hover:bg-gray-50 transition-colors`}
                   >
-                                        <div className="w-full md:w-32 flex-shrink-0">
+                                        <div className="flex-shrink-0 w-24 sm:w-28 md:w-32 lg:w-36 xl:w-40">
                       {(() => {
-                        const images = od?.Shoe?.images;
-                        console.log("🔍 Product:", od?.Shoe?.name);
-                        console.log("🔍 Images array:", images);
-                        
-                        if (!images || !Array.isArray(images) || images.length === 0) {
-                          console.log("❌ No valid images found");
+                        // MyCart logic: use first image, strip /uploads, append .jpg
+                        const imgs = od?.Shoe?.images as unknown;
+                        const first = Array.isArray(imgs) ? imgs[0] as string : (typeof imgs === 'string' ? imgs : '');
+                        if (!first) {
                           return (
                             <div className="w-full h-32 bg-gray-200 rounded-xl flex items-center justify-center">
                               <Package className="w-8 h-8 text-gray-400" />
                             </div>
                           );
                         }
-
-                        const firstImage = images[0];
-                        console.log("🔍 First image:", firstImage);
-                        let imageUrl = "";
-                        
-                        if (typeof firstImage === 'string') {
-                          if (firstImage.startsWith('http')) {
-                            imageUrl = firstImage;
-                            console.log("✅ Using direct URL:", imageUrl);
-                          } else {
-                            // Try multiple image formats
-                            const cleanPath = firstImage.replace("/uploads", "");
-                            console.log("🔍 Clean path:", cleanPath);
-                            
-                            // First try without extension
-                            imageUrl = `https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${cleanPath}`;
-                            console.log("🔍 Generated URL (no extension):", imageUrl);
-                          }
-                        }
-
-                        if (!imageUrl) {
-                          console.log("❌ No valid image URL generated");
-                          return (
-                            <div className="w-full h-32 bg-gray-200 rounded-xl flex items-center justify-center">
-                              <Package className="w-8 h-8 text-gray-400" />
-                            </div>
-                          );
+                        let imageUrl = '';
+                        const trimmed = first.trim();
+                        if (trimmed.startsWith('//')) {
+                          imageUrl = `https:${trimmed}`;
+                        } else if (trimmed.startsWith('http')) {
+                          imageUrl = trimmed;
+                        } else {
+                          // Remove 'uploads' with or without leading slash
+                          let clean = trimmed.replace(/\/?uploads/i, '');
+                          // Ensure leading slash
+                          if (!clean.startsWith('/')) clean = '/' + clean;
+                          // If path already has an extension, don't append another
+                          const hasExt = /\.(jpg|jpeg|png|webp)$/i.test(clean);
+                          imageUrl = `https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${clean}${hasExt ? '' : '.jpg'}`;
                         }
 
                         return (
                           <div className="relative group">
                             <img
-                              className="w-full h-32 object-cover rounded-xl shadow-md group-hover:shadow-lg transition-shadow"
+                              className="w-full h-24 sm:h-28 md:h-32 lg:h-36 xl:h-40 object-cover rounded-xl shadow-md transition-shadow"
                               src={imageUrl}
-                              alt={od?.Shoe?.name || "Product Image"}
-                              onLoad={() => {
-                                console.log("✅ Image loaded successfully:", imageUrl);
-                              }}
+                              alt={od?.Shoe?.name || 'Product Image'}
                               onError={(e) => {
-                                console.log("❌ Image failed to load:", imageUrl);
-                                const cleanPath = firstImage.replace("/uploads", "");
-                                
-                                // Try with .jpg extension
-                                const jpgUrl = `https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${cleanPath}.jpg`;
-                                console.log("🔄 Trying with .jpg extension:", jpgUrl);
-                                
-                                if (e.currentTarget.src !== jpgUrl) {
-                                  e.currentTarget.src = jpgUrl;
+                                const src = e.currentTarget.src;
+                                if (/\.jpg$/i.test(src)) {
+                                  e.currentTarget.src = src.replace(/\.jpg$/i, '.png');
                                 } else {
-                                  // Try with .png extension
-                                  const pngUrl = `https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${cleanPath}.png`;
-                                  console.log("🔄 Trying with .png extension:", pngUrl);
-                                  
-                                  if (e.currentTarget.src !== pngUrl) {
-                                    e.currentTarget.src = pngUrl;
-                                  } else {
-                                    // Final fallback to placeholder
-                                    console.log("❌ All attempts failed, using placeholder");
-                                    e.currentTarget.src = "https://via.placeholder.com/300x300?text=No+Image";
-                                  }
+                                  e.currentTarget.src = 'https://via.placeholder.com/300x300?text=No+Image';
                                 }
                               }}
+                              loading="lazy"
                             />
-                            
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-5 transition-all rounded-xl pointer-events-none"></div>
                           </div>
                         );
                       })()}
@@ -400,13 +365,7 @@ function MyOrderDetail() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-gray-600"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-1 4l-7 4L5 8V6l7 4 7-4v2z"/></svg>
-                    <div>
-                      <p className="font-semibold text-gray-800">{customer?.email || "N/A"}</p>
-                      <p className="text-sm text-gray-600">Email</p>
-                    </div>
-                  </div>
+                  {/* Email not present in type; hide unless backend adds it */}
                   
                   <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
                     <MapPin className="w-5 h-5 text-gray-600 mt-1" />
