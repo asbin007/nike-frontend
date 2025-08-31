@@ -328,21 +328,25 @@ export function fetchMyOrderDetails(id: string) {
 
 export function cancelOrderAPI(id: string) {
   return async function cancelOrderAPIThunk(dispatch: AppDispatch) {
+    // Optimistic update first
+    dispatch(updateOrderStatusToCancel({ orderId: id }));
+    toast.success("Order cancelled successfully");
+
     try {
       const response = await APIS.patch("/order/cancel-order/" + id);
       if (response.status === 200) {
         dispatch(setStatus(Status.SUCCESS));
-        dispatch(updateOrderStatusToCancel({ orderId: id }));
-        toast.success("Order cancelled successfully");
-        // Refresh order details to reflect latest server state
-        dispatch(fetchMyOrderDetails(id));
       } else {
         dispatch(setStatus(Status.ERROR));
+        // Revert optimistic update on error
+        dispatch(fetchMyOrderDetails(id));
       }
     } catch (error) {
       console.log(error);
       dispatch(setStatus(Status.ERROR));
       toast.error("Failed to cancel order");
+      // Revert optimistic update on error
+      dispatch(fetchMyOrderDetails(id));
     }
   };
 }
