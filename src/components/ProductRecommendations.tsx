@@ -9,7 +9,8 @@ import { Star, ShoppingCart, Heart, TrendingUp, Eye, Users, Sparkles } from 'luc
 import toast from 'react-hot-toast';
 import ProductFilters from '../pages/product/components/ProductFilters';
 
-//Recommendation system
+//Recommendation system of product
+
 interface ProductRecommendationsProps {
   type?: 'recentlyViewed' | 'frequentlyBought' | 'similarProducts' | 'trendingProducts' | 'personalized';
   productId?: string;
