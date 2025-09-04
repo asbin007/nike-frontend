@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchProducts } from '../../../store/productSlice';
@@ -31,6 +31,14 @@ const Collections = () => {
   
   // Debug logging
   console.log('Collections component rendered, current path:', location.pathname);
+  
+  // Add effect to log when component mounts/unmounts
+  useEffect(() => {
+    console.log('Collections component mounted');
+    return () => {
+      console.log('Collections component unmounted');
+    };
+  }, []);
   
   // State for notifications and interactions
   const [notifiedProducts, setNotifiedProducts] = useState<Set<string>>(new Set());
@@ -124,8 +132,8 @@ const Collections = () => {
     }
   ];
 
-  // Real festival dates for 2025
-  const festivalDates = {
+  // Real festival dates for 2025 - memoized to prevent re-creation on every render
+  const festivalDates = useMemo(() => ({
     dashain: {
       start: new Date('2025-09-22T00:00:00'),
       end: new Date('2025-10-06T23:59:59'),
@@ -140,7 +148,7 @@ const Collections = () => {
       name: 'Tihar',
       emoji: '🪔'
     }
-  };
+  }), []);
 
   // Target date for countdown
   const [targetDate, setTargetDate] = useState<Date>(new Date());
@@ -184,7 +192,7 @@ const Collections = () => {
 
     setCurrentFestival(newFestival);
     setTargetDate(newTargetDate);
-  }, [festivalDates.dashain.start, festivalDates.dashain.tika, festivalDates.dashain.end, festivalDates.tihar.start, festivalDates.tihar.tika, festivalDates.tihar.end]);
+  }, [festivalDates]);
 
   const handleCollectionClick = (collection: string) => {
     if (collection === 'all') {

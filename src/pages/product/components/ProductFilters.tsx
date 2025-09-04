@@ -16,6 +16,17 @@ const ProductFilters = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Debug logging
+  console.log('ProductFilters component rendered, current path:', location.pathname, 'collection:', collection, 'brand:', brand);
+  
+  // Add effect to log when component mounts/unmounts
+  useEffect(() => {
+    console.log('ProductFilters component mounted');
+    return () => {
+      console.log('ProductFilters component unmounted');
+    };
+  }, []);
+
   useEffect(() => {
     dispatch(fetchProducts());
   }, [dispatch]);
