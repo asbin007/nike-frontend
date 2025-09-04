@@ -6,7 +6,7 @@ const API = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  withCredentials: true, // CORS credentials support
+  // withCredentials: true, // Temporarily disabled due to CORS wildcard issue
   timeout: 10000, // 10 second timeout
 });
 
@@ -16,7 +16,7 @@ const APIS = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  withCredentials: true, // CORS credentials support
+  // withCredentials: true, // Temporarily disabled due to CORS wildcard issue
   timeout: 10000, // 10 second timeout
 });
 
