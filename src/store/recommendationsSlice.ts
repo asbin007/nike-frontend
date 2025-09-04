@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { API } from '../globals/http';
+import { API, APIS } from '../globals/http';
 import { IProduct } from '../globals/types/types';
 
 export interface RecommendationProduct {
@@ -61,8 +61,9 @@ const convertToRecommendationProduct = (product: IProduct, reason: string): Reco
     image: product.images?.[0] || "/images/product-1.jpg",
     brand: product.brand,
     category: product.Category?.categoryName || "General",
-    rating: product.rating || 4.5,
-    reviewCount: Math.floor(Math.random() * 500) + 50, // Mock review count
+    rating: product.rating,
+    // If your backend includes reviewCount on product, extend IProduct accordingly; otherwise undefined
+    reviewCount: (product as unknown as { reviewCount?: number }).reviewCount,
     isNew: product.isNew,
     discount: product.discount,
     totalStock: product.totalStock,
@@ -75,21 +76,37 @@ export const fetchRecommendations = createAsyncThunk(
   'recommendations/fetchRecommendations',
   async () => {
     try {
-      // Fetch products from backend
+      // Try personalized recommendations endpoint from backend
+      const recoRes = await APIS.get("/recommendations");
+      if (recoRes.status === 200 && recoRes.data) {
+        const { basedOnCategory = [], alsoBought = [], fallback = [] } = recoRes.data;
+
+        const mapProd = (p: IProduct, reason: string) => convertToRecommendationProduct(p, reason);
+
+        const personalized = (basedOnCategory as IProduct[]).map(p => mapProd(p, 'Recommended for you'));
+        const freqBought = (alsoBought as IProduct[]).map(p => mapProd(p, 'Frequently bought together'));
+        const trending = (fallback as IProduct[]).map(p => mapProd(p, 'Trending now'));
+
+        return {
+          recentlyViewed: [],
+          frequentlyBought: freqBought,
+          similarProducts: [],
+          trendingProducts: trending,
+          personalizedRecommendations: personalized.length ? personalized : trending,
+        };
+      }
+
+      // Fallback to products list when reco API not available
       const response = await API.get("/product");
-      
       if (response.status !== 200 || !response.data?.data) {
         throw new Error('Failed to fetch products from backend');
       }
-      
       const products: IProduct[] = response.data.data;
-      
       if (!Array.isArray(products) || products.length === 0) {
         throw new Error('No products available');
       }
-      
-      // Create different recommendation categories
-      const mockRecommendations = {
+
+      return {
         recentlyViewed: products.slice(0, 4).map((product) => 
           convertToRecommendationProduct(product, "Recently viewed by customers")
         ),
@@ -106,302 +123,14 @@ export const fetchRecommendations = createAsyncThunk(
           convertToRecommendationProduct(product, "Recommended for you")
         )
       };
-
-      return mockRecommendations;
     } catch (error) {
-      console.warn('Failed to fetch recommendations from backend, using mock data:', error);
-      // Return comprehensive mock data as fallback
+      console.warn('Failed to fetch recommendations from backend:', error);
       return {
-        recentlyViewed: [
-          {
-            id: "1",
-            name: "Nike Air Max 270",
-            price: 12999,
-            image: "/images/product-1.jpg",
-            brand: "Nike",
-            category: "Running",
-            rating: 4.5,
-            reviewCount: 128,
-            isNew: false,
-            discount: 15,
-            totalStock: 45,
-            reason: "Recently viewed by customers"
-          },
-          {
-            id: "2",
-            name: "Nike Zoom Fly 5",
-            price: 15999,
-            image: "/images/product-2.jpg",
-            brand: "Nike",
-            category: "Running",
-            rating: 4.3,
-            reviewCount: 89,
-            isNew: true,
-            discount: 0,
-            totalStock: 32,
-            reason: "Recently viewed by customers"
-          },
-          {
-            id: "3",
-            name: "Nike Air Jordan 1",
-            price: 18999,
-            image: "/images/product-3.jpg",
-            brand: "Nike",
-            category: "Basketball",
-            rating: 4.7,
-            reviewCount: 256,
-            isNew: false,
-            discount: 20,
-            totalStock: 28,
-            reason: "Recently viewed by customers"
-          },
-          {
-            id: "4",
-            name: "Nike React Vision",
-            price: 11999,
-            image: "/images/product-4.jpg",
-            brand: "Nike",
-            category: "Lifestyle",
-            rating: 4.2,
-            reviewCount: 67,
-            isNew: false,
-            discount: 10,
-            totalStock: 15,
-            reason: "Recently viewed by customers"
-          }
-        ],
-        frequentlyBought: [
-          {
-            id: "5",
-            name: "Nike Air Force 1",
-            price: 9999,
-            image: "/images/product-5.jpg",
-            brand: "Nike",
-            category: "Lifestyle",
-            rating: 4.6,
-            reviewCount: 342,
-            isNew: false,
-            discount: 0,
-            totalStock: 67,
-            reason: "Frequently bought together"
-          },
-          {
-            id: "6",
-            name: "Nike Dunk Low",
-            price: 10999,
-            image: "/images/product-6.jpg",
-            brand: "Nike",
-            category: "Lifestyle",
-            rating: 4.4,
-            reviewCount: 198,
-            isNew: false,
-            discount: 5,
-            totalStock: 43,
-            reason: "Frequently bought together"
-          },
-          {
-            id: "7",
-            name: "Nike Blazer Mid",
-            price: 8999,
-            image: "/images/product-7.jpg",
-            brand: "Nike",
-            category: "Lifestyle",
-            rating: 4.1,
-            reviewCount: 145,
-            isNew: false,
-            discount: 15,
-            totalStock: 38,
-            reason: "Frequently bought together"
-          },
-          {
-            id: "8",
-            name: "Nike Air Max 90",
-            price: 13999,
-            image: "/images/product-8.jpg",
-            brand: "Nike",
-            category: "Lifestyle",
-            rating: 4.5,
-            reviewCount: 223,
-            isNew: false,
-            discount: 0,
-            totalStock: 52,
-            reason: "Frequently bought together"
-          }
-        ],
-        similarProducts: [
-          {
-            id: "9",
-            name: "Nike Air Max 95",
-            price: 14999,
-            image: "/images/product-1.jpg",
-            brand: "Nike",
-            category: "Lifestyle",
-            rating: 4.3,
-            reviewCount: 167,
-            isNew: false,
-            discount: 10,
-            totalStock: 41,
-            reason: "Similar to what you viewed"
-          },
-          {
-            id: "10",
-            name: "Nike Air Max 97",
-            price: 16999,
-            image: "/images/product-2.jpg",
-            brand: "Nike",
-            category: "Lifestyle",
-            rating: 4.4,
-            reviewCount: 189,
-            isNew: false,
-            discount: 0,
-            totalStock: 33,
-            reason: "Similar to what you viewed"
-          },
-          {
-            id: "11",
-            name: "Nike Air Max 200",
-            price: 12999,
-            image: "/images/product-3.jpg",
-            brand: "Nike",
-            category: "Lifestyle",
-            rating: 4.2,
-            reviewCount: 134,
-            isNew: false,
-            discount: 20,
-            totalStock: 19,
-            reason: "Similar to what you viewed"
-          },
-          {
-            id: "12",
-            name: "Nike Air Max 720",
-            price: 17999,
-            image: "/images/product-4.jpg",
-            brand: "Nike",
-            category: "Lifestyle",
-            rating: 4.6,
-            reviewCount: 201,
-            isNew: false,
-            discount: 0,
-            totalStock: 27,
-            reason: "Similar to what you viewed"
-          }
-        ],
-        trendingProducts: [
-          {
-            id: "13",
-            name: "Nike Air Jordan 4",
-            price: 21999,
-            image: "/images/product-5.jpg",
-            brand: "Nike",
-            category: "Basketball",
-            rating: 4.8,
-            reviewCount: 445,
-            isNew: false,
-            discount: 0,
-            totalStock: 14,
-            reason: "Trending now"
-          },
-          {
-            id: "14",
-            name: "Nike Air Jordan 11",
-            price: 24999,
-            image: "/images/product-6.jpg",
-            brand: "Nike",
-            category: "Basketball",
-            rating: 4.7,
-            reviewCount: 378,
-            isNew: false,
-            discount: 0,
-            totalStock: 8,
-            reason: "Trending now"
-          },
-          {
-            id: "15",
-            name: "Nike SB Dunk",
-            price: 11999,
-            image: "/images/product-7.jpg",
-            brand: "Nike",
-            category: "Skateboarding",
-            rating: 4.5,
-            reviewCount: 289,
-            isNew: false,
-            totalStock: 22,
-            discount: 10,
-            reason: "Trending now"
-          },
-          {
-            id: "16",
-            name: "Nike Air Max Plus",
-            price: 15999,
-            image: "/images/product-8.jpg",
-            brand: "Nike",
-            category: "Lifestyle",
-            rating: 4.4,
-            reviewCount: 312,
-            isNew: false,
-            discount: 0,
-            totalStock: 35,
-            reason: "Trending now"
-          }
-        ],
-        personalizedRecommendations: [
-          {
-            id: "17",
-            name: "Nike ZoomX Vaporfly",
-            price: 29999,
-            image: "/images/product-1.jpg",
-            brand: "Nike",
-            category: "Running",
-            rating: 4.9,
-            reviewCount: 567,
-            isNew: false,
-            discount: 0,
-            totalStock: 12,
-            reason: "Recommended for you"
-          },
-          {
-            id: "18",
-            name: "Nike Air Zoom Pegasus",
-            price: 13999,
-            image: "/images/product-2.jpg",
-            brand: "Nike",
-            category: "Running",
-            rating: 4.6,
-            reviewCount: 423,
-            isNew: false,
-            discount: 15,
-            totalStock: 48,
-            reason: "Recommended for you"
-          },
-          {
-            id: "19",
-            name: "Nike React Infinity Run",
-            price: 16999,
-            image: "/images/product-3.jpg",
-            brand: "Nike",
-            category: "Running",
-            rating: 4.5,
-            reviewCount: 298,
-            isNew: false,
-            discount: 0,
-            totalStock: 31,
-            reason: "Recommended for you"
-          },
-          {
-            id: "20",
-            name: "Nike Air Zoom Tempo",
-            price: 14999,
-            image: "/images/product-4.jpg",
-            brand: "Nike",
-            category: "Running",
-            rating: 4.3,
-            reviewCount: 234,
-            isNew: false,
-            discount: 10,
-            totalStock: 26,
-            reason: "Recommended for you"
-          }
-        ]
+        recentlyViewed: [],
+        frequentlyBought: [],
+        similarProducts: [],
+        trendingProducts: [],
+        personalizedRecommendations: []
       };
     }
   }

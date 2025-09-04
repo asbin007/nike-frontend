@@ -11,10 +11,11 @@ import { ProductCardSkeleton } from "../../../components/SkeletonLoader";
 // Redefine ICardProps to override images type
 interface ICardProps {
   product: Omit<IProduct, "images"> & { images: string[] }; // Override images to string[]
+  showActions?: boolean; // show wishlist/comparison buttons
 }
 const CLOUDINARY_VERSION = "v1750340657"; 
 
-const ProductCard: React.FC<ICardProps> = ({ product }) => {
+const ProductCard: React.FC<ICardProps> = ({ product, showActions = true }) => {
   const dispatch = useAppDispatch();
   const isLoggedIn = useAppSelector((store) => !!store.auth.user.token || !!localStorage.getItem("tokenauth"));
   const { items: wishlistItems } = useAppSelector((store) => store.wishlist);
@@ -102,8 +103,9 @@ const ProductCard: React.FC<ICardProps> = ({ product }) => {
   }
 
   // Determine the image URL
+  const brandSlug = (product.brand || '').toLowerCase();
   return (
-    <Link to={`/men/${product.brand}/${product.id}`}>
+    <Link to={`/men/${brandSlug}/${product.id}`}>
       <div className="group relative bg-gray-50 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition duration-300">
         {/* Badges */}
         <div className="absolute top-3 left-3 flex space-x-2 z-10">
@@ -120,36 +122,38 @@ const ProductCard: React.FC<ICardProps> = ({ product }) => {
         </div>
 
         {/* Action Buttons */}
-        <div className="absolute top-3 right-3 z-10 flex flex-col space-y-2">
-          {/* Wishlist Button */}
-          <button
-            onClick={handleWishlistToggle}
-            className={`p-2 rounded-full transition-all duration-200 ${
-              wishlistItems.some(item => item.id === product.id)
-                ? 'bg-red-100 text-red-500 hover:bg-red-200'
-                : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'
-            }`}
-            title={wishlistItems.some(item => item.id === product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
-          >
-            <Heart 
-              className="w-4 h-4" 
-              fill={wishlistItems.some(item => item.id === product.id) ? 'currentColor' : 'none'}
-            />
-          </button>
-          
-          {/* Comparison Button */}
-          <button
-            onClick={handleComparisonToggle}
-            className={`p-2 rounded-full transition-all duration-200 ${
-              comparisonProducts.some(item => item.id === product.id)
-                ? 'bg-blue-100 text-blue-500 hover:bg-blue-200'
-                : 'bg-white/80 text-gray-600 hover:bg-white hover:text-blue-500'
-            }`}
-            title={comparisonProducts.some(item => item.id === product.id) ? 'Remove from comparison' : 'Add to comparison'}
-          >
-            <BarChart3 className="w-4 h-4" />
-          </button>
-        </div>
+        {showActions && (
+          <div className="absolute top-3 right-3 z-10 flex flex-col space-y-2">
+            {/* Wishlist Button */}
+            <button
+              onClick={handleWishlistToggle}
+              className={`p-2 rounded-full transition-all duration-200 ${
+                wishlistItems.some(item => item.id === product.id)
+                  ? 'bg-red-100 text-red-500 hover:bg-red-200'
+                  : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'
+              }`}
+              title={wishlistItems.some(item => item.id === product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+            >
+              <Heart 
+                className="w-4 h-4" 
+                fill={wishlistItems.some(item => item.id === product.id) ? 'currentColor' : 'none'}
+              />
+            </button>
+            
+            {/* Comparison Button */}
+            <button
+              onClick={handleComparisonToggle}
+              className={`p-2 rounded-full transition-all duration-200 ${
+                comparisonProducts.some(item => item.id === product.id)
+                  ? 'bg-blue-100 text-blue-500 hover:bg-blue-200'
+                  : 'bg-white/80 text-gray-600 hover:bg-white hover:text-blue-500'
+              }`}
+              title={comparisonProducts.some(item => item.id === product.id) ? 'Remove from comparison' : 'Add to comparison'}
+            >
+              <BarChart3 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Product Image */}
         <div className="h-full w-full overflow-hidden object-cover ">

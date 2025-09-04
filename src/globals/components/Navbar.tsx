@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { logout } from "../../store/authSlice";
 import { Link, useNavigate } from "react-router-dom";
@@ -6,6 +6,7 @@ import { fetchCartItems } from "../../store/cartSlice";
 import toast from "react-hot-toast";
 import { Search, Menu, X, ShoppingBag, User, Heart, ChevronDown, Settings, LogOut, BarChart3, Lock } from "lucide-react";
 import { gsap } from "gsap";
+import { fetchRecommendations } from "../../store/recommendationsSlice";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -16,6 +17,9 @@ export default function Navbar() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSearchDrop, setShowSearchDrop] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
 
   const logoRef = useRef(null);
   const logoTextRef = useRef(null);
@@ -25,6 +29,7 @@ export default function Navbar() {
   const user = useAppSelector((store) => store.auth.user);
   const wishlistItems = useAppSelector((store) => store.wishlist.items);
   const { products: comparisonProducts } = useAppSelector((store) => store.comparison);
+  const { personalizedRecommendations, trendingProducts } = useAppSelector((store) => store.recommendations);
 
   useEffect(() => {
     const localToken = localStorage.getItem("tokenauth");
@@ -40,6 +45,56 @@ export default function Navbar() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Load recent searches from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("recent_searches");
+      if (saved) setRecentSearches(JSON.parse(saved));
+    } catch (e) {
+      console.log(e);
+    }
+  }, []);
+
+  // Debounce search query
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // Preload recommendations on focus
+  const handleSearchFocus = () => {
+    setShowSearchDrop(true);
+    if ((personalizedRecommendations?.length || 0) === 0 && (trendingProducts?.length || 0) === 0) {
+      dispatch(fetchRecommendations());
+    }
+  };
+
+  const handleSearchBlur = () => {
+    // small delay to allow click
+    setTimeout(() => setShowSearchDrop(false), 150);
+  };
+
+  // Filter suggestion lists based on query
+  const filteredSuggested = useMemo(() => {
+    const q = debouncedQuery.toLowerCase();
+    const list = (personalizedRecommendations || []).slice(0, 6);
+    if (!q) return list;
+    return list.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      (p.brand || "").toLowerCase().includes(q)
+    );
+  }, [debouncedQuery, personalizedRecommendations]);
+
+  const filteredTrending = useMemo(() => {
+    const q = debouncedQuery.toLowerCase();
+    const list = (trendingProducts || []).slice(0, 6);
+    if (!q) return list;
+    return list.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      (p.brand || "").toLowerCase().includes(q)
+    );
+  }, [debouncedQuery, trendingProducts]);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -167,6 +222,15 @@ export default function Navbar() {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?query=${encodeURIComponent(searchQuery.trim())}`);
+      // save to recent
+      try {
+        const q = searchQuery.trim();
+        const updated = [q, ...recentSearches.filter(r => r !== q)].slice(0, 8);
+        setRecentSearches(updated);
+        localStorage.setItem("recent_searches", JSON.stringify(updated));
+      } catch (e) {
+        console.log(e);
+      }
       setSearchQuery("");
       setMobileMenuOpen(false);
     }
@@ -261,8 +325,105 @@ export default function Navbar() {
                 className="border-0 bg-transparent focus:outline-none placeholder:text-gray-400 text-sm w-full font-medium"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={handleSearchFocus}
+                onBlur={handleSearchBlur}
               />
             </form>
+
+            {/* Search Dropdown */}
+            {showSearchDrop && (
+              <div className="absolute top-16 right-40 w-[28rem] bg-white border border-gray-200 rounded-xl shadow-xl p-4 hidden md:block">
+                {/* Suggested for you */}
+                {filteredSuggested.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-xs font-semibold text-gray-500 mb-2">Suggested for you</div>
+                    <ul className="divide-y divide-gray-100">
+                      {filteredSuggested.map(item => (
+                        <li 
+                          key={item.id} 
+                          className="py-2 flex items-center gap-3 hover:bg-gray-50 rounded-lg px-2 cursor-pointer"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            navigate(`/men/${(item.brand || '').toLowerCase()}/${item.id}`);
+                            setShowSearchDrop(false);
+                          }}
+                        >
+                          <img 
+                            src={item.image.startsWith('http') 
+                              ? item.image 
+                              : item.image.startsWith('/images/') 
+                                ? item.image 
+                                : `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${item.image.replace('/uploads','')}.jpg`}
+                            alt={item.name} 
+                            className="w-10 h-10 rounded-md object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).src = '/images/product-1.jpg'; }}
+                          />
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900 line-clamp-1">{item.name}</div>
+                            <div className="text-xs text-gray-500">{item.brand}</div>
+                          </div>
+                          <span className="text-xs text-indigo-600 font-semibold">Rs {item.price?.toLocaleString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Trending */}
+                {filteredTrending.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-xs font-semibold text-gray-500 mb-2">Trending</div>
+                    <ul className="divide-y divide-gray-100">
+                      {filteredTrending.map(item => (
+                        <li 
+                          key={item.id} 
+                          className="py-2 flex items-center gap-3 hover:bg-gray-50 rounded-lg px-2 cursor-pointer"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            navigate(`/men/${(item.brand || '').toLowerCase()}/${item.id}`);
+                            setShowSearchDrop(false);
+                          }}
+                        >
+                          <img 
+                            src={item.image.startsWith('http') 
+                              ? item.image 
+                              : item.image.startsWith('/images/') 
+                                ? item.image 
+                                : `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${item.image.replace('/uploads','')}.jpg`}
+                            alt={item.name} 
+                            className="w-10 h-10 rounded-md object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).src = '/images/product-1.jpg'; }}
+                          />
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900 line-clamp-1">{item.name}</div>
+                            <div className="text-xs text-gray-500">{item.brand}</div>
+                          </div>
+                          <span className="text-xs text-indigo-600 font-semibold">Rs {item.price?.toLocaleString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Recent searches */}
+                {recentSearches.length > 0 && (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2">Recent searches</div>
+                    <div className="flex flex-wrap gap-2">
+                      {recentSearches.slice(0, 8).map(r => (
+                        <button
+                          key={r}
+                          onMouseDown={(e) => { e.preventDefault(); navigate(`/search?query=${encodeURIComponent(r)}`); setShowSearchDrop(false); }}
+                          className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700"
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 lg:gap-4">
@@ -404,7 +565,7 @@ export default function Navbar() {
               {/* Mobile Search */}
                               <form
                   onSubmit={handleSearch}
-                  className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 mx-4 border border-gray-200 focus-within:border-indigo-300 focus-within:bg-white transition-all duration-200"
+                  className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 mx-auto w-11/12 max-w-md border border-gray-200 focus-within:border-indigo-300 focus-within:bg-white transition-all duration-200 justify-center"
                 >
                   <Search className="h-4 w-4 text-gray-500" />
                   <input

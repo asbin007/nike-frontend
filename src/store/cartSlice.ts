@@ -3,6 +3,7 @@ import { AppDispatch } from "./store";
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { Status } from "../globals/types/types";
 import { APIS } from "../globals/http";
+import { fetchRecommendations } from './recommendationsSlice'
 
 interface ICartItem {
   id: string;
@@ -87,7 +88,7 @@ export default cartSlice.reducer;
 
 export const addToCart = createAsyncThunk(
   'cart/addToCart',
-  async ({ productId, size, color }: { productId: string; size: string; color: string }) => {
+  async ({ productId, size, color }: { productId: string; size: string; color: string }, thunkAPI) => {
     try {
       const res = await APIS.post("/cart", {
         productId,
@@ -96,6 +97,13 @@ export const addToCart = createAsyncThunk(
         quantity: 1,
       });
       if (res.status >= 200 && res.status < 300) {
+        // Refresh recommendations immediately after add-to-cart
+        try {
+          // fire-and-forget
+          (thunkAPI.dispatch as any)(fetchRecommendations());
+          // Sync cart from server in case backend returns single item or different shape
+          (thunkAPI.dispatch as any)(fetchCartItems());
+        } catch {}
         return res.data.data;
       } else {
         throw new Error("Failed to add to cart");

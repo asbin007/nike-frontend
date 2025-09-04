@@ -24,6 +24,7 @@ import SearchProducts from "./pages/product/SearchProducts";
 import Wishlist from "./pages/wishlist/Wishlist";
 import ProductComparison from "./pages/comparison/ProductComparison";
 import ChatWidget from "./components/ChatWidget";
+import Recommended from "./pages/recommendations/Recommended";
 
 // Add version for deployment tracking
 const APP_VERSION = "1.0.2";
@@ -179,7 +180,7 @@ const AppContent = () => {
         
         // Debug: Log all incoming events
         const originalEmit = socket.emit;
-        socket.emit = function(eventName: string, ...args: any[]) {
+        socket.emit = function(eventName: string, ...args: unknown[]) {
           console.log(`📤 Frontend emitting event: ${eventName}`, args);
           return originalEmit.apply(this, [eventName, ...args]);
         };
@@ -262,6 +263,8 @@ const AppContent = () => {
         <Route path="/my-orders/:id" element={<MyOrderDetails />} />
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/comparison" element={<ProductComparison />} />
+        <Route path="/recommended" element={<Recommended initialTab='personalized' showTabs={true} />} />
+        <Route path="/trending" element={<Recommended initialTab='trending' showTabs={false} titleOverride='Trending Products' />} />
       </Routes>
     </>
   );

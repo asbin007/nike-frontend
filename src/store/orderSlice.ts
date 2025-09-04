@@ -5,6 +5,7 @@ import { APIS } from "../globals/http";
 import { AppDispatch } from "./store";
 import toast from "react-hot-toast";
 import { socket } from "../App";
+import { fetchRecommendations } from './recommendationsSlice'
 
 interface IProduct {
   productId: string;
@@ -281,6 +282,12 @@ export function orderItem(data: IData) {
         } else {
           // For COD payments
           toast.success("Order created successfully!");
+          try {
+            // Trigger recommendation refresh post-order
+            (dispatch as AppDispatch)(fetchRecommendations());
+          } catch (e) {
+            console.log(e);
+          }
         }
       } else {
         dispatch(setStatus(Status.ERROR));
