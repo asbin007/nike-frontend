@@ -142,11 +142,14 @@ const orderSlice = createSlice({
       }>
     ) {
       const { status, orderId } = action.payload;
+      console.log("🔄 Redux: updateOrderStatusinSlice called with:", { status, orderId, userId: action.payload.userId });
+      console.log("🔄 Redux: Current state items count:", state.items.length);
+      console.log("🔄 Redux: Current state orderDetails count:", state.orderDetails.length);
       
       // Update items array - check both id and orderId
       const updatedItems = state.items.map((order) => {
         if (order.id === orderId || order.orderId === orderId) {
-          console.log(`Updating order ${order.id} status from ${order.orderStatus} to ${status}`);
+          console.log(`🔄 Redux: Updating order ${order.id} status from ${order.orderStatus} to ${status}`);
           return { ...order, orderStatus: status as unknown as Status };
         }
         return order;
@@ -155,7 +158,7 @@ const orderSlice = createSlice({
       // Update orderDetails array
       const updatedDetails = state.orderDetails.map((detail) => {
         if (detail.orderId === orderId && detail.Order) {
-          console.log(`Updating order detail ${detail.orderId} status from ${detail.Order.orderStatus} to ${status}`);
+          console.log(`🔄 Redux: Updating order detail ${detail.orderId} status from ${detail.Order.orderStatus} to ${status}`);
           return {
             ...detail,
             Order: {
@@ -167,7 +170,14 @@ const orderSlice = createSlice({
         return detail;
       });
 
-      console.log("Order status updated successfully:", { orderId, status, updatedItemsCount: updatedItems.length });
+      console.log("✅ Redux: Order status updated successfully:", { 
+        orderId, 
+        status, 
+        updatedItemsCount: updatedItems.length,
+        updatedDetailsCount: updatedDetails.length,
+        itemsChanged: updatedItems !== state.items,
+        detailsChanged: updatedDetails !== state.orderDetails
+      });
       state.items = updatedItems;
       state.orderDetails = updatedDetails;
     },
@@ -319,15 +329,20 @@ export function fetchMyOrders() {
 export function fetchMyOrderDetails(id: string) {
   return async function fetchMyOrderDetailsThunk(dispatch: AppDispatch) {
     try {
+      console.log("🔍 Fetching order details for ID:", id);
       const response = await APIS.get(`/order/${id}`);
+      console.log("🔍 Order details response:", response.data);
+      
       if (response.status === 200) {
         dispatch(setStatus(Status.SUCCESS));
         dispatch(setOrderDetails(response.data.data));
+        console.log("✅ Order details fetched successfully");
       } else {
+        console.error("❌ Failed to fetch order details:", response.status);
         dispatch(setStatus(Status.ERROR));
       }
     } catch (error) {
-      console.log(error);
+      console.error("❌ Error fetching order details:", error);
       dispatch(setStatus(Status.ERROR));
     }
   };
@@ -381,15 +396,12 @@ export function refreshOrders() {
   };
 }
 
-// Auto-refresh orders every 60 seconds for real-time updates
+// Simple refresh function - no auto-refresh
 export function startAutoRefresh() {
-  return function startAutoRefreshThunk(dispatch: AppDispatch) {
-    const interval = setInterval(() => {
-      console.log("🔄 Auto-refreshing orders (60s interval)");
-      dispatch(refreshOrders());
-    }, 60000);
-    
-    return () => clearInterval(interval);
+  return function startAutoRefreshThunk(_dispatch: AppDispatch) {
+    // No auto-refresh - rely on WebSocket for real-time updates
+    console.log("🔄 Auto-refresh disabled - using WebSocket for real-time updates");
+    return () => {}; // No cleanup needed
   };
 }
 

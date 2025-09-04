@@ -5,6 +5,7 @@ import { registerUser, verifyOtp, resendOtp } from "../../store/authSlice";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Mail, User, ArrowLeft, RefreshCw, ArrowRight, Zap, Shield, Truck, Eye, EyeOff } from "lucide-react";
+import SimpleCountdown from "../../components/SimpleCountdown";
 
 const Register = () => {
   const dispatch = useAppDispatch();
@@ -89,13 +90,10 @@ const Register = () => {
     }
   };
 
-  // Countdown timer
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
+  // Countdown completion handler
+  const handleCountdownComplete = () => {
+    setCountdown(0);
+  };
 
   // Check for pending registration on component mount
   useEffect(() => {
@@ -215,14 +213,26 @@ const Register = () => {
                     type="button"
                     onClick={handleResendOtp}
                     disabled={countdown > 0 || isLoading}
-                    className={`flex items-center text-sm transition-colors duration-200 ${
+                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
                       countdown > 0 
-                        ? 'text-gray-400 cursor-not-allowed' 
-                        : 'text-yellow-400 hover:text-yellow-300'
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' 
+                        : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border border-yellow-300 hover:border-yellow-400'
                     }`}
                   >
-                    <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-                    {countdown > 0 ? `Resend in ${countdown}s` : 'Resend OTP'}
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    {countdown > 0 ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></span>
+                        <span>Resend in</span>
+                        <SimpleCountdown
+                          initialSeconds={countdown}
+                          onComplete={handleCountdownComplete}
+                          className="text-gray-400"
+                        />
+                      </span>
+                    ) : (
+                      'Resend OTP'
+                    )}
                   </button>
                 </div>
 

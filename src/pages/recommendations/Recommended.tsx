@@ -1,244 +1,127 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { fetchRecommendations, RecommendationProduct } from "../../store/recommendationsSlice";
-import ProductCard from "../product/components/ProductCard";
-import { ChevronLeft, ChevronRight, Grid, List } from "lucide-react";
+import React, { useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchRecommendations } from '../../store/recommendationsSlice';
+import ProductRecommendations from '../../components/ProductRecommendations';
 
-// Convert RecommendationProduct -> minimal IProduct-like for ProductCard
-function toIProductLike(p: RecommendationProduct) {
-  return {
-    id: p.id as unknown as string,
-    name: p.name,
-    price: p.price,
-    // ProductCard currently checks images[1] to decide URL; provide two entries to ensure image renders
-    images: [p.image, p.image],
-    brand: p.brand,
-    Category: { categoryName: p.category },
-    description: [""],
-    totalStock: p.totalStock || 0,
-    isStock: (p.totalStock || 0) > 0,
-    discount: p.discount || 0,
-    isNew: !!p.isNew,
-  } as any;
-}
-
-type RecommendedProps = {
-  initialTab?: 'personalized' | 'frequently' | 'trending';
-  showTabs?: boolean;
-  titleOverride?: string;
-};
-
-export default function Recommended({ initialTab = 'personalized', showTabs = true, titleOverride }: RecommendedProps) {
+const Recommended: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { personalizedRecommendations, frequentlyBought, trendingProducts, loading } = useAppSelector(s => s.recommendations);
-
-  const [activeTab, setActiveTab] = useState<'personalized' | 'frequently' | 'trending'>(initialTab);
-  const [brand, setBrand] = useState<string>('All');
-  const [category, setCategory] = useState<string>('All');
-  const [priceOrder, setPriceOrder] = useState<'none' | 'asc' | 'desc'>('none');
-  const [viewMode, setViewMode] = useState<'grid' | 'slider'>('slider');
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const sliderRef = useRef<HTMLDivElement>(null);
+  const { 
+    personalizedRecommendations, 
+    trendingProducts, 
+    status 
+  } = useAppSelector((store) => store.recommendations);
 
   useEffect(() => {
+    if (status === 'idle') {
     dispatch(fetchRecommendations());
-  }, [dispatch]);
-
-  const source = useMemo(() => {
-    if (activeTab === 'frequently') return frequentlyBought;
-    if (activeTab === 'trending') return trendingProducts;
-    return personalizedRecommendations;
-  }, [activeTab, personalizedRecommendations, frequentlyBought, trendingProducts]);
-
-  const brands = useMemo(() => ['All', ...Array.from(new Set(source.map(x => x.brand).filter(Boolean)))], [source]);
-  const categories = useMemo(() => ['All', ...Array.from(new Set(source.map(x => x.category).filter(Boolean)))], [source]);
-
-  const filtered = useMemo(() => {
-    let list = source;
-    if (brand !== 'All') list = list.filter(x => x.brand === brand);
-    if (category !== 'All') list = list.filter(x => x.category === category);
-    if (priceOrder !== 'none') {
-      list = [...list].sort((a, b) => priceOrder === 'asc' ? a.price - b.price : b.price - a.price);
     }
-    return list;
-  }, [source, brand, category, priceOrder]);
+  }, [dispatch, status]);
 
-  // Slider controls (copy behavior from ProductFilters)
-  const nextSlide = () => {
-    if (sliderRef.current) {
-      const container = sliderRef.current;
-      const cardWidth = container.querySelector('.product-card')?.clientWidth || 300;
-      const gap = 32;
-      const cardsPerView = Math.floor(container.clientWidth / (cardWidth + gap));
-      const maxSlides = Math.max(0, filtered.length - cardsPerView);
-      setCurrentSlide(prev => Math.min(prev + 1, maxSlides));
-      container.scrollBy({ left: cardWidth + gap, behavior: 'smooth' });
-    }
-  };
-
-  const prevSlide = () => {
-    if (sliderRef.current) {
-      const container = sliderRef.current;
-      const cardWidth = container.querySelector('.product-card')?.clientWidth || 300;
-      const gap = 32;
-      setCurrentSlide(prev => Math.max(prev - 1, 0));
-      container.scrollBy({ left: -(cardWidth + gap), behavior: 'smooth' });
-    }
-  };
-
-  const goToSlide = (index: number) => {
-    if (sliderRef.current) {
-      const container = sliderRef.current;
-      const cardWidth = container.querySelector('.product-card')?.clientWidth || 300;
-      const gap = 32;
-      setCurrentSlide(index);
-      container.scrollTo({ left: index * (cardWidth + gap), behavior: 'smooth' });
-    }
-  };
-
-  useEffect(() => {
-    if (viewMode === 'slider') {
-      const interval = setInterval(() => {
-        if (sliderRef.current) {
-          const container = sliderRef.current;
-          const cardWidth = container.querySelector('.product-card')?.clientWidth || 300;
-          const gap = 32;
-          const cardsPerView = Math.floor(container.clientWidth / (cardWidth + gap));
-          const maxSlides = Math.max(0, filtered.length - cardsPerView);
-          if (currentSlide >= maxSlides) {
-            setCurrentSlide(0);
-            container.scrollTo({ left: 0, behavior: 'smooth' });
-          } else {
-            nextSlide();
-          }
-        }
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [currentSlide, viewMode, filtered.length]);
+  const isLoading = status === 'loading';
 
   return (
-    <section className="py-8 bg-gray-50 min-h-screen">
-      <div className="container mx-auto px-4">
-        {/* Header with View Mode Toggle (matches ProductFilters) */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4 sm:mb-0">
-            {titleOverride || (activeTab === 'trending' && !showTabs ? 'Trending Products' : 'Recommended Products')}
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Recommended for You
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Discover shoes tailored to your preferences. Our AI-powered recommendations 
+            help you find the perfect pair based on your style and needs.
+          </p>
+        </div>
+
+        {/* Personalized Recommendations */}
+        <div className="mb-16">
+          <ProductRecommendations
+            title="Personalized Recommendations"
+            products={personalizedRecommendations}
+            type="personalized"
+            loading={isLoading}
+            className="mb-8"
+          />
+          </div>
+
+        {/* Trending Products */}
+        <div className="mb-16">
+          <ProductRecommendations
+            title="Trending Now"
+            products={trendingProducts}
+            type="trending"
+            loading={isLoading}
+            className="mb-8"
+          />
+        </div>
+
+        {/* Why These Recommendations */}
+        <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            Why These Recommendations?
           </h2>
-          <div className="flex items-center gap-4">
-            <div className="flex bg-white rounded-lg shadow-sm border">
-              <button
-                onClick={() => setViewMode('slider')}
-                className={`p-2 rounded-l-lg transition-all duration-200 ${viewMode==='slider' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:text-indigo-600'}`}
-              >
-                <List className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-r-lg transition-all duration-200 ${viewMode==='grid' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:text-indigo-600'}`}
-              >
-                <Grid className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        {showTabs && (
-          <div className="flex justify-center gap-2 mb-6">
-            <button onClick={() => setActiveTab('personalized')} className={`px-4 py-2 rounded-lg ${activeTab==='personalized'?'bg-indigo-600 text-white':'bg-white text-gray-700 border'}`}>Recommended for You</button>
-            <button onClick={() => setActiveTab('frequently')} className={`px-4 py-2 rounded-lg ${activeTab==='frequently'?'bg-indigo-600 text-white':'bg-white text-gray-700 border'}`}>Frequently Bought</button>
-            <button onClick={() => setActiveTab('trending')} className={`px-4 py-2 rounded-lg ${activeTab==='trending'?'bg-indigo-600 text-white':'bg-white text-gray-700 border'}`}>Trending</button>
-          </div>
-        )}
-
-        {/* Brand/Category/Price Filters (chip style brand list like ProductFilters) */}
-        <div className="bg-white rounded-xl shadow-sm border p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Brand</label>
-            <select value={brand} onChange={e=>setBrand(e.target.value)} className="w-full border rounded-lg px-3 py-2">
-              {brands.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Category</label>
-            <select value={category} onChange={e=>setCategory(e.target.value)} className="w-full border rounded-lg px-3 py-2">
-              {categories.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Sort by Price</label>
-            <select value={priceOrder} onChange={e=>setPriceOrder(e.target.value as any)} className="w-full border rounded-lg px-3 py-2">
-              <option value="none">Default</option>
-              <option value="asc">Low to High</option>
-              <option value="desc">High to Low</option>
-            </select>
-          </div>
-          <div className="flex items-end">
-            <button onClick={()=>{setBrand('All'); setCategory('All'); setPriceOrder('none');}} className="w-full border rounded-lg px-3 py-2">Clear</button>
-          </div>
-        </div>
-
-        {/* Products Display (match ProductFilters slider/grid) */}
-        {viewMode === 'slider' ? (
-          <div className="relative">
-            {filtered.length > 4 && (
-              <>
-                <button onClick={prevSlide} className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-white hover:bg-gray-100 text-gray-800 p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110">
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-                <button onClick={nextSlide} className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-white hover:bg-gray-100 text-gray-800 p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110">
-                  <ChevronRight className="w-6 h-6" />
-                </button>
-              </>
-            )}
-
-            <div ref={sliderRef} className="flex gap-8 overflow-x-auto scrollbar-hide scroll-smooth pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {loading ? (
-                <div className="text-center text-gray-500 w-full py-10">Loading recommendations...</div>
-              ) : filtered.length === 0 ? (
-                <div className="text-center text-gray-500 w-full py-10">No recommendations available.</div>
-              ) : (
-                filtered.map(p => (
-                  <div key={p.id} className="product-card flex-shrink-0 w-80 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2">
-                    <ProductCard product={toIProductLike(p)} showActions={false} />
-                  </div>
-                ))
-              )}
-            </div>
-
-            {filtered.length > 4 && (
-              <div className="flex justify-center mt-6 space-x-2">
-                {Array.from({ length: Math.ceil(filtered.length / 4) }).map((_, index) => (
-                  <button key={index} onClick={() => goToSlide(index)} className={`w-3 h-3 rounded-full transition-all duration-300 ${currentSlide === index ? 'bg-indigo-600 scale-125' : 'bg-gray-300 hover:bg-gray-400'}`} />
-                ))}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
               </div>
-            )}
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Smart Algorithm</h3>
+              <p className="text-gray-600">
+                Our recommendation engine analyzes your preferences, browsing history, 
+                and popular trends to suggest the best shoes for you.
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                  </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Real-time Updates</h3>
+              <p className="text-gray-600">
+                Recommendations are updated in real-time based on new arrivals, 
+                trending styles, and seasonal preferences.
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Personalized Experience</h3>
+              <p className="text-gray-600">
+                Each recommendation is tailored to your unique style preferences, 
+                size, and budget to ensure the perfect fit.
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {loading ? (
-              <div className="col-span-full text-center text-gray-500 py-10">Loading recommendations...</div>
-            ) : filtered.length === 0 ? (
-              <div className="col-span-full text-center text-gray-500 py-10">No recommendations available.</div>
-            ) : (
-              filtered.map(p => (
-                <div key={p.id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2">
-                  <ProductCard product={toIProductLike(p)} showActions={false} />
                 </div>
-              ))
-            )}
+
+        {/* Call to Action */}
+        <div className="text-center bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-8 text-white">
+          <h2 className="text-2xl font-bold mb-4">
+            Can't Find What You're Looking For?
+          </h2>
+          <p className="text-lg mb-6 opacity-90">
+            Browse our complete collection or use our advanced filters to find exactly what you need.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+              Browse All Products
+            </button>
+            <button className="border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors">
+              Contact Support
+            </button>
           </div>
-        )}
-
-        {/* Hide scrollbar style */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          .scrollbar-hide::-webkit-scrollbar { display: none; }
-          .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        ` }} />
+        </div>
       </div>
-    </section>
+    </div>
   );
-}
+};
 
-
+export default Recommended;

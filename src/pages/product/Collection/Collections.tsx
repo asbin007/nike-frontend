@@ -1,19 +1,42 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchProducts } from '../../../store/productSlice';
+import { addToWishlist, removeFromWishlist } from '../../../store/wishlistSlice';
 import { ArrowRight, Heart, Clock, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
+import CountdownTimer from '../../../components/CountdownTimer';
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  brand: string;
+  image?: string;
+  images?: string[];
+  originalPrice?: number;
+  rating?: number;
+  reviews?: number;
+  inStock?: boolean;
+  discount?: number;
+  isNew?: boolean;
+}
 
 const Collections = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { products, status } = useAppSelector((store) => store.products);
+  const { items: wishlistItems } = useAppSelector((store) => store.wishlist);
+  const location = useLocation();
+  
+  // Debug logging
+  console.log('Collections component rendered, current path:', location.pathname);
   
   // State for notifications and interactions
   const [notifiedProducts, setNotifiedProducts] = useState<Set<string>>(new Set());
   const [showFestivalCountdown, setShowFestivalCountdown] = useState(true);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+  const [currentFestival, setCurrentFestival] = useState<'dashain' | 'tihar' | 'none'>('dashain');
 
   useEffect(() => {
     dispatch(fetchProducts());
@@ -101,32 +124,67 @@ const Collections = () => {
     }
   ];
 
-  // Festival countdown timer
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0
-  });
+  // Real festival dates for 2025
+  const festivalDates = {
+    dashain: {
+      start: new Date('2025-09-22T00:00:00'),
+      end: new Date('2025-10-06T23:59:59'),
+      tika: new Date('2025-10-02T00:00:00'),
+      name: 'Dashain',
+      emoji: '🎉'
+    },
+    tihar: {
+      start: new Date('2025-10-25T00:00:00'),
+      end: new Date('2025-10-29T23:59:59'),
+      tika: new Date('2025-10-27T00:00:00'), // Bhai Tika day
+      name: 'Tihar',
+      emoji: '🪔'
+    }
+  };
 
+  // Target date for countdown
+  const [targetDate, setTargetDate] = useState<Date>(new Date());
+
+  // Calculate which festival is currently active or upcoming and set target date
   useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const dashainDate = new Date('2025-10-15').getTime();
-      const distance = dashainDate - now;
+    const now = new Date();
+    let newTargetDate: Date;
+    let newFestival: 'dashain' | 'tihar' | 'none' = 'none';
 
-      if (distance > 0) {
-        setTimeLeft({
-          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-          seconds: Math.floor((distance % (1000 * 60)) / 1000)
-        });
+    // Check if Dashain is active
+    if (now >= festivalDates.dashain.start && now <= festivalDates.dashain.end) {
+      newFestival = 'dashain';
+      if (now < festivalDates.dashain.tika) {
+        newTargetDate = festivalDates.dashain.tika; // Countdown to Tika
+      } else {
+        newTargetDate = festivalDates.dashain.end; // Countdown to end
       }
-    }, 1000);
+    }
+    // Check if Tihar is active
+    else if (now >= festivalDates.tihar.start && now <= festivalDates.tihar.end) {
+      newFestival = 'tihar';
+      if (now < festivalDates.tihar.tika) {
+        newTargetDate = festivalDates.tihar.tika; // Countdown to Bhai Tika
+      } else {
+        newTargetDate = festivalDates.tihar.end; // Countdown to end
+      }
+    }
+    // Check which festival is upcoming
+    else if (now < festivalDates.dashain.start) {
+      newFestival = 'dashain';
+      newTargetDate = festivalDates.dashain.start; // Countdown to start
+    }
+    else if (now < festivalDates.tihar.start) {
+      newFestival = 'tihar';
+      newTargetDate = festivalDates.tihar.start; // Countdown to start
+    }
+    else {
+      newTargetDate = new Date('2026-09-22T00:00:00'); // Next year's Dashain
+    }
 
-    return () => clearInterval(timer);
-  }, []);
+    setCurrentFestival(newFestival);
+    setTargetDate(newTargetDate);
+  }, [festivalDates.dashain.start, festivalDates.dashain.tika, festivalDates.dashain.end, festivalDates.tihar.start, festivalDates.tihar.tika, festivalDates.tihar.end]);
 
   const handleCollectionClick = (collection: string) => {
     if (collection === 'all') {
@@ -134,7 +192,13 @@ const Collections = () => {
     } else {
       setSelectedBrand(collection);
     }
+    // Scroll to products section
+    const productsSection = document.getElementById('products-section');
+    if (productsSection) {
+      productsSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
+
 
   // Handle notification signup
   const handleNotifyMe = (productId: string, productName: string) => {
@@ -159,7 +223,42 @@ const Collections = () => {
   // Handle shop now for offers
   const handleShopNow = (category: string) => {
     setSelectedBrand(category);
+    // Scroll to products section
+    const productsSection = document.getElementById('products-section');
+    if (productsSection) {
+      productsSection.scrollIntoView({ behavior: 'smooth' });
+    }
     toast.success(`Browsing ${category} products with special offers!`);
+  };
+
+  // Handle product navigation to details
+  const handleProductClick = (product: Product) => {
+    const brandSlug = product.brand.toLowerCase();
+    navigate(`/men/${brandSlug}/${product.id}`);
+  };
+
+  // Handle wishlist toggle
+  const handleWishlistToggle = (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent product click
+    const isInWishlist = wishlistItems.some(item => item.id === product.id);
+    
+    if (isInWishlist) {
+      dispatch(removeFromWishlist(product.id));
+      toast.success('Removed from wishlist');
+    } else {
+      dispatch(addToWishlist({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.images?.[0] || product.image || '/images/product-1.jpg',
+        brand: product.brand,
+        originalPrice: product.originalPrice,
+        rating: product.rating || 4.5,
+        reviews: product.reviews || 0,
+        inStock: product.inStock !== false
+      }));
+      toast.success('Added to wishlist');
+    }
   };
 
   if (status === 'loading') {
@@ -186,33 +285,63 @@ const Collections = () => {
           </p>
           
           {/* Festival Countdown */}
-          {showFestivalCountdown && (
-            <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-2xl p-6 mb-8 max-w-4xl mx-auto">
-              <h3 className="text-2xl font-bold mb-4">🎉 Dashain Countdown</h3>
-              <div className="flex justify-center gap-4 text-center">
-                <div className="bg-white bg-opacity-30 rounded-lg p-3 min-w-[80px]">
-                  <div className="text-3xl font-bold">{timeLeft.days}</div>
-                  <div className="text-sm">Days</div>
+          {showFestivalCountdown && currentFestival !== 'none' && (
+            <div className="bg-gradient-to-r from-white/25 to-white/15 backdrop-blur-md rounded-3xl p-8 mb-8 max-w-5xl mx-auto border border-white/20 shadow-2xl">
+              <div className="text-center mb-6">
+                <div className="flex items-center justify-center gap-3 mb-3">
+                  <div className="text-4xl animate-bounce">
+                    {currentFestival === 'dashain' ? '🎉' : '🪔'}
+                  </div>
+                  <h3 className="text-3xl font-bold text-white drop-shadow-lg">
+                    {currentFestival === 'dashain' ? 'Dashain' : 'Tihar'} Countdown
+                  </h3>
+                  <div className="text-4xl animate-bounce" style={{animationDelay: '0.5s'}}>
+                    {currentFestival === 'dashain' ? '🎉' : '🪔'}
+                  </div>
                 </div>
-                <div className="bg-white bg-opacity-30 rounded-lg p-3 min-w-[80px]">
-                  <div className="text-3xl font-bold">{timeLeft.hours}</div>
-                  <div className="text-sm">Hours</div>
-                </div>
-                <div className="bg-white bg-opacity-30 rounded-lg p-3 min-w-[80px]">
-                  <div className="text-3xl font-bold">{timeLeft.minutes}</div>
-                  <div className="text-sm">Minutes</div>
-                </div>
-                <div className="bg-white bg-opacity-30 rounded-lg p-3 min-w-[80px]">
-                  <div className="text-3xl font-bold">{timeLeft.seconds}</div>
-                  <div className="text-sm">Seconds</div>
+                <div className="bg-white/20 rounded-full px-6 py-2 inline-block">
+                  <p className="text-white font-medium text-sm">
+                    {(() => {
+                      const now = new Date();
+                      if (currentFestival === 'dashain') {
+                        if (now < festivalDates.dashain.start) return 'Dashain starts on September 22, 2025';
+                        if (now < festivalDates.dashain.tika) return 'Tika day on October 2, 2025';
+                        if (now < festivalDates.dashain.end) return 'Dashain ends on October 6, 2025';
+                        return 'Tihar starts on October 25, 2025';
+                      } else {
+                        if (now < festivalDates.tihar.start) return 'Tihar starts on October 25, 2025';
+                        if (now < festivalDates.tihar.tika) return 'Bhai Tika on October 27, 2025';
+                        if (now < festivalDates.tihar.end) return 'Tihar ends on October 29, 2025';
+                        return 'Next Dashain in 2026';
+                      }
+                    })()}
+                  </p>
                 </div>
               </div>
-              <button 
-                onClick={() => setShowFestivalCountdown(false)}
-                className="mt-4 text-sm text-indigo-100 hover:text-white underline"
-              >
-                Hide Countdown
-              </button>
+              
+              <CountdownTimer
+                targetDate={targetDate}
+                variant="festival"
+                size="lg"
+                className="max-w-4xl mx-auto"
+              />
+              
+              <div className="text-center mt-6">
+                <div className="flex justify-center gap-4">
+                  <button 
+                    onClick={() => setShowFestivalCountdown(false)}
+                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border border-white/30 hover:border-white/50"
+                  >
+                    Hide Countdown
+                  </button>
+                  <button 
+                    onClick={() => setCurrentFestival(currentFestival === 'dashain' ? 'tihar' : 'dashain')}
+                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border border-white/30 hover:border-white/50"
+                  >
+                    Switch to {currentFestival === 'dashain' ? 'Tihar' : 'Dashain'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
           
@@ -426,7 +555,7 @@ const Collections = () => {
         </section>
 
         {/* Featured Products Section */}
-                 <section>
+                 <section id="products-section">
            <div className="text-center mb-12">
              <h2 className="text-3xl font-bold text-gray-900 mb-4">
                {selectedBrand ? `${selectedBrand} Products` : 'Featured Products'}
@@ -448,49 +577,67 @@ const Collections = () => {
            </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredProducts.map((product) => (
-              <div key={product.id} className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="relative">
-                  <img
-                    src={product.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${product.images[0].replace("/uploads", "")}.jpg` : "/images/product-1.jpg"}
-                    alt={product.name}
-                    className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  {product.discount && product.discount > 0 && (
-                    <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                      -{product.discount}%
+            {featuredProducts.map((product) => {
+              const isInWishlist = wishlistItems.some(item => item.id === product.id);
+              
+              return (
+                <div 
+                  key={product.id} 
+                  className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
+                  onClick={() => handleProductClick(product)}
+                >
+                  <div className="relative">
+                    <img
+                      src={product.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${product.images[0].replace("/uploads", "")}.jpg` : "/images/product-1.jpg"}
+                      alt={product.name}
+                      className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {product.discount && product.discount > 0 && (
+                      <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                        -{product.discount}%
+                      </div>
+                    )}
+                    <div className="absolute top-3 right-3">
+                      <button 
+                        onClick={(e) => handleWishlistToggle(product, e)}
+                        className={`p-2 rounded-full shadow-md transition-all duration-200 ${
+                          isInWishlist 
+                            ? 'bg-red-500 text-white hover:bg-red-600' 
+                            : 'bg-white hover:bg-gray-50 text-gray-600'
+                        }`}
+                      >
+                        <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-current' : ''}`} />
+                      </button>
                     </div>
-                  )}
-                  <div className="absolute top-3 right-3">
-                    <button className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors duration-200">
-                      <Heart className="h-4 w-4 text-gray-600" />
+                  </div>
+                  
+                  <div className="p-6">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm text-gray-500">{product.brand}</span>
+                      {product.isNew && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">New</span>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-xl font-bold text-gray-900">रु{product.price.toLocaleString()}</span>
+                      {product.originalPrice && product.originalPrice > product.price && (
+                        <span className="text-sm text-gray-500 line-through">रु{product.originalPrice.toLocaleString()}</span>
+                      )}
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleProductClick(product);
+                      }}
+                      className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200"
+                    >
+                      View Details
                     </button>
                   </div>
                 </div>
-                
-                <div className="p-6">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm text-gray-500">{product.brand}</span>
-                    {product.isNew && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">New</span>
-                    )}
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-xl font-bold text-gray-900">रु{product.price.toLocaleString()}</span>
-                    {product.originalPrice && product.originalPrice > product.price && (
-                      <span className="text-sm text-gray-500 line-through">रु{product.originalPrice.toLocaleString()}</span>
-                    )}
-                  </div>
-                  <button 
-                    onClick={() => navigate(`/men/${product.brand}/${product.id}`)}
-                    className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200"
-                  >
-                    View Details
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       </div>

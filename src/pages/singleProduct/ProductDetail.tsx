@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { fetchProduct, fetchProducts } from "../../store/productSlice";
 import { addToCart } from "../../store/cartSlice";
 import { addToWishlist, removeFromWishlist } from "../../store/wishlistSlice";
+import { fetchSimilarProducts, addToRecentlyViewed } from "../../store/recommendationsSlice";
 import Review from "./Review";
 import ProductRecommendations from "../../components/ProductRecommendations";
 import { ProductDetailSkeleton } from "../../components/SkeletonLoader";
@@ -25,6 +26,7 @@ const ProductDetail = () => {
   const dispatch = useAppDispatch();
   const { product } = useAppSelector((store) => store.products);
   const { review } = useAppSelector((store) => store.reviews);
+  const { similarProducts, frequentlyBought, status } = useAppSelector((store) => store.recommendations);
 
   const isLoggedIn = useAppSelector(
     (store) => !!store.auth.user.token || !!localStorage.getItem("tokenauth")
@@ -42,8 +44,29 @@ const ProductDetail = () => {
     if (id) {
       dispatch(fetchProducts());
       dispatch(fetchProduct(id));
+      dispatch(fetchSimilarProducts(id));
     }
   }, [dispatch, id]);
+
+  // Add to recently viewed when product loads
+  useEffect(() => {
+    if (product) {
+      dispatch(addToRecentlyViewed({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        originalPrice: product.originalPrice,
+        image: product.images?.[0] || '/images/product-1.jpg',
+        brand: product.brand,
+        category: product.Category?.categoryName || 'Shoes',
+        rating: product.rating,
+        isNew: product.isNew,
+        discount: product.discount,
+        totalStock: product.totalStock,
+        reason: 'Recently viewed'
+      }));
+    }
+  }, [dispatch, product]);
 
   // Create array of images for multiple image functionality (show 5 images)
   const productImages: string[] = Array.isArray(product?.images) 
@@ -459,16 +482,32 @@ const ProductDetail = () => {
         {product?.id &&  <Review key={product?.id} productId={product?.id} />}
       </section>
 
-      {/* Similar Products Recommendations */}
-      {product?.id && (
-        <ProductRecommendations 
-          type="similarProducts" 
-          productId={product.id}
-          title="Similar Products"
-          subtitle="You might also like these products"
-          maxProducts={4}
-          showReason={true}
-        />
+      {/* Similar Products */}
+      {similarProducts.length > 0 && (
+        <section className="py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ProductRecommendations
+              title="Similar Products"
+              products={similarProducts}
+              type="similar"
+              loading={status === 'loading'}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* Frequently Bought Together */}
+      {frequentlyBought.length > 0 && (
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ProductRecommendations
+              title="Frequently Bought Together"
+              products={frequentlyBought}
+              type="frequentlyBought"
+              loading={status === 'loading'}
+            />
+          </div>
+        </section>
       )}
     </>
   );

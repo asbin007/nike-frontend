@@ -13,11 +13,22 @@ function MyOrderDetail() {
   const { orderDetails } = useAppSelector((store) => store.orders);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Debug logging
+  console.log("🔍 MyOrderDetails Debug:", {
+    id,
+    orderDetails,
+    isLoading,
+    orderDetailsLength: orderDetails?.length
+  });
 
   useEffect(() => {
+    console.log("🔍 MyOrderDetails useEffect triggered:", { id });
     if (id) {
+      console.log("🔍 Fetching order details for ID:", id);
       dispatch(fetchMyOrderDetails(id));
       setIsLoading(false);
+    } else {
+      console.error("❌ No order ID found in URL parameters");
     }
   }, [id, dispatch]);
 
@@ -25,7 +36,7 @@ function MyOrderDetail() {
 
 
 
-  // Socket event listeners for real-time updates
+  // Simple WebSocket event listeners for real-time updates
   useEffect(() => {
     const handleStatusUpdate = (data: { status: OrderStatus; userId: string; orderId: string }) => {
       console.log("Status update received in details:", data);
@@ -35,8 +46,6 @@ function MyOrderDetail() {
           userId: data.userId,
           orderId: data.orderId
         }));
-        // Refresh order details
-        dispatch(fetchMyOrderDetails(id!));
       }
     };
 
@@ -48,8 +57,6 @@ function MyOrderDetail() {
           orderId: data.orderId,
           paymentId: data.paymentId
         }));
-        // Refresh order details
-        dispatch(fetchMyOrderDetails(id!));
       }
     };
 
@@ -70,33 +77,81 @@ function MyOrderDetail() {
     }
   };
 
-  // Get status icon and color
+  // Get status icon and color with realistic ecommerce flow
   const getStatusInfo = (status: string) => {
     switch (status) {
       case OrderStatus.Pending:
-        return { icon: Clock, color: "text-yellow-600", bgColor: "bg-yellow-100" };
+        return { 
+          icon: Clock, 
+          color: "text-yellow-600", 
+          bgColor: "bg-yellow-100",
+          description: "Order received, waiting for payment confirmation"
+        };
       case OrderStatus.Preparation:
-        return { icon: Package, color: "text-blue-600", bgColor: "bg-blue-100" };
+        return { 
+          icon: Package, 
+          color: "text-blue-600", 
+          bgColor: "bg-blue-100",
+          description: "Order is being prepared for shipment"
+        };
       case OrderStatus.Ontheway:
-        return { icon: Truck, color: "text-purple-600", bgColor: "bg-purple-100" };
+        return { 
+          icon: Truck, 
+          color: "text-purple-600", 
+          bgColor: "bg-purple-100",
+          description: "Order is on the way to your location"
+        };
       case OrderStatus.Delivered:
-        return { icon: CheckCircle, color: "text-green-600", bgColor: "bg-green-100" };
+        return { 
+          icon: CheckCircle, 
+          color: "text-green-600", 
+          bgColor: "bg-green-100",
+          description: "Order has been delivered successfully"
+        };
       case OrderStatus.Cancelled:
-        return { icon: XCircle, color: "text-red-600", bgColor: "bg-red-100" };
+        return { 
+          icon: XCircle, 
+          color: "text-red-600", 
+          bgColor: "bg-red-100",
+          description: "Order has been cancelled"
+        };
       default:
-        return { icon: Clock, color: "text-gray-600", bgColor: "bg-gray-100" };
+        return { 
+          icon: Clock, 
+          color: "text-gray-600", 
+          bgColor: "bg-gray-100",
+          description: "Order status unknown"
+        };
     }
   };
 
-  // Get payment status info
+  // Get payment status info with realistic descriptions
   const getPaymentStatusInfo = (status: string | undefined) => {
     switch (status) {
       case "paid":
-        return { icon: CheckCircle, color: "text-green-600", bgColor: "bg-green-100", text: "Paid" };
+        return { 
+          icon: CheckCircle, 
+          color: "text-green-600", 
+          bgColor: "bg-green-100", 
+          text: "Paid",
+          description: "Payment completed successfully"
+        };
       case "unpaid":
-        return { icon: XCircle, color: "text-red-600", bgColor: "bg-red-100", text: "Unpaid" };
+        return { 
+          icon: XCircle, 
+          color: "text-red-600", 
+          bgColor: "bg-red-100", 
+          text: "Unpaid",
+          description: "Payment pending or failed"
+        };
       default:
-        return { icon: Clock, color: "text-gray-600", bgColor: "bg-gray-100", text: "Pending" };
+        return { 
+          icon: Clock, 
+          color: "text-gray-600", 
+          bgColor: "bg-gray-100", 
+          text: "Pending",
+          description: "Payment status unknown"
+        };
     }
   };
 
@@ -114,6 +169,47 @@ function MyOrderDetail() {
         <div className="text-center">
           <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-600">No order details found.</h2>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4 md:px-6 2xl:px-20">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
+              <div className="space-y-4">
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if no order found
+  if (!orderDetails || orderDetails.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4 md:px-6 2xl:px-20">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
+            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Order Not Found</h2>
+            <p className="text-gray-600 mb-4">
+              The order you're looking for doesn't exist or you don't have permission to view it.
+            </p>
+            <p className="text-sm text-gray-500">
+              Order ID: {id || "N/A"}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -158,9 +254,14 @@ function MyOrderDetail() {
               {/* Order Status Badge */}
               <div className={`flex items-center space-x-2 px-4 py-2 rounded-full ${statusInfo.bgColor}`}>
                 <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
-                <span className={`font-semibold ${statusInfo.color}`}>
-                  {customer?.orderStatus || "N/A"}
-                </span>
+                <div className="flex flex-col">
+                  <span className={`font-semibold ${statusInfo.color}`}>
+                    {customer?.orderStatus || "N/A"}
+                  </span>
+                  <span className={`text-xs ${statusInfo.color} opacity-75`}>
+                    {statusInfo.description}
+                  </span>
+                </div>
               </div>
               
               {/* Payment Status Badge */}
@@ -170,9 +271,14 @@ function MyOrderDetail() {
                 return (
                   <div className={`flex items-center space-x-2 px-4 py-2 rounded-full ${paymentStatusInfo.bgColor}`}>
                     <PaymentStatusIcon className={`w-5 h-5 ${paymentStatusInfo.color}`} />
-                    <span className={`font-semibold ${paymentStatusInfo.color}`}>
-                      {paymentStatusInfo.text}
-                    </span>
+                    <div className="flex flex-col">
+                      <span className={`font-semibold ${paymentStatusInfo.color}`}>
+                        {paymentStatusInfo.text}
+                      </span>
+                      <span className={`text-xs ${paymentStatusInfo.color} opacity-75`}>
+                        {paymentStatusInfo.description}
+                      </span>
+                    </div>
                   </div>
                 );
               })()}
@@ -415,21 +521,50 @@ function MyOrderDetail() {
                           <p className="font-semibold text-gray-800">
                             {order?.Order?.Payment?.paymentStatus === 'paid' ? 'Payment Completed' : 'Payment Pending'}
                           </p>
-                          <p className="text-sm text-gray-600">Payment Status</p>
+                          <p className="text-sm text-gray-600">
+                            {order?.Order?.Payment?.paymentStatus === 'paid' 
+                              ? 'Your payment has been processed successfully' 
+                              : order?.Order?.Payment?.paymentMethod === 'cod' 
+                                ? 'Payment will be collected on delivery'
+                                : 'Please complete your payment to proceed'
+                            }
+                          </p>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Cancel Order Button */}
-                {order?.Order?.orderStatus !== OrderStatus.Cancelled && (
+                {/* Cancel Order Button with realistic validation */}
+                {order?.Order?.orderStatus !== OrderStatus.Cancelled && 
+                 order?.Order?.orderStatus !== OrderStatus.Delivered && (
                   <button
-                    onClick={cancelOrder}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl font-semibold transition-colors flex items-center justify-center space-x-2"
+                    onClick={() => {
+                      // Check if order can be cancelled
+                      const currentStatus = order?.Order?.orderStatus;
+                      if (currentStatus === OrderStatus.Preparation || currentStatus === OrderStatus.Ontheway) {
+                        alert('Cannot cancel order that is already in preparation or on the way. Please contact customer support.');
+                        return;
+                      }
+                      cancelOrder();
+                    }}
+                    disabled={order?.Order?.orderStatus === OrderStatus.Preparation || 
+                             order?.Order?.orderStatus === OrderStatus.Ontheway}
+                    className={`w-full py-3 px-4 rounded-xl font-semibold transition-colors flex items-center justify-center space-x-2 ${
+                      order?.Order?.orderStatus === OrderStatus.Preparation || 
+                      order?.Order?.orderStatus === OrderStatus.Ontheway
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                        : 'bg-red-600 hover:bg-red-700 text-white'
+                    }`}
                   >
                     <XCircle className="w-5 h-5" />
-                    <span>Cancel Order</span>
+                    <span>
+                      {order?.Order?.orderStatus === OrderStatus.Preparation || 
+                       order?.Order?.orderStatus === OrderStatus.Ontheway
+                        ? 'Cannot Cancel (In Progress)'
+                        : 'Cancel Order'
+                      }
+                    </span>
                   </button>
                 )}
               </div>

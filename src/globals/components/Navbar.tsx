@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { logout } from "../../store/authSlice";
 import { Link, useNavigate } from "react-router-dom";
@@ -19,7 +19,6 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchDrop, setShowSearchDrop] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [debouncedQuery, setDebouncedQuery] = useState("");
 
   const logoRef = useRef(null);
   const logoTextRef = useRef(null);
@@ -56,16 +55,12 @@ export default function Navbar() {
     }
   }, []);
 
-  // Debounce search query
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
 
-  // Preload recommendations on focus
+  // Handle search focus - removed recommendation preloading
   const handleSearchFocus = () => {
     setShowSearchDrop(true);
-    if ((personalizedRecommendations?.length || 0) === 0 && (trendingProducts?.length || 0) === 0) {
+    // Preload recommendations if not already loaded
+    if (personalizedRecommendations.length === 0 && trendingProducts.length === 0) {
       dispatch(fetchRecommendations());
     }
   };
@@ -75,26 +70,7 @@ export default function Navbar() {
     setTimeout(() => setShowSearchDrop(false), 150);
   };
 
-  // Filter suggestion lists based on query
-  const filteredSuggested = useMemo(() => {
-    const q = debouncedQuery.toLowerCase();
-    const list = (personalizedRecommendations || []).slice(0, 6);
-    if (!q) return list;
-    return list.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      (p.brand || "").toLowerCase().includes(q)
-    );
-  }, [debouncedQuery, personalizedRecommendations]);
-
-  const filteredTrending = useMemo(() => {
-    const q = debouncedQuery.toLowerCase();
-    const list = (trendingProducts || []).slice(0, 6);
-    if (!q) return list;
-    return list.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      (p.brand || "").toLowerCase().includes(q)
-    );
-  }, [debouncedQuery, trendingProducts]);
+  // Removed recommendation filtering - using realistic data instead
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -287,7 +263,7 @@ export default function Navbar() {
             </Link>
             
             <Link 
-              to="/man" 
+              to="/men" 
               className="font-medium text-gray-700 hover:text-indigo-600 transition-all duration-200 relative group px-3 py-2 rounded-lg hover:bg-indigo-50"
             >
               Men
@@ -333,18 +309,19 @@ export default function Navbar() {
             {/* Search Dropdown */}
             {showSearchDrop && (
               <div className="absolute top-16 right-40 w-[28rem] bg-white border border-gray-200 rounded-xl shadow-xl p-4 hidden md:block">
-                {/* Suggested for you */}
-                {filteredSuggested.length > 0 && (
+
+                {/* Trending Products */}
+                {trendingProducts.length > 0 && (
                   <div className="mb-4">
-                    <div className="text-xs font-semibold text-gray-500 mb-2">Suggested for you</div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2">Trending now</div>
                     <ul className="divide-y divide-gray-100">
-                      {filteredSuggested.map(item => (
+                      {trendingProducts.slice(0, 3).map(item => (
                         <li 
                           key={item.id} 
                           className="py-2 flex items-center gap-3 hover:bg-gray-50 rounded-lg px-2 cursor-pointer"
                           onMouseDown={(e) => {
                             e.preventDefault();
-                            navigate(`/men/${(item.brand || '').toLowerCase()}/${item.id}`);
+                            navigate(`/product/${item.id}`);
                             setShowSearchDrop(false);
                           }}
                         >
@@ -369,18 +346,18 @@ export default function Navbar() {
                   </div>
                 )}
 
-                {/* Trending */}
-                {filteredTrending.length > 0 && (
+                {/* Personalized Recommendations */}
+                {personalizedRecommendations.length > 0 && (
                   <div className="mb-4">
-                    <div className="text-xs font-semibold text-gray-500 mb-2">Trending</div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2">Recommended for you</div>
                     <ul className="divide-y divide-gray-100">
-                      {filteredTrending.map(item => (
+                      {personalizedRecommendations.slice(0, 3).map(item => (
                         <li 
                           key={item.id} 
                           className="py-2 flex items-center gap-3 hover:bg-gray-50 rounded-lg px-2 cursor-pointer"
                           onMouseDown={(e) => {
                             e.preventDefault();
-                            navigate(`/men/${(item.brand || '').toLowerCase()}/${item.id}`);
+                            navigate(`/product/${item.id}`);
                             setShowSearchDrop(false);
                           }}
                         >

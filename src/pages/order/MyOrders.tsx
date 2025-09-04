@@ -132,14 +132,19 @@ function MyOrder() {
       }
     };
 
-    // Add listeners immediately if connected
-    addEventListeners();
-    
     // Add listeners when socket connects
     socket.on("connect", () => {
+      console.log("🔌 MyOrders: Socket connected, adding event listeners...");
       addEventListeners();
       setIsSocketConnected(true);
     });
+    
+    // Add listeners immediately if already connected
+    if (socket.connected) {
+      console.log("🔌 MyOrders: Socket already connected, adding event listeners immediately...");
+      addEventListeners();
+      setIsSocketConnected(true);
+    }
     
     socket.on("disconnect", () => {
       setIsSocketConnected(false);
@@ -324,7 +329,7 @@ function MyOrder() {
                         }`}
                       >
                         <td className="px-6 py-4">
-                          <Link to={`/my-orders/${item.id}`}>
+                          <Link to={`/my-orders/${item.id}`} onClick={() => console.log("🔍 Navigating to order details:", item.id)}>
                             <p className="font-semibold text-gray-800 hover:text-blue-600 transition-colors cursor-pointer">
                               #{item.id}
                             </p>
@@ -357,7 +362,7 @@ function MyOrder() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <Link to={`/my-orders/${item.id}`}>
+                          <Link to={`/my-orders/${item.id}`} onClick={() => console.log("🔍 View button clicked for order:", item.id)}>
                             <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200">
                               <Eye className="w-4 h-4" />
                               <span className="text-sm font-medium">View</span>

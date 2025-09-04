@@ -84,7 +84,7 @@ export default function RealTimeReviews() {
       </div>
 
       {/* Real-time counter */}
-      <div className="absolute top-3 left-3 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+      <div className="absolute top-3 left-3 bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-md border border-blue-700">
         {totalReviews} reviews
       </div>
 

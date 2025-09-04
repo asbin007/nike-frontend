@@ -5,6 +5,7 @@ import { TextPlugin } from "gsap/TextPlugin";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { checkKhaltiPaymentStatus } from "../../store/orderSlice";
 import { fetchAllReviews } from "../../store/reviewSlice";
+import { fetchRecommendations } from "../../store/recommendationsSlice";
 
 import Footer from "../../globals/components/Footer";
 import Features from "../features/Features";
@@ -20,6 +21,7 @@ gsap.registerPlugin(ScrollTrigger, TextPlugin);
 export default function Hero() {
   const dispatch = useAppDispatch();
   const { review } = useAppSelector((state) => state.reviews);
+  const { personalizedRecommendations, trendingProducts, status } = useAppSelector((state) => state.recommendations);
   const heroRef = useRef(null);
   const titleRef = useRef(null);
   const subtitleRef = useRef(null);
@@ -77,7 +79,10 @@ export default function Hero() {
   // Fetch all reviews for real-time display
   useEffect(() => {
     dispatch(fetchAllReviews());
-  }, [dispatch]);
+    if (status === 'idle') {
+      dispatch(fetchRecommendations());
+    }
+  }, [dispatch, status]);
 
   useEffect(() => {
     // Auto-play slider
@@ -383,7 +388,7 @@ export default function Hero() {
                 {/* Play/Pause Button */}
                 <button
                   onClick={togglePlayPause}
-                  className="absolute top-4 right-4 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-lg transition-all duration-300"
+                  className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-900 p-2 rounded-full shadow-lg transition-all duration-300 border border-gray-200"
                 >
                   {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                 </button>
@@ -394,10 +399,10 @@ export default function Hero() {
                     <button
                       key={index}
                       onClick={() => goToSlide(index)}
-                      className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                      className={`w-3 h-3 rounded-full transition-all duration-300 border border-white/30 ${
                         index === currentSlide 
-                          ? 'bg-white scale-125' 
-                          : 'bg-white/50 hover:bg-white/75'
+                          ? 'bg-white scale-125 shadow-lg' 
+                          : 'bg-white/60 hover:bg-white/80'
                       }`}
                     />
                   ))}
@@ -477,27 +482,36 @@ export default function Hero() {
         </div>
       </section>
 
-      {/* Product Recommendations */}
-      <ProductRecommendations 
-        type="trendingProducts" 
-        title="Trending Now"
-        subtitle="Most popular products this week"
-        maxProducts={4}
-        showReason={true}
-      />
-
-      {/* Personalized Recommendations */}
-      <ProductRecommendations 
-        type="personalized" 
-        title="Recommended for You"
-        subtitle="Curated based on your preferences"
-        maxProducts={4}
-        showReason={true}
-      />
+      {/* Removed recommendation sections - using realistic data instead */}
 
       {/* Other sections */}
       <div ref={featuresRef} className="relative z-10">
         <PromoBanners/>
+        
+        {/* Personalized Recommendations */}
+        <div className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ProductRecommendations
+              title="Recommended for You"
+              products={personalizedRecommendations}
+              type="personalized"
+              loading={status === 'loading'}
+            />
+          </div>
+        </div>
+
+        {/* Trending Products */}
+        <div className="py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ProductRecommendations
+              title="Trending Now"
+              products={trendingProducts}
+              type="trending"
+              loading={status === 'loading'}
+            />
+          </div>
+        </div>
+
         <Features/>
       </div>
       
