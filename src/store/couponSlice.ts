@@ -137,7 +137,7 @@ const couponSlice = createSlice({
     },
     
     calculateDiscount: (state, action: PayloadAction<{ cartTotal: number; items: any[] }>) => {
-      if (!state.appliedCoupon) return 0;
+      if (!state.appliedCoupon) return;
       
       const { cartTotal, items } = action.payload;
       const coupon = state.appliedCoupon;
@@ -166,7 +166,8 @@ const couponSlice = createSlice({
           break;
       }
       
-      return discount;
+      // Store calculated discount in state if needed
+      // This reducer doesn't need to return a value, just update state
     }
   }
 });

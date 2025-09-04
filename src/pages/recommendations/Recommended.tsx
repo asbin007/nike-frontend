@@ -201,7 +201,7 @@ export default function Recommended({ initialTab = 'personalized', showTabs = tr
               ) : (
                 filtered.map(p => (
                   <div key={p.id} className="product-card flex-shrink-0 w-80 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2">
-                    <ProductCard product={toIProductLike(p)} />
+                    <ProductCard product={toIProductLike(p)} showActions={false} />
                   </div>
                 ))
               )}
@@ -224,7 +224,7 @@ export default function Recommended({ initialTab = 'personalized', showTabs = tr
             ) : (
               filtered.map(p => (
                 <div key={p.id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2">
-                  <ProductCard product={toIProductLike(p)} />
+                  <ProductCard product={toIProductLike(p)} showActions={false} />
                 </div>
               ))
             )}

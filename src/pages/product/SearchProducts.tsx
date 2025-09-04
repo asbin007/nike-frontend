@@ -63,7 +63,7 @@ const RecentSearches = () => {
     <div className="mb-4">
       <h3 className="text-lg font-medium mb-2">Recent Searches</h3>
       <div className="flex gap-2 flex-wrap">
-        {history.map((item, idx) => (
+        {history.map((item: string, idx: number) => (
           <span
             key={idx}
             className="px-3 py-1 bg-gray-200 rounded-full text-sm cursor-pointer hover:bg-gray-300"
