@@ -161,6 +161,16 @@ const AppContent = () => {
     // Listen for multiple event names that backend might emit
     const addEventListeners = () => {
       if (socket.connected) {
+        // Remove existing listeners to avoid duplicates
+        socket.off("statusUpdated", handleOrderStatusUpdate);
+        socket.off("orderStatusUpdated", handleOrderStatusUpdate);
+        socket.off("orderUpdated", handleOrderStatusUpdate);
+        socket.off("orderStatusChange", handleOrderStatusUpdate);
+        socket.off("paymentStatusUpdated", handlePaymentStatusUpdate);
+        socket.off("paymentUpdated", handlePaymentStatusUpdate);
+        socket.off("paymentStatusChange", handlePaymentStatusUpdate);
+        socket.off("orderChange");
+        
         // Order status events
         socket.on("statusUpdated", handleOrderStatusUpdate);
         socket.on("orderStatusUpdated", handleOrderStatusUpdate);
@@ -178,12 +188,18 @@ const AppContent = () => {
           dispatch(refreshOrders());
         });
         
-        // Debug: Log all incoming events
-        const originalEmit = socket.emit;
-        socket.emit = function(eventName: string, ...args: unknown[]) {
-          console.log(`📤 Frontend emitting event: ${eventName}`, args);
-          return originalEmit.apply(this, [eventName, ...args]);
+        // Debug: Log all incoming events (using individual listeners)
+        const logEvent = (eventName: string) => {
+          socket.on(eventName, (...args: unknown[]) => {
+            console.log(`📥 Frontend received event: ${eventName}`, args);
+          });
         };
+        
+        // Log common events
+        logEvent("statusUpdated");
+        logEvent("orderStatusUpdated");
+        logEvent("paymentStatusUpdated");
+        logEvent("orderChange");
         
         console.log("✅ Frontend: WebSocket event listeners added");
       } else {
@@ -202,6 +218,8 @@ const AppContent = () => {
       if (!socket.connected && token) {
         console.log("🔄 Socket disconnected, attempting to reconnect...");
         socket.connect();
+      } else if (socket.connected) {
+        console.log("✅ Socket connection check: Connected");
       }
     };
     
@@ -212,11 +230,27 @@ const AppContent = () => {
       if (!socket.connected) {
         console.log("🔄 Auto-refreshing orders (fallback - socket disconnected)");
         dispatch(refreshOrders());
+      } else {
+        console.log("✅ Socket connected, skipping auto-refresh");
       }
     }, 120000);
     
     // Set up admin update listeners
     const cleanupAdminListeners = dispatch(listenForAdminUpdates());
+    
+    // Add manual refresh function to window for debugging
+    (window as any).refreshOrders = () => {
+      console.log("🔄 Manual refresh triggered");
+      dispatch(refreshOrders());
+    };
+    
+    (window as any).socketStatus = () => {
+      console.log("Socket status:", {
+        connected: socket.connected,
+        id: socket.id,
+        transport: 'websocket' // Simplified for debugging
+      });
+    };
     
     return () => {
       clearInterval(interval);
@@ -231,6 +265,8 @@ const AppContent = () => {
       socket.off("paymentUpdated", handlePaymentStatusUpdate);
       socket.off("paymentStatusChange", handlePaymentStatusUpdate);
       socket.off("orderChange");
+      delete (window as any).refreshOrders;
+      delete (window as any).socketStatus;
     };
   }, [dispatch]);
 

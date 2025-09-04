@@ -63,7 +63,44 @@ const CouponInput = ({ cartTotal, cartItems, className = '' }: CouponInputProps)
         break;
         
       case 'b2g1':
-        const eligibleItems = cartItems.filter(item => item.brand === appliedCoupon.category);
+        const normalizeBrand = (brand: string) => {
+          if (!brand) return '';
+          return brand.toLowerCase()
+            .replace(/\s+/g, '') // Remove spaces
+            .replace(/[^a-z0-9]/g, ''); // Remove special characters
+        };
+        
+        const getBrandVariants = (brand: string) => {
+          const normalized = normalizeBrand(brand);
+          const variants = [normalized];
+          
+          // Add common brand variants
+          if (normalized.includes('nike') || normalized.includes('airmax') || normalized.includes('jordan')) {
+            variants.push('nike', 'airmax', 'jordan');
+          }
+          if (normalized.includes('adidas') || normalized.includes('yeezy') || normalized.includes('boost')) {
+            variants.push('adidas', 'yeezy', 'boost');
+          }
+          if (normalized.includes('puma') || normalized.includes('suede') || normalized.includes('rs')) {
+            variants.push('puma', 'suede', 'rs');
+          }
+          
+          return [...new Set(variants)]; // Remove duplicates
+        };
+        
+        const eligibleItems = cartItems.filter(item => {
+          const itemBrand = item.brand || (item.Shoe && item.Shoe.brand);
+          const itemBrandVariants = getBrandVariants(itemBrand);
+          const couponBrandVariants = getBrandVariants(appliedCoupon.category || '');
+          
+          return itemBrandVariants.some(itemVariant => 
+            couponBrandVariants.some(couponVariant => 
+              itemVariant.includes(couponVariant) || 
+              couponVariant.includes(itemVariant) ||
+              itemVariant === couponVariant
+            )
+          );
+        });
         if (eligibleItems.length >= 2) {
           const cheapestItem = eligibleItems.reduce((min, item) => 
             item.price < min.price ? item : min

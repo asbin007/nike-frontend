@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { fetchProduct, fetchProducts } from "../../store/productSlice";
@@ -44,6 +44,46 @@ const ProductDetail = () => {
       dispatch(fetchProduct(id));
     }
   }, [dispatch, id]);
+
+  // Create array of images for multiple image functionality (show 5 images)
+  const productImages: string[] = Array.isArray(product?.images) 
+    ? product.images.slice(0, 5).filter((img): img is string => typeof img === 'string')
+    : [];
+
+  // Navigation functions
+  const nextImage = useCallback(() => {
+    if (productImages.length > 1) {
+      const nextIndex = (currentImageIndex + 1) % productImages.length;
+      setCurrentImageIndex(nextIndex);
+      setSelectedImage(buildCloudinaryUrl(productImages[nextIndex], 'jpg'));
+    }
+  }, [productImages, currentImageIndex]);
+
+  const prevImage = useCallback(() => {
+    if (productImages.length > 1) {
+      const prevIndex = currentImageIndex === 0 ? productImages.length - 1 : currentImageIndex - 1;
+      setCurrentImageIndex(prevIndex);
+      setSelectedImage(buildCloudinaryUrl(productImages[prevIndex], 'jpg'));
+    }
+  }, [productImages, currentImageIndex]);
+
+  // Keyboard navigation for images
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (productImages.length <= 1) return;
+      
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        prevImage();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        nextImage();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [productImages.length, nextImage, prevImage]);
 
   // Set initial selected image when product loads
   useEffect(() => {
@@ -117,28 +157,6 @@ const ProductDetail = () => {
     product && (product.colors ?? []).length > 0
       ? product.colors
       : ["No colors available"];
-
-  // Create array of images for multiple image functionality (show 3 images)
-  const productImages: string[] = Array.isArray(product?.images) 
-    ? product.images.slice(0, 3).filter((img): img is string => typeof img === 'string')
-    : [];
-
-  // Navigation functions
-  const nextImage = () => {
-    if (productImages.length > 1) {
-      const nextIndex = (currentImageIndex + 1) % productImages.length;
-      setCurrentImageIndex(nextIndex);
-      setSelectedImage(buildCloudinaryUrl(productImages[nextIndex], 'jpg'));
-    }
-  };
-
-  const prevImage = () => {
-    if (productImages.length > 1) {
-      const prevIndex = currentImageIndex === 0 ? productImages.length - 1 : currentImageIndex - 1;
-      setCurrentImageIndex(prevIndex);
-      setSelectedImage(buildCloudinaryUrl(productImages[prevIndex], 'jpg'));
-    }
-  };
 
   const handleImageClick = (image: string, index: number) => {
     setSelectedImage(buildCloudinaryUrl(image, 'jpg'));
@@ -257,15 +275,15 @@ const ProductDetail = () => {
               
               {/* Thumbnail Images */}
               {productImages.length > 0 && (
-                <div className="flex gap-4 justify-center">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 max-w-md mx-auto">
                   {productImages.map((image, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleImageClick(image, idx)}
-                      className={`w-20 h-20 rounded-md overflow-hidden border-2 transition-all ${
+                      className={`w-12 h-12 sm:w-16 sm:h-16 rounded-md overflow-hidden border-2 transition-all ${
                         currentImageIndex === idx
-                          ? "border-indigo-600 shadow-lg"
-                          : "border-gray-300 hover:border-indigo-400"
+                          ? "border-indigo-600 shadow-lg scale-105"
+                          : "border-gray-300 hover:border-indigo-400 hover:scale-105"
                       }`}
                       type="button"
                     >

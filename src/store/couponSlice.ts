@@ -106,9 +106,75 @@ const couponSlice = createSlice({
       }
       
       // Check category restrictions
-      if (coupon.category && !items.some(item => item.brand === coupon.category)) {
-        state.error = `This coupon is only valid for ${coupon.category} products`;
-        return;
+      if (coupon.category) {
+        console.log('🔍 Coupon validation debug:', {
+          couponCategory: coupon.category,
+          items: items.map(item => ({
+            id: item.id,
+            name: item.name || (item.Shoe && item.Shoe.name),
+            brand: item.brand || (item.Shoe && item.Shoe.brand),
+            hasBrand: !!(item.brand || (item.Shoe && item.Shoe.brand))
+          }))
+        });
+        
+        const hasValidBrand = items.some(item => {
+          const itemBrand = item.brand || (item.Shoe && item.Shoe.brand);
+          
+          // Normalize brand names for comparison
+          const normalizeBrand = (brand: string) => {
+            if (!brand) return '';
+            return brand.toLowerCase()
+              .replace(/\s+/g, '') // Remove spaces
+              .replace(/[^a-z0-9]/g, ''); // Remove special characters
+          };
+          
+          // Brand mapping for different naming conventions
+          const getBrandVariants = (brand: string) => {
+            const normalized = normalizeBrand(brand);
+            const variants = [normalized];
+            
+            // Add common brand variants
+            if (normalized.includes('nike') || normalized.includes('airmax') || normalized.includes('jordan')) {
+              variants.push('nike', 'airmax', 'jordan');
+            }
+            if (normalized.includes('adidas') || normalized.includes('yeezy') || normalized.includes('boost')) {
+              variants.push('adidas', 'yeezy', 'boost');
+            }
+            if (normalized.includes('puma') || normalized.includes('suede') || normalized.includes('rs')) {
+              variants.push('puma', 'suede', 'rs');
+            }
+            
+            return [...new Set(variants)]; // Remove duplicates
+          };
+          
+          const itemBrandVariants = getBrandVariants(itemBrand);
+          const couponBrandVariants = getBrandVariants(coupon.category || '');
+          
+          // Check if any variants match
+          const brandMatch = itemBrandVariants.some(itemVariant => 
+            couponBrandVariants.some(couponVariant => 
+              itemVariant.includes(couponVariant) || 
+              couponVariant.includes(itemVariant) ||
+              itemVariant === couponVariant
+            )
+          );
+          
+          console.log('🔍 Checking item brand:', {
+            itemName: item.name || (item.Shoe && item.Shoe.name),
+            itemBrand,
+            couponCategory: coupon.category,
+            itemBrandVariants,
+            couponBrandVariants,
+            matches: brandMatch
+          });
+          
+          return brandMatch;
+        });
+        
+        if (!hasValidBrand) {
+          state.error = `This coupon is only valid for ${coupon.category} products`;
+          return;
+        }
       }
       
       // Check usage limit
@@ -156,7 +222,44 @@ const couponSlice = createSlice({
           
         case 'b2g1':
           // Buy 2 Get 1 Free logic
-          const eligibleItems = items.filter(item => item.brand === coupon.category);
+          const normalizeBrand = (brand: string) => {
+            if (!brand) return '';
+            return brand.toLowerCase()
+              .replace(/\s+/g, '') // Remove spaces
+              .replace(/[^a-z0-9]/g, ''); // Remove special characters
+          };
+          
+          const getBrandVariants = (brand: string) => {
+            const normalized = normalizeBrand(brand);
+            const variants = [normalized];
+            
+            // Add common brand variants
+            if (normalized.includes('nike') || normalized.includes('airmax') || normalized.includes('jordan')) {
+              variants.push('nike', 'airmax', 'jordan');
+            }
+            if (normalized.includes('adidas') || normalized.includes('yeezy') || normalized.includes('boost')) {
+              variants.push('adidas', 'yeezy', 'boost');
+            }
+            if (normalized.includes('puma') || normalized.includes('suede') || normalized.includes('rs')) {
+              variants.push('puma', 'suede', 'rs');
+            }
+            
+            return [...new Set(variants)]; // Remove duplicates
+          };
+          
+          const eligibleItems = items.filter(item => {
+            const itemBrand = item.brand || (item.Shoe && item.Shoe.brand);
+            const itemBrandVariants = getBrandVariants(itemBrand);
+            const couponBrandVariants = getBrandVariants(coupon.category || '');
+            
+            return itemBrandVariants.some(itemVariant => 
+              couponBrandVariants.some(couponVariant => 
+                itemVariant.includes(couponVariant) || 
+                couponVariant.includes(itemVariant) ||
+                itemVariant === couponVariant
+              )
+            );
+          });
           if (eligibleItems.length >= 2) {
             const cheapestItem = eligibleItems.reduce((min, item) => 
               item.price < min.price ? item : min

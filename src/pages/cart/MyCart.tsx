@@ -8,6 +8,7 @@ import CouponInput from "../../components/CouponInput";
 
 function MyCart() {
   const { data } = useAppSelector((store) => store.cart);
+  const { appliedCoupon } = useAppSelector((store) => store.coupon);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
@@ -30,7 +31,77 @@ function MyCart() {
     0
   );
   const shippingPrice = 100;
-  const total = subTotal + shippingPrice;
+  
+  // Calculate discount amount
+  const calculateDiscount = () => {
+    if (!appliedCoupon) return 0;
+    
+    let discount = 0;
+    
+    switch (appliedCoupon.discountType) {
+      case 'percentage':
+        discount = (subTotal * appliedCoupon.discountValue) / 100;
+        discount = Math.min(discount, appliedCoupon.maxDiscount);
+        break;
+        
+      case 'fixed':
+        discount = appliedCoupon.discountValue;
+        break;
+        
+      case 'b2g1':
+        const normalizeBrand = (brand: string) => {
+          if (!brand) return '';
+          return brand.toLowerCase()
+            .replace(/\s+/g, '') // Remove spaces
+            .replace(/[^a-z0-9]/g, ''); // Remove special characters
+        };
+        
+        const getBrandVariants = (brand: string) => {
+          const normalized = normalizeBrand(brand);
+          const variants = [normalized];
+          
+          // Add common brand variants
+          if (normalized.includes('nike') || normalized.includes('airmax') || normalized.includes('jordan')) {
+            variants.push('nike', 'airmax', 'jordan');
+          }
+          if (normalized.includes('adidas') || normalized.includes('yeezy') || normalized.includes('boost')) {
+            variants.push('adidas', 'yeezy', 'boost');
+          }
+          if (normalized.includes('puma') || normalized.includes('suede') || normalized.includes('rs')) {
+            variants.push('puma', 'suede', 'rs');
+          }
+          
+          return [...new Set(variants)]; // Remove duplicates
+        };
+        
+        const eligibleItems = data.filter(item => {
+          const itemBrand = item.Shoe.brand || item.Shoe.name.split(' ')[0];
+          const itemBrandVariants = getBrandVariants(itemBrand);
+          const couponBrandVariants = getBrandVariants(appliedCoupon.category || '');
+          
+          return itemBrandVariants.some(itemVariant => 
+            couponBrandVariants.some(couponVariant => 
+              itemVariant.includes(couponVariant) || 
+              couponVariant.includes(itemVariant) ||
+              itemVariant === couponVariant
+            )
+          );
+        });
+        
+        if (eligibleItems.length >= 2) {
+          const cheapestItem = eligibleItems.reduce((min, item) => 
+            item.Shoe.price < min.Shoe.price ? item : min
+          );
+          discount = cheapestItem.Shoe.price;
+        }
+        break;
+    }
+    
+    return discount;
+  };
+  
+  const discountAmount = calculateDiscount();
+  const total = subTotal + shippingPrice - discountAmount;
 
   useEffect(() => {
     if (data.length === 0) {
@@ -151,10 +222,16 @@ function MyCart() {
                 <span>Shipping</span>
                 <span>रु{shippingPrice}</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between mb-2 text-sm text-green-600">
+                  <span>Discount ({appliedCoupon?.code})</span>
+                  <span>-रु{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
               <hr className="my-2" />
               <div className="flex justify-between mb-2 text-base font-semibold">
                 <span>Total</span>
-                <span>रु{total}</span>
+                <span>रु{total.toFixed(2)}</span>
               </div>
               <Link to="/checkout">
                 <button className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg mt-4 w-full">

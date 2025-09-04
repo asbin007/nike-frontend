@@ -10,6 +10,7 @@ interface ICartItem {
   name: string;
   images: string;
   price: number;
+  brand: string; // Added brand field for coupon validation
 }
 
 interface IData {
