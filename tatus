@@ -1,0 +1,5 @@
+[33m6c8377c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix TypeScript build errors and improve recommendations UI
+[33m3e64204[m Integrate recommendations feature and enhance search functionality
+[33m141ee27[m Remove backend server files and update API base URL in frontend to use production environment
+[33mc08bfea[m Merge branch 'main' of https://github.com/asbin007/nike-frontend
+[33me452a0b[m Remove unused components: Deleted RealTimeDebug, Categories, and ChatBox components to streamline the codebase.

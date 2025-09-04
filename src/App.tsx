@@ -30,7 +30,7 @@ import Recommended from "./pages/recommendations/Recommended";
 const APP_VERSION = "1.0.2";
 
 // Improved socket configuration
-export const socket = io("http://localhost:5000", {
+export const socket = io("https://nike-backend-1-g9i6.onrender.com", {
   auth: {
     token: localStorage.getItem("tokenauth"),
   },
