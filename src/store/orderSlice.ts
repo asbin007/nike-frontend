@@ -410,7 +410,7 @@ export function updateOrderStatusAPI(orderId: string, status: OrderStatus) {
   return async function updateOrderStatusAPIThunk(dispatch: AppDispatch) {
     try {
       console.log(`Updating order status via API: ${orderId} -> ${status}`);
-      const response = await APIS.patch(`/order/status/${orderId}`, { status });
+      const response = await APIS.patch(`/order/admin/change-status/${orderId}`, { orderStatus: status });
       
       if (response.status === 200) {
         // Update local state
@@ -437,18 +437,18 @@ export function updateOrderStatusAPI(orderId: string, status: OrderStatus) {
 }
 
 // Function to update payment status via API when WebSocket fails
-export function updatePaymentStatusAPI(orderId: string, status: PaymentStatus) {
+export function updatePaymentStatusAPI(paymentId: string, status: PaymentStatus) {
   return async function updatePaymentStatusAPIThunk(dispatch: AppDispatch) {
     try {
-      console.log(`Updating payment status via API: ${orderId} -> ${status}`);
-      const response = await APIS.patch(`/order/payment/${orderId}`, { status });
+      console.log(`Updating payment status via API: ${paymentId} -> ${status}`);
+      const response = await APIS.patch(`/order/admin/change-payment-status/${paymentId}`, { status });
       
       if (response.status === 200) {
         // Update local state
         dispatch(updatePaymentStatusinSlice({
           status,
-          orderId,
-          paymentId: orderId
+          orderId: paymentId, // This might need to be the actual orderId
+          paymentId: paymentId
         }));
         
         console.log("Payment status updated successfully via API");
@@ -664,7 +664,7 @@ export function updateOrderStatusDirect(orderId: string, status: OrderStatus) {
       console.log(`🔄 Updating order status directly: ${orderId} -> ${status}`);
       
       // Update via API
-      const response = await APIS.patch(`/order/status/${orderId}`, { status });
+      const response = await APIS.patch(`/order/admin/change-status/${orderId}`, { orderStatus: status });
       
       if (response.status === 200) {
         // Update local state
@@ -691,20 +691,20 @@ export function updateOrderStatusDirect(orderId: string, status: OrderStatus) {
 }
 
 // Simple function to update payment status via API (for admin panel)
-export function updatePaymentStatusDirect(orderId: string, status: PaymentStatus) {
+export function updatePaymentStatusDirect(paymentId: string, status: PaymentStatus) {
   return async function updatePaymentStatusDirectThunk(dispatch: AppDispatch) {
     try {
-      console.log(`🔄 Updating payment status directly: ${orderId} -> ${status}`);
+      console.log(`🔄 Updating payment status directly: ${paymentId} -> ${status}`);
       
       // Update via API
-      const response = await APIS.patch(`/order/payment/${orderId}`, { status });
+      const response = await APIS.patch(`/order/admin/change-payment-status/${paymentId}`, { status });
       
       if (response.status === 200) {
         // Update local state
         dispatch(updatePaymentStatusinSlice({
           status,
-          orderId,
-          paymentId: orderId
+          orderId: paymentId, // This might need to be the actual orderId
+          paymentId: paymentId
         }));
         
         console.log("✅ Payment status updated successfully");

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { addMessage, fetchChatMessages, sendMessage, Message, getOrCreateChat, fetchAdminUsers } from "../store/chatBoxSlice";
+import { addMessage, fetchChatMessages, Message, getOrCreateChat, fetchAdminUsers } from "../store/chatBoxSlice";
 import { socket } from "../App";
 import { Send, Image, MapPin, Paperclip, X, Search, Mic, Check, CheckCheck, Smile, MessageCircle, Minimize2, Maximize2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -346,7 +346,6 @@ const ChatWidget: React.FC = () => {
             chatId,
             content: `📷 Image: ${selectedImage.name}\n${content}`,
           });
-          dispatch(sendMessage(chatId, `📷 Image: ${selectedImage.name}\n${content}`));
           return;
         }
 
@@ -392,17 +391,13 @@ const ChatWidget: React.FC = () => {
             chatId,
             content: `📷 Image: ${selectedImage.name}\n${content}`,
           });
-          dispatch(sendMessage(chatId, `📷 Image: ${selectedImage.name}\n${content}`));
         }
       } else {
-        // Send text message via Socket.io
+        // Send text message via Socket.io only
         socket.emit("sendMessage", {
           chatId,
           content: content,
         });
-
-        // Send via REST API
-        dispatch(sendMessage(chatId, content));
       }
       
       setContent("");

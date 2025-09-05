@@ -108,7 +108,7 @@ socket.on("reconnect_failed", () => {
 socket.on("error", (error: Error) => {
   console.error("❌ Socket error:", error);
 });
-
+  
 // Debug: Log all socket events
 // Debug all socket events
 (socket as any).onAny?.((eventName: string, ...args: unknown[]) => {
