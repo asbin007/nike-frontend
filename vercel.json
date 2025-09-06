@@ -37,7 +37,7 @@
         },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://nike-backend-1-g9i6.onrender.com"
+          "value": "https://nike-backend-1-g9i6.onrender.com, https://admin-panel-eight-henna.vercel.app, https://admin-panel-git-master-harycan39-2994s-projects.vercel.app, https://admin-panel-8xOxvg6qr-harycan39-2994s-projects.vercel.app"
         },
         {
           "key": "Access-Control-Allow-Methods",

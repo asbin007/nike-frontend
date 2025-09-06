@@ -393,7 +393,7 @@ const ProductDetail = () => {
                   {(product?.discount ?? 0) > 0 && (
                     <div className="flex items-center gap-2">
                       <span className="text-gray-400 line-through text-sm sm:text-base">
-                        ${product?.originalPrice?.toFixed(2)}
+                        Rs{product?.originalPrice?.toFixed(2)}
                       </span>
                       <span className="bg-red-100 text-red-800 text-xs font-semibold px-2 py-0.5 rounded">
                         Save {product?.discount ?? 0}%

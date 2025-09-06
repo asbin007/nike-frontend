@@ -9,10 +9,15 @@ const CODSuccess: React.FC = () => {
 
   useEffect(() => {
     // Get the most recent order from the store
+    console.log('🎉 COD Success Page - All orders:', items);
     if (items && items.length > 0) {
       const latestOrder = items[items.length - 1];
       setOrderData(latestOrder);
-      console.log('🎉 COD Success Page - Order data:', latestOrder);
+      console.log('🎉 COD Success Page - Latest order data:', latestOrder);
+      console.log('🎉 COD Success Page - Order status:', latestOrder.orderStatus);
+      console.log('🎉 COD Success Page - Payment info:', latestOrder.Payment);
+    } else {
+      console.log('🎉 COD Success Page - No orders found in store');
     }
 
     // Start countdown for redirect

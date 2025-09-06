@@ -333,6 +333,10 @@ export function orderItem(data: IData) {
             console.log('Error tracking purchase history:', e);
           }
           
+          // Refresh orders to ensure the new order is available
+          console.log('🔄 OrderItem: Refreshing orders after COD creation');
+          dispatch(fetchMyOrders());
+          
           // Redirect to COD success page
           console.log('🔄 OrderItem: About to redirect to /cod-success');
           window.location.href = '/cod-success';

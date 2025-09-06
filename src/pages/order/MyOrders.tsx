@@ -30,11 +30,17 @@ function MyOrder() {
       item.totalPrice == parseInt(searchTerm)
   );
 
+  // Debug logging
+  console.log('🔄 MyOrders: All items from store:', items);
+  console.log('🔄 MyOrders: Filtered items:', newItems);
+  console.log('🔄 MyOrders: Selected status:', selectedStatus);
+
   const filteredItems = selectedStatus === "all" 
     ? newItems 
     : newItems.filter(item => item.orderStatus === selectedStatus);
 
   useEffect(() => {
+    console.log('🔄 MyOrders: Fetching orders...');
     dispatch(fetchMyOrders());
     
     // Check for Khalti payment verification on page load
