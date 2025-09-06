@@ -2,6 +2,7 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL: "https://nike-backend-1-g9i6.onrender.com/api",
+  // baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -12,6 +13,7 @@ const API = axios.create({
 
 const APIS = axios.create({
   baseURL: "https://nike-backend-1-g9i6.onrender.com/api",
+  // baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -25,34 +27,34 @@ APIS.interceptors.request.use((config) => {
   const token = localStorage.getItem("tokenauth");
   if (token) {
     // Many existing middlewares in this project expect raw token (no Bearer)
-    (config.headers as any).Authorization = token;
-    (config.headers as any)["x-auth-token"] = token;
+    (config.headers as Record<string, unknown>).Authorization = token;
+    (config.headers as Record<string, unknown>)["x-auth-token"] = token;
   }
   return config;
 });
 
 // Error handling interceptors
-const handleError = (error: any) => {
-  if (error.code === 'ERR_NETWORK') {
+const handleError = (error: unknown) => {
+  if ((error as { code?: string }).code === 'ERR_NETWORK') {
     console.error('🌐 Network Error: Backend server unreachable or CORS issue');
-    return Promise.reject({
-      ...error,
-      message: 'Server connection failed. Please check your internet connection or try again later.'
-    });
+        return Promise.reject({
+          ...(error as object),
+          message: 'Server connection failed. Please check your internet connection or try again later.'
+        });
   }
   
-  if (error.response?.status === 403) {
+  if ((error as { response?: { status?: number } }).response?.status === 403) {
     console.error('🚫 Forbidden: CORS policy or authentication issue');
     return Promise.reject({
-      ...error,
+      ...(error as object),
       message: 'Access denied. Please refresh the page and try again.'
     });
   }
   
-  if (error.response?.status === 404) {
+  if ((error as { response?: { status?: number } }).response?.status === 404) {
     console.error('❌ Not Found: API endpoint does not exist');
     return Promise.reject({
-      ...error,
+      ...(error as object),
       message: 'Requested resource not found.'
     });
   }

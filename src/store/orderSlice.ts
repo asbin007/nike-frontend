@@ -5,7 +5,7 @@ import { APIS } from "../globals/http";
 import { AppDispatch } from "./store";
 import toast from "react-hot-toast";
 import { socket } from "../App";
-import { fetchRecommendations } from './recommendationsSlice'
+import { addToPurchaseHistory } from './recommendationsSlice'
 
 interface IProduct {
   productId: string;
@@ -272,39 +272,78 @@ export function checkKhaltiPaymentStatus(pidx: string) {
 export function orderItem(data: IData) {
   return async function orderItemThunk(dispatch: AppDispatch) {
     try {
+      console.log('🚀 OrderItem: Starting order creation with data:', {
+        paymentMethod: data.paymentMethod,
+        totalPrice: data.totalPrice,
+        itemsCount: data.Shoe?.length || 0
+      });
+      
       const response = await APIS.post("/order", data);
+      console.log('📦 OrderItem: Backend response:', {
+        status: response.status,
+        hasUrl: !!response.data.url,
+        url: response.data.url,
+        data: response.data
+      });
+      
       if (response.status === 201) {
         dispatch(setStatus(Status.SUCCESS));
         dispatch(setItems(response.data.data));
-        console.log(response.data.url, "URL");
         
         if (response.data.url) {
+          // Khalti payment flow
+          console.log('💳 OrderItem: Khalti payment detected, redirecting to:', response.data.url);
           dispatch(setKhaltiUrl(response.data.url));
           
           // For Khalti payments, store pidx for verification
           if (data.paymentMethod === PaymentMethod.Khalti && response.data.pidx) {
             localStorage.setItem('khalti_pidx', response.data.pidx);
-            console.log('Stored pidx:', response.data.pidx); // Debug log
+            console.log('Stored pidx:', response.data.pidx);
           }
           
           // Redirect to Khalti payment page
           window.location.href = response.data.url;
         } else {
-          // For COD payments
-          toast.success("Order created successfully!");
+          // COD payment flow
+          console.log('💰 OrderItem: COD payment detected, redirecting to success page');
+          
+          // Track purchase history for recommendations
           try {
-            // Trigger recommendation refresh post-order
-            (dispatch as AppDispatch)(fetchRecommendations());
+            if (Array.isArray(data.Shoe)) {
+              // Get the actual product data from the response
+              const orderItems = response.data.data;
+              if (Array.isArray(orderItems)) {
+                orderItems.forEach((orderItem: any) => {
+                  if (orderItem.Shoe) {
+                    dispatch(addToPurchaseHistory({
+                      id: orderItem.Shoe.id,
+                      name: orderItem.Shoe.name,
+                      price: orderItem.Shoe.price,
+                      originalPrice: orderItem.Shoe.originalPrice || orderItem.Shoe.mrp || orderItem.Shoe.price,
+                      images: Array.isArray(orderItem.Shoe.images) ? orderItem.Shoe.images : [orderItem.Shoe.images || '/images/product-1.jpg'],
+                      brand: orderItem.Shoe.brand,
+                      category: 'Shoes',
+                      reason: 'Purchased'
+                    }));
+                  }
+                });
+              }
+            }
           } catch (e) {
-            console.log(e);
+            console.log('Error tracking purchase history:', e);
           }
+          
+          // Redirect to COD success page
+          console.log('🔄 OrderItem: About to redirect to /cod-success');
+          window.location.href = '/cod-success';
         }
       } else {
+        console.log('❌ OrderItem: Order creation failed with status:', response.status);
         dispatch(setStatus(Status.ERROR));
       }
     } catch (error) {
+      console.log('❌ OrderItem: Order creation error:', error);
       dispatch(setStatus(Status.ERROR));
-      console.log(error);
     }
   };
 }
@@ -398,7 +437,7 @@ export function refreshOrders() {
 
 // Simple refresh function - no auto-refresh
 export function startAutoRefresh() {
-  return function startAutoRefreshThunk(_dispatch: AppDispatch) {
+  return function startAutoRefreshThunk() {
     // No auto-refresh - rely on WebSocket for real-time updates
     console.log("🔄 Auto-refresh disabled - using WebSocket for real-time updates");
     return () => {}; // No cleanup needed

@@ -1,6 +1,6 @@
 // components/Footer.jsx
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Mail, Phone, MapPin, Clock, Heart, ArrowUp, Calendar } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Mail, Phone, MapPin, Heart, ArrowUp } from 'lucide-react';
 
 export default function Footer() {
     const scrollToTop = () => {
@@ -8,19 +8,13 @@ export default function Footer() {
     };
 
     // Get current day
-    const getCurrentDay = () => {
-      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const today = new Date().getDay();
-      return days[today];
-    };
 
-    const currentDay = getCurrentDay();
 
     return (
       <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-black text-gray-300">
         {/* Main Footer */}
         <div className="container mx-auto px-4 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Company Info */}
             <div className="space-y-6">
               <div className="flex items-center space-x-3">
@@ -118,47 +112,6 @@ export default function Footer() {
               </div>
             </div>
 
-            {/* Business Hours */}
-            <div className="space-y-6">
-              <h3 className="text-white text-xl font-semibold mb-4">Business Hours</h3>
-              <div className="space-y-3">
-                {/* Current Day Display */}
-                <div className="flex items-center space-x-3 mb-4">
-                  <Calendar className="w-5 h-5 text-green-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-gray-400 text-sm">Today is</p>
-                    <p className="text-white font-semibold">{currentDay}</p>
-                  </div>
-                </div>
-                
-                {/* 24/7 Online Status */}
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-5 h-5 bg-green-500 rounded-full flex-shrink-0 animate-pulse"></div>
-                  <div>
-                    <p className="text-gray-400 text-sm">Online Status</p>
-                    <p className="text-green-400 font-semibold">24/7 Available</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  <Clock className="w-5 h-5 text-indigo-500 flex-shrink-0" />
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Monday - Friday:</span>
-                      <span className="text-white">8AM - 10PM</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Saturday:</span>
-                      <span className="text-white">9AM - 8PM</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Sunday:</span>
-                      <span className="text-red-400">Closed</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 

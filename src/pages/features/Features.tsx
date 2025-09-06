@@ -54,27 +54,27 @@ export default function Features() {
     ];
   
     return (
-      <section className="py-16 bg-gradient-to-br from-gray-50 to-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+      <section className="py-8 sm:py-12 md:py-16 bg-gradient-to-br from-gray-50 to-white">
+        <div className="container mx-auto px-3 sm:px-4">
+          <div className="text-center mb-8 sm:mb-10 md:mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
               Why Choose ShoeMart?
             </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+            <p className="text-gray-600 text-sm sm:text-base md:text-lg max-w-2xl mx-auto px-4">
               We provide the best shopping experience with premium quality footwear and excellent customer service
             </p>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {features.map((feature, index) => (
-              <div key={index} className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 p-6 border border-gray-100">
-                <div className={`text-white mb-4 flex justify-center w-16 h-16 rounded-2xl bg-gradient-to-r ${feature.color} mx-auto group-hover:scale-110 transition-transform duration-300`}>
+              <div key={index} className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 p-4 sm:p-6 border border-gray-100">
+                <div className={`text-white mb-3 sm:mb-4 flex justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-r ${feature.color} mx-auto group-hover:scale-110 transition-transform duration-300`}>
                   <div className="flex items-center justify-center">
                     {feature.icon}
                   </div>
                 </div>
-                <h3 className="font-bold text-lg mb-3 text-gray-900 text-center">{feature.title}</h3>
-                <p className="text-gray-600 text-center text-sm leading-relaxed">{feature.description}</p>
+                <h3 className="font-bold text-base sm:text-lg mb-2 sm:mb-3 text-gray-900 text-center">{feature.title}</h3>
+                <p className="text-gray-600 text-center text-xs sm:text-sm leading-relaxed">{feature.description}</p>
                 
                 {/* Hover effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -83,25 +83,25 @@ export default function Features() {
           </div>
           
           {/* Additional Info */}
-          <div className="text-center mt-12">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white">
-              <h3 className="text-2xl font-bold mb-4">
+          <div className="text-center mt-8 sm:mt-10 md:mt-12">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-4 sm:p-6 md:p-8 text-white">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4">
                 🎉 Special Offers for Our Customers
               </h3>
-              <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
+              <p className="text-indigo-100 mb-4 sm:mb-6 max-w-2xl mx-auto text-sm sm:text-base">
                 Join our loyalty program and get exclusive discounts, early access to new collections, and personalized recommendations.
               </p>
-              <div className="flex flex-wrap justify-center gap-4 text-sm">
-                <span className="bg-white/25 backdrop-blur-sm rounded-full px-4 py-2 border border-white/30">
+              <div className="flex flex-wrap justify-center gap-2 sm:gap-4 text-xs sm:text-sm">
+                <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 sm:px-4 py-1 sm:py-2 border border-white/30">
                   🎁 Free Gifts
                 </span>
-                <span className="bg-white/25 backdrop-blur-sm rounded-full px-4 py-2 border border-white/30">
+                <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 sm:px-4 py-1 sm:py-2 border border-white/30">
                   💰 Loyalty Points
                 </span>
-                <span className="bg-white/25 backdrop-blur-sm rounded-full px-4 py-2 border border-white/30">
+                <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 sm:px-4 py-1 sm:py-2 border border-white/30">
                   🚀 Early Access
                 </span>
-                <span className="bg-white/25 backdrop-blur-sm rounded-full px-4 py-2 border border-white/30">
+                <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 sm:px-4 py-1 sm:py-2 border border-white/30">
                   📧 Exclusive Deals
                 </span>
               </div>

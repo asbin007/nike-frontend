@@ -24,7 +24,9 @@ import SearchProducts from "./pages/product/SearchProducts";
 import Wishlist from "./pages/wishlist/Wishlist";
 import ProductComparison from "./pages/comparison/ProductComparison";
 import ChatWidget from "./components/ChatWidget";
-import Recommended from "./pages/recommendations/Recommended";
+import AllCollections from "./pages/product/Collection/AllCollections";
+import PaymentSuccess from "./pages/payment/PaymentSuccess";
+import CODSuccess from "./pages/payment/CODSuccess";
 
 // Add version for deployment tracking
 const APP_VERSION = "1.0.2";
@@ -129,13 +131,16 @@ const AppContent = () => {
     dispatch(loadUserFromStorage());
   }, [dispatch]);
 
-  // Check for Khalti payment verification on app load
+  // Check for Khalti payment verification on app load (fallback for non-payment pages)
   useEffect(() => {
-    const pidx = localStorage.getItem('khalti_pidx');
-    if (pidx) {
-      console.log('Found pidx in localStorage (App):', pidx);
-      dispatch(checkKhaltiPaymentStatus(pidx));
-      localStorage.removeItem('khalti_pidx');
+    // Only check localStorage if we're not on the payment success page
+    if (window.location.pathname !== '/payment-success') {
+      const pidx = localStorage.getItem('khalti_pidx');
+      if (pidx) {
+        console.log('Found pidx in localStorage (App fallback):', pidx);
+        dispatch(checkKhaltiPaymentStatus(pidx));
+        localStorage.removeItem('khalti_pidx');
+      }
     }
   }, [dispatch]);
 
@@ -345,15 +350,16 @@ const AppContent = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/search" element={<SearchProducts />} />
         <Route path="/collection" element={<Collections />} />
-        <Route path="/collections" element={<Collections />} />
+        <Route path="/collections" element={<AllCollections />} />
         <Route path="/my-cart" element={<MyCart />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/my-orders" element={<MyOrder />} />
         <Route path="/my-orders/:id" element={<MyOrderDetails />} />
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/comparison" element={<ProductComparison />} />
-        <Route path="/recommended" element={<Recommended />} />
         <Route path="/trending" element={<ProductFilters />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/cod-success" element={<CODSuccess />} />
         
         {/* Dynamic routes - must be last */}
         <Route path="/:collection/:brand/:id" element={<ProductDetail />} />

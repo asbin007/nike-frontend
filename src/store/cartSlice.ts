@@ -3,7 +3,7 @@ import { AppDispatch } from "./store";
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { Status } from "../globals/types/types";
 import { APIS } from "../globals/http";
-import { fetchRecommendations } from './recommendationsSlice'
+import { addToCartHistory } from './recommendationsSlice'
 
 interface ICartItem {
   id: string;
@@ -98,11 +98,61 @@ export const addToCart = createAsyncThunk(
         quantity: 1,
       });
       if (res.status >= 200 && res.status < 300) {
-        // Refresh recommendations immediately after add-to-cart
+        console.log('✅ Cart API response successful:', res.data);
+        // Track cart activity for recommendations
         try {
-          // fire-and-forget
-          (thunkAPI.dispatch as any)(fetchRecommendations());
-          // Sync cart from server in case backend returns single item or different shape
+          const cartItem = res.data.data;
+          console.log('🛒 Cart item added:', cartItem);
+          console.log('🛒 Cart item structure:', {
+            hasCartItem: !!cartItem,
+            hasShoe: !!cartItem?.Shoe,
+            shoeData: cartItem?.Shoe,
+            allKeys: cartItem ? Object.keys(cartItem) : []
+          });
+          
+          // Check if cartItem is an array (new format) or has Shoe property (old format)
+          let shoeData = null;
+          
+          if (Array.isArray(cartItem)) {
+            // New format: cartItem is an array, get the latest item
+            const latestItem = cartItem[cartItem.length - 1];
+            shoeData = latestItem?.Shoe;
+            console.log('🔄 Using array format, latest item:', latestItem);
+          } else if (cartItem && cartItem.Shoe) {
+            // Old format: cartItem has Shoe property
+            shoeData = cartItem.Shoe;
+            console.log('🔄 Using object format with Shoe property');
+          }
+          
+          if (shoeData) {
+            const cartHistoryItem = {
+              id: shoeData.id,
+              name: shoeData.name,
+              price: shoeData.price,
+              originalPrice: shoeData.originalPrice || shoeData.price,
+              images: Array.isArray(shoeData.images) ? shoeData.images : [shoeData.images || '/images/product-1.jpg'],
+              brand: shoeData.brand,
+              category: 'Shoes', // Default category
+              reason: 'Added to cart'
+            };
+            console.log('📝 Adding to cart history:', cartHistoryItem);
+            thunkAPI.dispatch(addToCartHistory(cartHistoryItem));
+            console.log('✅ Cart history dispatch completed');
+          } else {
+            console.log('❌ No valid shoe data found in cart item');
+            console.log('🔍 Cart item structure:', {
+              isArray: Array.isArray(cartItem),
+              length: Array.isArray(cartItem) ? cartItem.length : 'N/A',
+              firstItem: Array.isArray(cartItem) ? cartItem[0] : cartItem,
+              allKeys: cartItem ? Object.keys(cartItem) : []
+            });
+          }
+        } catch (error) {
+          console.error('❌ Error tracking cart activity:', error);
+        }
+        
+        // Sync cart from server in case backend returns single item or different shape
+        try {
           (thunkAPI.dispatch as any)(fetchCartItems());
         } catch {}
         return res.data.data;

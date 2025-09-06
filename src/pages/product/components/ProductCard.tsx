@@ -75,12 +75,12 @@ const ProductCard: React.FC<ICardProps> = ({ product, showActions = true }) => {
         image: product.images?.[0] ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${product.images[0].replace("/uploads", "")}.jpg` : "",
         brand: product.brand,
         category: product.Category?.categoryName || "",
-        description: product.description?.[0] || "",
+        description: product.description?.[0] || product.description || "Premium quality shoes designed for comfort and style",
         inStock: (product.totalStock && product.totalStock > 0) || product.isStock || false,
         totalStock: product.totalStock || 0,
 
-        color: product.colors || [],
-        size: product.sizes || [],
+        color: Array.isArray(product.colors) ? product.colors : (product.colors ? [product.colors] : []),
+        size: Array.isArray(product.sizes) ? product.sizes : (product.sizes ? [product.sizes] : []),
         isNew: product.isNew,
         rating: 4.5,
         reviewCount: 0,
@@ -106,7 +106,7 @@ const ProductCard: React.FC<ICardProps> = ({ product, showActions = true }) => {
   const brandSlug = (product.brand || '').toLowerCase();
   return (
     <Link to={`/men/${brandSlug}/${product.id}`}>
-      <div className="group relative bg-gray-50 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition duration-300">
+      <div className="group relative bg-gray-50 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition duration-300 h-full flex flex-col">
         {/* Badges */}
         <div className="absolute top-3 left-3 flex space-x-2 z-10">
           {product.isNew && (
@@ -156,27 +156,27 @@ const ProductCard: React.FC<ICardProps> = ({ product, showActions = true }) => {
         )}
 
         {/* Product Image */}
-        <div className="h-full w-full overflow-hidden object-cover ">
+        <div className="relative w-full h-48 overflow-hidden">
           <img
             src={imageUrl}
             alt={product?.name}
-            className="w-full h-auto rounded"
+            className="w-full h-full object-cover rounded"
           />
         </div>
 
         {/* Product Info */}
-        <div className="p-4">
+        <div className="p-4 flex flex-col flex-grow">
           <div className="flex justify-between items-start mb-2">
-            <div>
-              <h3 className="font-bold text-lg">{product.name}</h3>
-              <p className="text-gray-500 text-sm">{product.brand}</p>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-lg line-clamp-2 leading-tight">{product.name}</h3>
+              <p className="text-gray-500 text-sm mt-1">{product.brand}</p>
             </div>
-            <span className="text-sm bg-gray-200 px-2 py-1 rounded">
+            <span className="text-sm bg-gray-200 px-2 py-1 rounded flex-shrink-0 ml-2">
               {product.Category?.categoryName}
             </span>
           </div>
 
-          <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center justify-between mt-auto">
             <div>
               <span className="font-bold text-indigo-600">
                 Rs{product.price.toFixed(2)}

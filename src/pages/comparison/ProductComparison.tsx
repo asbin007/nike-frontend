@@ -106,8 +106,6 @@ const ProductComparison: React.FC = () => {
     { key: 'inStock', label: 'Stock Status', type: 'boolean' },
     { key: 'totalStock', label: 'Total Stock', type: 'number' },
     { key: 'isNew', label: 'New Product', type: 'boolean' },
-    { key: 'RAM', label: 'RAM Options', type: 'array' },
-    { key: 'ROM', label: 'Storage Options', type: 'array' },
     { key: 'color', label: 'Color Options', type: 'array' },
     { key: 'size', label: 'Size Options', type: 'array' },
     { key: 'description', label: 'Description', type: 'text' },
@@ -121,13 +119,13 @@ const ProductComparison: React.FC = () => {
       case 'price':
         return (
           <span className="font-bold text-indigo-600">
-            रु {value?.toLocaleString() || 'N/A'}
+            Rs {value?.toLocaleString() || 'N/A'}
           </span>
         );
       
       case 'rating':
         return (
-          <div className="flex items-center">
+          <div className="flex items-center justify-center">
             <div className="flex items-center">
               {[...Array(5)].map((_, i) => (
                 <Star
@@ -143,16 +141,20 @@ const ProductComparison: React.FC = () => {
         );
       
       case 'boolean':
-        return value ? (
-          <Check className="w-5 h-5 text-green-500" />
-        ) : (
-          <XIcon className="w-5 h-5 text-red-500" />
+        return (
+          <div className="flex justify-center">
+            {value ? (
+              <Check className="w-5 h-5 text-green-500" />
+            ) : (
+              <XIcon className="w-5 h-5 text-red-500" />
+            )}
+          </div>
         );
       
       case 'array':
         if (Array.isArray(value) && value.length > 0) {
           return (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 justify-center">
               {value.slice(0, 3).map((item: string, index: number) => (
                 <span
                   key={index}
@@ -167,97 +169,137 @@ const ProductComparison: React.FC = () => {
             </div>
           );
         }
-        return <span className="text-gray-500">N/A</span>;
+        // Show default values for colors and sizes if not available
+        if (spec.key === 'color') {
+          return (
+            <div className="flex flex-wrap gap-1 justify-center">
+              <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">Black</span>
+              <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">White</span>
+            </div>
+          );
+        }
+        if (spec.key === 'size') {
+          return (
+            <div className="flex flex-wrap gap-1 justify-center">
+              <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">38</span>
+              <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">39</span>
+              <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">40</span>
+            </div>
+          );
+        }
+        return <span className="text-gray-500 text-center">N/A</span>;
       
       default:
-        return <span className="text-gray-900">{value || 'N/A'}</span>;
+        if (spec.key === 'description') {
+          return <span className="text-gray-900 text-sm text-center">{value || 'Premium quality shoes designed for comfort and style'}</span>;
+        }
+        return <span className="text-gray-900 text-center">{value || 'N/A'}</span>;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-4 sm:py-6 md:py-8">
+      <div className="container mx-auto px-3 sm:px-4 max-w-7xl">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Product Comparison</h1>
-            <p className="text-gray-600">
-              Compare {comparisonProducts.length} products side by side
-            </p>
-          </div>
-          <div className="flex space-x-4 mt-4 md:mt-0">
-            <button
-              onClick={handleClearComparison}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center"
-            >
-              <X className="w-4 h-4 mr-2" />
-              Clear All
-            </button>
-            <Link
-              to="/all-shoes"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Add More
-            </Link>
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                Product Comparison
+              </h1>
+              <p className="text-sm sm:text-base md:text-lg text-gray-600">
+                Compare <span className="font-semibold text-indigo-600">{comparisonProducts.length}</span> products side by side
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 mt-4 md:mt-0 w-full sm:w-auto">
+              <button
+                onClick={handleClearComparison}
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-300 transform hover:scale-105 shadow-md flex items-center justify-center text-sm sm:text-base"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear All
+              </button>
+              <Link
+                to="/all-shoes"
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-md text-center text-sm sm:text-base"
+              >
+                Add More Products
+              </Link>
+            </div>
           </div>
         </div>
 
         {/* Comparison Table */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
+            <table className="w-full min-w-[800px]">
+              <thead className="bg-gradient-to-r from-indigo-50 to-purple-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900 w-48">
-                    Specifications
+                  <th className="px-3 sm:px-6 py-4 sm:py-6 text-left text-sm sm:text-base md:text-lg font-bold text-gray-900 w-32 sm:w-48 border-r border-gray-200">
+                    <div className="flex items-center">
+                      <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-indigo-600" />
+                      <span className="hidden sm:inline">Specifications</span>
+                      <span className="sm:hidden">Specs</span>
+                    </div>
                   </th>
                   {comparisonProducts.map((product) => (
-                    <th key={product.id} className="px-6 py-4 text-center w-64">
-                      <div className="relative">
+                    <th key={product.id} className="px-3 sm:px-6 py-4 sm:py-6 text-center w-60 sm:w-80 border-r border-gray-200 last:border-r-0">
+                      <div className="relative bg-white rounded-lg p-2 sm:p-4 border border-gray-100 hover:shadow-lg transition-shadow duration-300">
                         {/* Remove Button */}
                         <button
                           onClick={() => handleRemoveFromComparison(product.id)}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                          className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-6 h-6 sm:w-7 sm:h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-all duration-300 transform hover:scale-110 shadow-lg"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-3 h-3 sm:w-4 sm:h-4" />
                         </button>
                         
                         {/* Product Image */}
-                        <div className="w-32 h-32 mx-auto mb-4 rounded-lg overflow-hidden">
+                        <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 mx-auto mb-3 sm:mb-4 rounded-xl overflow-hidden border-2 border-gray-100 shadow-md">
                           <img
-                            src={product.image}
+                            src={product.image || "https://via.placeholder.com/300x300?text=No+Image"}
                             alt={product.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = "https://via.placeholder.com/300x300?text=No+Image";
+                            }}
                           />
                         </div>
                         
                         {/* Product Name */}
-                        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                        <h3 className="font-bold text-gray-900 mb-2 sm:mb-3 line-clamp-2 text-center text-xs sm:text-sm leading-tight">
                           {product.name}
                         </h3>
                         
+                        {/* Price */}
+                        <div className="text-center mb-3 sm:mb-4">
+                          <span className="text-sm sm:text-base md:text-xl font-bold text-indigo-600">
+                            Rs {product.price?.toLocaleString()}
+                          </span>
+                        </div>
+                        
                         {/* Action Buttons */}
-                        <div className="flex justify-center space-x-2">
+                        <div className="flex justify-center space-x-2 sm:space-x-3">
                           <button
                             onClick={() => handleAddToCart(product)}
-                            className="p-2 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors"
+                            className="p-2 sm:p-3 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-all duration-300 transform hover:scale-110 shadow-md"
                             title="Add to Cart"
                           >
-                            <ShoppingCart className="w-4 h-4" />
+                            <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
                           </button>
                           <button
                             onClick={() => handleAddToWishlist(product)}
-                            className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors"
+                            className="p-2 sm:p-3 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-all duration-300 transform hover:scale-110 shadow-md"
                             title="Add to Wishlist"
                           >
-                            <Heart className="w-4 h-4" />
+                            <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
                           </button>
                           <Link
                             to={`/men/${product.brand}/${product.id}`}
-                            className="p-2 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors"
+                            className="p-2 sm:p-3 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-all duration-300 transform hover:scale-110 shadow-md"
                             title="View Details"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
                           </Link>
@@ -269,12 +311,12 @@ const ProductComparison: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {specifications.map((spec, index) => (
-                  <tr key={spec.key} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                  <tr key={spec.key} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-indigo-50 transition-colors duration-200`}>
+                    <td className="px-3 sm:px-6 py-3 sm:py-5 text-xs sm:text-sm font-semibold text-gray-800 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-indigo-50">
                       {spec.label}
                     </td>
                     {comparisonProducts.map((product) => (
-                      <td key={`${product.id}-${spec.key}`} className="px-6 py-4 text-center">
+                      <td key={`${product.id}-${spec.key}`} className="px-3 sm:px-6 py-3 sm:py-5 text-center border-r border-gray-200 last:border-r-0">
                         {renderSpecValue(product, spec)}
                       </td>
                     ))}
@@ -286,21 +328,21 @@ const ProductComparison: React.FC = () => {
         </div>
 
         {/* Summary */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="font-semibold text-gray-900 mb-2">Price Range</h3>
-            <p className="text-2xl font-bold text-indigo-600">
-              रु {Math.min(...comparisonProducts.map(p => p.price)).toLocaleString()} - रु {Math.max(...comparisonProducts.map(p => p.price)).toLocaleString()}
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+            <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Price Range</h3>
+            <p className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-600">
+              Rs {Math.min(...comparisonProducts.map(p => p.price)).toLocaleString()} - Rs {Math.max(...comparisonProducts.map(p => p.price)).toLocaleString()}
             </p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="font-semibold text-gray-900 mb-2">Average Rating</h3>
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+            <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Average Rating</h3>
             <div className="flex items-center">
               <div className="flex items-center">
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
-                    className={`w-5 h-5 ${
+                    className={`w-4 h-4 sm:w-5 sm:h-5 ${
                       i < (comparisonProducts.reduce((sum, p) => sum + (p.rating || 0), 0) / comparisonProducts.length)
                         ? 'text-yellow-400 fill-current'
                         : 'text-gray-300'
@@ -308,15 +350,17 @@ const ProductComparison: React.FC = () => {
                   />
                 ))}
               </div>
-              <span className="ml-2 text-lg font-semibold">
+              <span className="ml-2 text-base sm:text-lg font-semibold">
                 {(comparisonProducts.reduce((sum, p) => sum + (p.rating || 0), 0) / comparisonProducts.length).toFixed(1)}
               </span>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="font-semibold text-gray-900 mb-2">In Stock</h3>
-            <p className="text-2xl font-bold text-green-600">
-              {comparisonProducts.filter(p => p.inStock).length} / {comparisonProducts.length}
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow sm:col-span-2 md:col-span-1">
+            <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Availability</h3>
+            <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">
+              {comparisonProducts.filter(p => p.inStock).length === comparisonProducts.length 
+                ? 'All Available' 
+                : `${comparisonProducts.filter(p => p.inStock).length} Available`}
             </p>
           </div>
         </div>

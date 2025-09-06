@@ -32,8 +32,8 @@ const SearchProducts = () => {
   );
 
   return (
-    <div className="p-6">
-      <h2 className="text-xl font-semibold mb-4">
+    <div className="p-3 sm:p-4 md:p-6">
+      <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
         Search Results for:{" "}
         <span className="text-blue-600">"{query.get("query")}"</span>
       </h2>
@@ -42,9 +42,9 @@ const SearchProducts = () => {
       <RecentSearches />
 
       {filtered.length === 0 ? (
-        <p className="text-gray-600">No matching products found.</p>
+        <p className="text-sm sm:text-base text-gray-600">No matching products found.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
           {filtered.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
@@ -60,13 +60,13 @@ const RecentSearches = () => {
   if (history.length === 0) return null;
 
   return (
-    <div className="mb-4">
-      <h3 className="text-lg font-medium mb-2">Recent Searches</h3>
-      <div className="flex gap-2 flex-wrap">
+    <div className="mb-3 sm:mb-4">
+      <h3 className="text-base sm:text-lg font-medium mb-2">Recent Searches</h3>
+      <div className="flex gap-1 sm:gap-2 flex-wrap">
         {history.map((item: string, idx: number) => (
           <span
             key={idx}
-            className="px-3 py-1 bg-gray-200 rounded-full text-sm cursor-pointer hover:bg-gray-300"
+            className="px-2 sm:px-3 py-1 bg-gray-200 rounded-full text-xs sm:text-sm cursor-pointer hover:bg-gray-300"
             onClick={() => (window.location.href = `/search?query=${item}`)}
           >
             {item}

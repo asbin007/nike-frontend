@@ -326,11 +326,15 @@ export default function Navbar() {
                           }}
                         >
                           <img 
-                            src={item.image.startsWith('http') 
-                              ? item.image 
-                              : item.image.startsWith('/images/') 
-                                ? item.image 
-                                : `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${item.image.replace('/uploads','')}.jpg`}
+                            src={
+                              item.images?.[0]?.startsWith('http') 
+                                ? item.images[0]
+                                : item.images?.[0]?.startsWith('/images/') 
+                                  ? item.images[0]
+                                  : item.images?.[0] 
+                                    ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${item.images[0].replace('/uploads','')}.jpg`
+                                    : '/images/product-1.jpg'
+                            }
                             alt={item.name} 
                             className="w-10 h-10 rounded-md object-cover"
                             onError={(e) => { (e.target as HTMLImageElement).src = '/images/product-1.jpg'; }}
@@ -362,11 +366,15 @@ export default function Navbar() {
                           }}
                         >
                           <img 
-                            src={item.image.startsWith('http') 
-                              ? item.image 
-                              : item.image.startsWith('/images/') 
-                                ? item.image 
-                                : `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${item.image.replace('/uploads','')}.jpg`}
+                            src={
+                              item.images?.[0]?.startsWith('http') 
+                                ? item.images[0]
+                                : item.images?.[0]?.startsWith('/images/') 
+                                  ? item.images[0]
+                                  : item.images?.[0] 
+                                    ? `https://res.cloudinary.com/dxpe7jikz/image/upload/v1750340657${item.images[0].replace('/uploads','')}.jpg`
+                                    : '/images/product-1.jpg'
+                            }
                             alt={item.name} 
                             className="w-10 h-10 rounded-md object-cover"
                             onError={(e) => { (e.target as HTMLImageElement).src = '/images/product-1.jpg'; }}

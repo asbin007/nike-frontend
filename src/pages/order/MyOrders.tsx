@@ -206,27 +206,27 @@ function MyOrder() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-4 sm:py-6 md:py-8 px-3 sm:px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
-            <div className="flex items-center space-x-4">
-              <div className="bg-blue-100 p-3 rounded-full">
-                <Package className="w-8 h-8 text-blue-600" />
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
+                <Package className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-800">My Orders</h1>
-                <p className="text-gray-600 mt-1">Track and manage your orders</p>
-                <div className="flex items-center space-x-2 mt-2">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">My Orders</h1>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">Track and manage your orders</p>
+                <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 mt-2">
                   <div className={`flex items-center space-x-1 ${isSocketConnected ? 'text-green-600' : 'text-red-600'}`}>
-                    {isSocketConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-                    <span className="text-sm font-medium">
+                    {isSocketConnected ? <Wifi className="w-3 h-3 sm:w-4 sm:h-4" /> : <WifiOff className="w-3 h-3 sm:w-4 sm:h-4" />}
+                    <span className="text-xs sm:text-sm font-medium">
                       {isSocketConnected ? 'Real-time connected' : 'Manual mode'}
                     </span>
                   </div>
-                  <span className="text-gray-400">•</span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-gray-400 hidden sm:inline">•</span>
+                  <span className="text-xs sm:text-sm text-gray-500">
                     Last updated: {lastUpdate.toLocaleTimeString()}
                   </span>
                 </div>
@@ -237,26 +237,26 @@ function MyOrder() {
             <div className="relative w-full lg:w-80">
               <div className="relative">
                 <input
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                  className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-sm sm:text-base"
                   placeholder="Search orders..."
                   onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
                 />
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
               </div>
             </div>
             
             {/* Refresh Button */}
             <button
               onClick={handleManualRefresh}
-              className="flex items-center space-x-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors duration-200"
+              className="flex items-center space-x-2 px-3 sm:px-4 py-2 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors duration-200 text-sm sm:text-base"
             >
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="font-medium">Refresh</span>
             </button>
           </div>
 
           {/* Status Filter */}
-          <div className="mt-6 flex flex-wrap gap-2">
+          <div className="mt-4 sm:mt-6 flex flex-wrap gap-2">
             {["all", ...Object.values(OrderStatus)].map((status) => {
               const statusInfo = status === "all" 
                 ? { icon: Package, color: "text-gray-600", bgColor: "bg-gray-100" }
@@ -267,13 +267,13 @@ function MyOrder() {
                 <button
                   key={status}
                   onClick={() => setSelectedStatus(status)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-full border transition-all duration-300 ${
+                  className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border transition-all duration-300 text-xs sm:text-sm ${
                     selectedStatus === status
                       ? `${statusInfo.bgColor} ${statusInfo.color} border-current`
                       : "bg-white border-gray-200 hover:border-gray-300"
                   }`}
                 >
-                  <StatusIcon className="w-4 h-4" />
+                  <StatusIcon className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="font-medium capitalize">{status}</span>
                 </button>
               );
@@ -283,9 +283,9 @@ function MyOrder() {
 
         {/* Orders Table */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-            <h2 className="text-xl font-bold text-white flex items-center">
-              <Package className="w-6 h-6 mr-2" />
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-6 py-3 sm:py-4">
+            <h2 className="text-lg sm:text-xl font-bold text-white flex items-center">
+              <Package className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
               Order History
             </h2>
           </div>
@@ -294,7 +294,7 @@ function MyOrder() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-gray-600">
                     Order ID
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">

@@ -221,22 +221,22 @@ function MyOrderDetail() {
   const StatusIcon = statusInfo.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4 md:px-6 2xl:px-20">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-4 sm:py-6 md:py-8 px-3 sm:px-4 md:px-6 2xl:px-20">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
-            <div className="flex items-center space-x-4">
-              <div className="bg-blue-100 p-3 rounded-full">
-                <Package className="w-8 h-8 text-blue-600" />
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
+                <Package className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-3xl lg:text-4xl font-bold text-gray-800">
+                <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">
                   Order #{order?.orderId || "N/A"}
                 </h1>
-                <div className="flex items-center space-x-2 mt-2">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <p className="text-gray-600">
+                <div className="flex items-center space-x-2 mt-1 sm:mt-2">
+                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
+                  <p className="text-sm sm:text-base text-gray-600">
                     {order?.createdAt
                       ? new Date(order?.createdAt).toLocaleDateString('en-US', {
                           year: 'numeric',
@@ -250,12 +250,12 @@ function MyOrderDetail() {
             </div>
             
             {/* Status Badges */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
               {/* Order Status Badge */}
-              <div className={`flex items-center space-x-2 px-4 py-2 rounded-full ${statusInfo.bgColor}`}>
-                <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
+              <div className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-full ${statusInfo.bgColor}`}>
+                <StatusIcon className={`w-4 h-4 sm:w-5 sm:h-5 ${statusInfo.color}`} />
                 <div className="flex flex-col">
-                  <span className={`font-semibold ${statusInfo.color}`}>
+                  <span className={`font-semibold text-xs sm:text-sm ${statusInfo.color}`}>
                     {customer?.orderStatus || "N/A"}
                   </span>
                   <span className={`text-xs ${statusInfo.color} opacity-75`}>
@@ -269,10 +269,10 @@ function MyOrderDetail() {
                 const paymentStatusInfo = getPaymentStatusInfo(order.Order.Payment.paymentStatus);
                 const PaymentStatusIcon = paymentStatusInfo.icon;
                 return (
-                  <div className={`flex items-center space-x-2 px-4 py-2 rounded-full ${paymentStatusInfo.bgColor}`}>
-                    <PaymentStatusIcon className={`w-5 h-5 ${paymentStatusInfo.color}`} />
+                  <div className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-full ${paymentStatusInfo.bgColor}`}>
+                    <PaymentStatusIcon className={`w-4 h-4 sm:w-5 sm:h-5 ${paymentStatusInfo.color}`} />
                     <div className="flex flex-col">
-                      <span className={`font-semibold ${paymentStatusInfo.color}`}>
+                      <span className={`font-semibold text-xs sm:text-sm ${paymentStatusInfo.color}`}>
                         {paymentStatusInfo.text}
                       </span>
                       <span className={`text-xs ${paymentStatusInfo.color} opacity-75`}>
@@ -286,23 +286,23 @@ function MyOrderDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {/* Main Content */}
-          <div className="xl:col-span-2 space-y-6">
+          <div className="xl:col-span-2 space-y-4 sm:space-y-6">
             {/* Cart Items */}
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-                <h2 className="text-xl font-bold text-white flex items-center">
-                  <Package className="w-6 h-6 mr-2" />
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-6 py-3 sm:py-4">
+                <h2 className="text-lg sm:text-xl font-bold text-white flex items-center">
+                  <Package className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
                   Customer's Cart
                 </h2>
               </div>
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 {orderDetails.map((od, index) => (
                   <div
                     key={od.id}
-                    className={`flex flex-col md:flex-row items-start space-y-4 md:space-y-0 md:space-x-6 p-4 rounded-xl border ${
-                      index !== orderDetails.length - 1 ? 'border-b border-gray-200 mb-4' : ''
+                    className={`flex flex-col md:flex-row items-start space-y-3 sm:space-y-4 md:space-y-0 md:space-x-4 sm:md:space-x-6 p-3 sm:p-4 rounded-xl border ${
+                      index !== orderDetails.length - 1 ? 'border-b border-gray-200 mb-3 sm:mb-4' : ''
                     } hover:bg-gray-50 transition-colors`}
                   >
                                         <div className="flex-shrink-0 w-24 sm:w-28 md:w-32 lg:w-36 xl:w-40">
@@ -354,20 +354,20 @@ function MyOrderDetail() {
                       })()}
                     </div>
                     
-                    <div className="flex-1 space-y-3">
+                    <div className="flex-1 space-y-2 sm:space-y-3">
                       <div>
-                        <h3 className="text-xl font-bold text-gray-800 mb-2">
+                        <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-1 sm:mb-2">
                           {od?.Shoe?.name || "N/A"}
                         </h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                        <div className="flex items-center space-x-4 text-xs sm:text-sm text-gray-600">
                           <span className="flex items-center">
-                            <Package className="w-4 h-4 mr-1" />
+                            <Package className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                             {od?.Shoe?.Category?.categoryName || "N/A"}
                           </span>
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm">
                         <div className="text-center p-2 bg-gray-50 rounded-lg">
                           <p className="text-gray-600">Price</p>
                           <p className="font-bold text-gray-800">Rs. {od?.Shoe?.price || 0}</p>
@@ -388,53 +388,53 @@ function MyOrderDetail() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
-                  <h3 className="text-lg font-bold text-white flex items-center">
-                    <CheckCircle className="w-5 h-5 mr-2" />
+                <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-4 sm:px-6 py-3 sm:py-4">
+                  <h3 className="text-base sm:text-lg font-bold text-white flex items-center">
+                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                     Order Summary
                   </h3>
                 </div>
-                <div className="p-6 space-y-4">
+                <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-semibold">Rs. {orderDetails.reduce((sum, od) => sum + (od?.quantity * od?.Shoe?.price || 0), 0)}</span>
+                    <span className="text-sm sm:text-base text-gray-600">Subtotal</span>
+                    <span className="font-semibold text-sm sm:text-base">Rs. {orderDetails.reduce((sum, od) => sum + (od?.quantity * od?.Shoe?.price || 0), 0)}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Shipping</span>
-                    <span className="font-semibold">Rs. 100.00</span>
+                    <span className="text-sm sm:text-base text-gray-600">Shipping</span>
+                    <span className="font-semibold text-sm sm:text-base">Rs. 100.00</span>
                   </div>
                   <div className="flex justify-between items-center py-2">
-                    <span className="text-lg font-bold text-gray-800">Total</span>
-                    <span className="text-lg font-bold text-blue-600">Rs. {order?.Order?.totalPrice || 0}</span>
+                    <span className="text-base sm:text-lg font-bold text-gray-800">Total</span>
+                    <span className="text-base sm:text-lg font-bold text-blue-600">Rs. {order?.Order?.totalPrice || 0}</span>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4">
-                  <h3 className="text-lg font-bold text-white flex items-center">
-                    <Truck className="w-5 h-5 mr-2" />
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-4 sm:px-6 py-3 sm:py-4">
+                  <h3 className="text-base sm:text-lg font-bold text-white flex items-center">
+                    <Truck className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                     Shipping Info
                   </h3>
                 </div>
-                <div className="p-6">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <div className="p-4 sm:p-6">
+                  <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-full flex items-center justify-center">
                       <img
-                        className="w-8 h-8"
+                        className="w-6 h-6 sm:w-8 sm:h-8"
                         alt="DPD Delivery"
                         src="https://i.ibb.co/L8KSdNQ/image-3.png"
                       />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-800">DPD Delivery</p>
-                      <p className="text-sm text-gray-600">Delivery within 24 Hours</p>
+                      <p className="font-semibold text-sm sm:text-base text-gray-800">DPD Delivery</p>
+                      <p className="text-xs sm:text-sm text-gray-600">Delivery within 24 Hours</p>
                     </div>
                   </div>
-                  <div className="text-center p-3 bg-purple-50 rounded-lg">
-                    <p className="text-lg font-bold text-purple-600">Rs 100.00</p>
+                  <div className="text-center p-2 sm:p-3 bg-purple-50 rounded-lg">
+                    <p className="text-base sm:text-lg font-bold text-purple-600">Rs 100.00</p>
                   </div>
                 </div>
               </div>
@@ -443,41 +443,41 @@ function MyOrderDetail() {
 
           {/* Customer Info Sidebar */}
           <div className="xl:col-span-1">
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden sticky top-8">
-              <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-6 py-4">
-                <h3 className="text-lg font-bold text-white flex items-center">
-                  <User className="w-5 h-5 mr-2" />
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden sticky top-4 sm:top-8">
+              <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-4 sm:px-6 py-3 sm:py-4">
+                <h3 className="text-base sm:text-lg font-bold text-white flex items-center">
+                  <User className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                   Customer Details
                 </h3>
               </div>
-              <div className="p-6 space-y-6">
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                 {/* Customer Info */}
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <User className="w-5 h-5 text-gray-600" />
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="flex items-center space-x-3 p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
                     <div>
-                      <p className="font-semibold text-gray-800">
+                      <p className="font-semibold text-sm sm:text-base text-gray-800">
                         {customer?.firstName || "N/A"} {customer?.lastName || "N/A"}
                       </p>
-                      <p className="text-sm text-gray-600">Full Name</p>
+                      <p className="text-xs sm:text-sm text-gray-600">Full Name</p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <Phone className="w-5 h-5 text-gray-600" />
+                  <div className="flex items-center space-x-3 p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
                     <div>
-                      <p className="font-semibold text-gray-800">{customer?.phoneNumber || "N/A"}</p>
-                      <p className="text-sm text-gray-600">Phone Number</p>
+                      <p className="font-semibold text-sm sm:text-base text-gray-800">{customer?.phoneNumber || "N/A"}</p>
+                      <p className="text-xs sm:text-sm text-gray-600">Phone Number</p>
                     </div>
                   </div>
 
                   {/* Email not present in type; hide unless backend adds it */}
                   
-                  <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <MapPin className="w-5 h-5 text-gray-600 mt-1" />
+                  <div className="flex items-start space-x-3 p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 mt-1" />
                     <div>
-                      <p className="font-semibold text-gray-800">Shipping Address</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="font-semibold text-sm sm:text-base text-gray-800">Shipping Address</p>
+                      <p className="text-xs sm:text-sm text-gray-600">
                         {customer?.addressLine || "N/A"}, {customer?.street || "N/A"}, {customer?.city || "N/A"}, {customer?.state || "N/A"} {customer?.zipcode ? `(ZIP: ${customer?.zipcode})` : ""}
                       </p>
                     </div>
@@ -550,14 +550,14 @@ function MyOrderDetail() {
                     }}
                     disabled={order?.Order?.orderStatus === OrderStatus.Preparation || 
                              order?.Order?.orderStatus === OrderStatus.Ontheway}
-                    className={`w-full py-3 px-4 rounded-xl font-semibold transition-colors flex items-center justify-center space-x-2 ${
+                    className={`w-full py-2 sm:py-3 px-3 sm:px-4 rounded-xl font-semibold transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base ${
                       order?.Order?.orderStatus === OrderStatus.Preparation || 
                       order?.Order?.orderStatus === OrderStatus.Ontheway
                         ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
                         : 'bg-red-600 hover:bg-red-700 text-white'
                     }`}
                   >
-                    <XCircle className="w-5 h-5" />
+                    <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span>
                       {order?.Order?.orderStatus === OrderStatus.Preparation || 
                        order?.Order?.orderStatus === OrderStatus.Ontheway

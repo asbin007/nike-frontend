@@ -56,7 +56,7 @@ const ProductDetail = () => {
         name: product.name,
         price: product.price,
         originalPrice: product.originalPrice,
-        image: product.images?.[0] || '/images/product-1.jpg',
+        images: product.images || ['/images/product-1.jpg'],
         brand: product.brand,
         category: product.Category?.categoryName || 'Shoes',
         rating: product.rating,
@@ -209,9 +209,9 @@ const ProductDetail = () => {
 
   return (
     <>
-      <section className="py-12 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-sm text-gray-600 mb-6">
+      <section className="py-6 sm:py-8 md:py-12 bg-white">
+        <div className="container mx-auto px-3 sm:px-4">
+          <div className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
             <Link to="/" className="hover:text-indigo-600">
               Home
             </Link>{" "}
@@ -226,7 +226,7 @@ const ProductDetail = () => {
             / <span className="text-gray-800 font-medium">{product?.name}</span>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12 mb-8 sm:mb-12 md:mb-16">
             <div>
               {/* Main Image with Zoom and Slider */}
               <div className="relative mb-4 rounded-lg overflow-hidden bg-gray-100">
@@ -298,12 +298,12 @@ const ProductDetail = () => {
               
               {/* Thumbnail Images */}
               {productImages.length > 0 && (
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 max-w-md mx-auto">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-w-md mx-auto">
                   {productImages.map((image, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleImageClick(image, idx)}
-                      className={`w-12 h-12 sm:w-16 sm:h-16 rounded-md overflow-hidden border-2 transition-all ${
+                      className={`w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-md overflow-hidden border-2 transition-all ${
                         currentImageIndex === idx
                           ? "border-indigo-600 shadow-lg scale-105"
                           : "border-gray-300 hover:border-indigo-400 hover:scale-105"
@@ -328,13 +328,13 @@ const ProductDetail = () => {
             </div>
 
             <div>
-              <div className="mb-4 flex justify-between items-start">
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold mb-2">
+              <div className="mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
+                <div className="flex-1">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">
                     {product?.name}
                   </h1>
-                  <p className="text-gray-600 font-bold">{product?.brand}</p>
-                  <p className="text-gray-600">
+                  <p className="text-sm sm:text-base text-gray-600 font-bold">{product?.brand}</p>
+                  <p className="text-sm sm:text-base text-gray-600">
                     {product?.Collection?.collectionName}
                   </p>
                 </div>
@@ -363,12 +363,12 @@ const ProductDetail = () => {
                 </div>
               </div>
 
-              <div className="flex items-center mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center mb-4 gap-2 sm:gap-0">
                 <div className="flex mr-2">
                   {[...Array(5)].map((_, i) => (
                     <svg
                       key={i}
-                      className={`w-5 h-5 ${
+                      className={`w-4 h-4 sm:w-5 sm:h-5 ${
                         i < roundedRating
                           ? "text-yellow-400"
                           : "text-gray-300"
@@ -380,36 +380,36 @@ const ProductDetail = () => {
                     </svg>
                   ))}
                 </div>
-                <span className="text-gray-600 text-sm">
+                <span className="text-gray-600 text-xs sm:text-sm">
                   {averageRating.toFixed(1)} ({review.length} {review.length === 1 ? 'review' : 'reviews'})
                 </span>
               </div>
 
-              <div className="mb-6">
-                <div className="flex items-center">
-                  <span className="text-2xl font-bold text-indigo-600 mr-3">
+              <div className="mb-4 sm:mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                  <span className="text-xl sm:text-2xl font-bold text-indigo-600 sm:mr-3">
                     Rs{product?.price?.toFixed(2)}
                   </span>
                   {(product?.discount ?? 0) > 0 && (
-                    <>
-                      <span className="text-gray-400 line-through mr-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400 line-through text-sm sm:text-base">
                         ${product?.originalPrice?.toFixed(2)}
                       </span>
                       <span className="bg-red-100 text-red-800 text-xs font-semibold px-2 py-0.5 rounded">
                         Save {product?.discount ?? 0}%
                       </span>
-                    </>
+                    </div>
                   )}
                 </div>
                 {(product?.totalStock ?? 0) > 0 ? (
-                  <span className="text-green-600 text-sm">In Stock</span>
+                  <span className="text-green-600 text-xs sm:text-sm">In Stock</span>
                 ) : (
-                  <span className="text-red-600 text-sm">Out of Stock</span>
+                  <span className="text-red-600 text-xs sm:text-sm">Out of Stock</span>
                 )}
               </div>
 
-              <div className="mb-6">
-                <h3 className="font-bold mb-2">Select Size</h3>
+              <div className="mb-4 sm:mb-6">
+                <h3 className="font-bold mb-2 text-sm sm:text-base">Select Size</h3>
                 <div className="flex flex-wrap gap-2">
                   {availableSizes.map((size) => (
                     <button
@@ -417,7 +417,7 @@ const ProductDetail = () => {
                       onClick={() =>
                         size !== "No sizes available" && setSelectedSize(size)
                       }
-                      className={`px-4 py-2 border rounded-md ${
+                      className={`px-3 sm:px-4 py-2 border rounded-md text-sm ${
                         selectedSize === size
                           ? "bg-indigo-600 text-white border-indigo-600"
                           : "bg-white border-gray-300 hover:border-indigo-600"
@@ -434,8 +434,8 @@ const ProductDetail = () => {
                 </div>
               </div>
 
-              <div className="mb-6">
-                <h3 className="font-bold mb-2">Select Color</h3>
+              <div className="mb-4 sm:mb-6">
+                <h3 className="font-bold mb-2 text-sm sm:text-base">Select Color</h3>
                 <div className="flex flex-wrap gap-2">
                   {availableColors.map((color) => (
                     <button
@@ -444,7 +444,7 @@ const ProductDetail = () => {
                         color !== "No colors available" &&
                         setSelectedColor(color)
                       }
-                      className={`px-4 py-2 border rounded-md ${
+                      className={`px-3 sm:px-4 py-2 border rounded-md text-sm ${
                         selectedColor === color
                           ? "bg-indigo-600 text-white border-indigo-600"
                           : "bg-white border-gray-300 hover:border-indigo-600"
@@ -461,18 +461,18 @@ const ProductDetail = () => {
                 </div>
               </div>
 
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 <button
                   onClick={handleAddToCart}
-                  className="w-full bg-indigo-600 text-white py-3 px-6 rounded-md hover:bg-indigo-700"
+                  className="w-full bg-indigo-600 text-white py-2 sm:py-3 px-4 sm:px-6 rounded-md hover:bg-indigo-700 text-sm sm:text-base"
                 >
                   Add to Cart
                 </button>
               </div>
 
-              <div className="mb-6">
-                <h3 className="font-bold mb-2">Description</h3>
-                <p className="text-gray-600">{product?.description}</p>
+              <div className="mb-4 sm:mb-6">
+                <h3 className="font-bold mb-2 text-sm sm:text-base">Description</h3>
+                <p className="text-sm sm:text-base text-gray-600">{product?.description}</p>
               </div>
             </div>
           </div>
@@ -484,8 +484,8 @@ const ProductDetail = () => {
 
       {/* Similar Products */}
       {similarProducts.length > 0 && (
-        <section className="py-16 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="py-8 sm:py-12 md:py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
             <ProductRecommendations
               title="Similar Products"
               products={similarProducts}
@@ -498,8 +498,8 @@ const ProductDetail = () => {
 
       {/* Frequently Bought Together */}
       {frequentlyBought.length > 0 && (
-        <section className="py-16 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="py-8 sm:py-12 md:py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
             <ProductRecommendations
               title="Frequently Bought Together"
               products={frequentlyBought}
