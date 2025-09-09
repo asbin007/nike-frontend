@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { TextPlugin } from "gsap/TextPlugin";
@@ -18,6 +18,20 @@ import { ArrowRight, Star, Zap, Shield, ChevronLeft, ChevronRight, Play, Pause }
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger, TextPlugin);
 
+// Cloudinary version constant (same as ProductCard)
+const CLOUDINARY_VERSION = "v1750340657";
+
+// Default fallback images (moved outside component to avoid re-renders)
+const defaultSliderImages = [
+  "/images/hero-banner.png",
+  "/images/special-banner.jpg",
+  "/images/cta-1.jpg",
+  "/images/cta-2.jpg",
+  "/images/collection-1.jpg",
+  "/images/collection-2.jpg",
+  "/images/collection-3.jpg"
+];
+
 export default function Hero() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -34,6 +48,16 @@ export default function Hero() {
   
   // Check if user has cart or purchase history
   const { cartHistory, purchaseHistory } = useAppSelector((state) => state.recommendations);
+  
+  // Debug personalized recommendations
+  console.log('🎯 Personalized Recommendations Debug:', {
+    user: !!user,
+    cartHistoryLength: cartHistory.length,
+    purchaseHistoryLength: purchaseHistory.length,
+    personalizedRecommendationsLength: personalizedRecommendations.length,
+    hasUserActivity: cartHistory.length > 0 || purchaseHistory.length > 0,
+    shouldShowPersonalized: user && (cartHistory.length > 0 || purchaseHistory.length > 0) && personalizedRecommendations.length > 0
+  });
   const heroRef = useRef(null);
   const titleRef = useRef(null);
   const subtitleRef = useRef(null);
@@ -43,18 +67,9 @@ export default function Hero() {
   const sliderRef = useRef(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-
-
-  // Slider images
-  const sliderImages = [
-    "/images/hero-banner.png",
-    "/images/special-banner.jpg",
-    "/images/cta-1.jpg",
-    "/images/cta-2.jpg",
-    "/images/collection-1.jpg",
-    "/images/collection-2.jpg",
-    "/images/collection-3.jpg"
-  ];
+  const [sliderImages, setSliderImages] = useState<string[]>([]);
+  const [isLoadingImages, setIsLoadingImages] = useState(true);
+  // const [usingBackendImages, setUsingBackendImages] = useState(false);
 
   const sliderTitles = [
     "Special Offers",
@@ -75,6 +90,91 @@ export default function Hero() {
     "Elegant formal collection for every occasion"
   ];
 
+  // Navigation routes for each slider image
+  const sliderRoutes = [
+    "/all-shoes?filter=discount", // Special Offers
+    "/collections", // Premium Quality
+    "/all-shoes?sort=trending", // Trending Styles
+    "/collections/sport", // Sport Collection
+    "/all-shoes?category=casual", // Casual Wear
+    "/collections/formal", // Formal Collection
+    "/collections" // Default collection
+  ];
+
+  // Function to fetch backend images for slider
+  const fetchSliderImages = useCallback(async () => {
+    try {
+      setIsLoadingImages(true);
+      console.log('🖼️ Fetching slider images from backend...');
+      
+      // Try to fetch from backend API - get more products for randomization
+      const response = await fetch('https://nike-backend-1-g9i6.onrender.com/api/product?limit=50');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data && data.data.length > 0) {
+          // Filter products with images and collect all images
+          const allProductImages = data.data
+            .filter((product: { images?: string[] }) => product.images && product.images.length > 0)
+            .flatMap((product: { images: string[] }) => product.images)
+            .filter((image: string) => image && image.trim() !== '');
+          
+          console.log('🖼️ Total images available:', allProductImages.length);
+          
+          // Randomly select 7 images from all available images
+          const shuffledImages = allProductImages.sort(() => Math.random() - 0.5);
+          const backendImages = shuffledImages.slice(0, 7)
+            .map((image: string) => {
+              // Use the same logic as ProductCard for image URL generation
+              console.log('🖼️ Processing random image:', {
+                originalImage: image,
+                isCloudinary: image.includes('cloudinary'),
+                isUploads: image.includes('/uploads/')
+              });
+              
+              // Process individual image (not product with multiple images) with maximum quality optimization
+              if (image.includes('cloudinary')) {
+                console.log('☁️ Already Cloudinary URL:', image);
+                // Add maximum quality parameters if not already present
+                if (!image.includes('q_')) {
+                  const qualityUrl = image.replace('/upload/', '/upload/q_100,f_auto,w_1920,h_1080,c_fill,g_auto/');
+                  console.log('🎨 Enhanced Cloudinary URL with max quality:', qualityUrl);
+                  return qualityUrl;
+                }
+                return image;
+              } else if (image.includes('/uploads/')) {
+                const imageUrl = `https://res.cloudinary.com/dxpe7jikz/image/upload/q_100,f_auto,w_1920,h_1080,c_fill,g_auto/${CLOUDINARY_VERSION}${image.replace("/uploads", "")}.jpg`;
+                console.log('🔄 Converted uploads to Cloudinary with max quality:', imageUrl);
+                return imageUrl;
+              } else {
+                console.log('📁 Direct URL:', image);
+                return image;
+              }
+            });
+          
+          if (backendImages.length > 0) {
+            console.log('✅ Random backend images fetched:', backendImages.length);
+            console.log('🎲 Randomization complete - selected from', allProductImages.length, 'total images');
+            console.log('🖼️ Random image URLs:', backendImages);
+            setSliderImages(backendImages);
+            // setUsingBackendImages(true);
+            return;
+          }
+        }
+      }
+      
+      // Fallback to default images if backend fails
+      console.log('⚠️ Using fallback images');
+      setSliderImages(defaultSliderImages);
+      // setUsingBackendImages(false);
+    } catch (error) {
+      console.error('❌ Error fetching slider images:', error);
+      setSliderImages(defaultSliderImages);
+      // setUsingBackendImages(false);
+    } finally {
+      setIsLoadingImages(false);
+    }
+  }, []);
+
 
 
   // Check for Khalti payment verification on page load
@@ -88,45 +188,51 @@ export default function Hero() {
 
   // Fetch all reviews for real-time display
   useEffect(() => {
+    console.log('🏠 Home component mounted, fetching data...');
     dispatch(fetchAllReviews());
     
     // Always fetch public collections (trending, new arrivals, best sellers, on sale)
     dispatch(fetchAllCollections(6));
     
-    // Always fetch personalized recommendations - let the function handle the logic
-    dispatch(fetchPersonalizedRecommendations()).catch((error) => {
-      console.error('fetchPersonalizedRecommendations error:', error);
-    });
-  }, [dispatch]);
-
-  // Refetch personalized recommendations when purchase history changes
-  useEffect(() => {
-    if (purchaseHistory.length > 0) {
+    // Fetch slider images from backend
+    fetchSliderImages();
+    
+    // Only fetch personalized recommendations if user is logged in
+    if (user && user.token) {
       dispatch(fetchPersonalizedRecommendations()).catch((error) => {
-        console.error('fetchPersonalizedRecommendations error after purchase change:', error);
+        console.error('fetchPersonalizedRecommendations error:', error);
       });
     }
-  }, [purchaseHistory.length, dispatch]);
+  }, [dispatch, user, fetchSliderImages]);
 
-  // Force fetch personalized recommendations if purchase history exists
+  // Refetch personalized recommendations when user activity changes
   useEffect(() => {
-    if (purchaseHistory.length > 0 && personalizedRecommendations.length === 0) {
+    if (user && user.token && (cartHistory.length > 0 || purchaseHistory.length > 0)) {
+      dispatch(fetchPersonalizedRecommendations()).catch((error) => {
+        console.error('fetchPersonalizedRecommendations error after activity change:', error);
+      });
+    }
+  }, [cartHistory.length, purchaseHistory.length, dispatch, user]);
+
+  // Force fetch personalized recommendations if user has activity but no recommendations
+  useEffect(() => {
+    if (user && user.token && (cartHistory.length > 0 || purchaseHistory.length > 0) && personalizedRecommendations.length === 0) {
       dispatch(fetchPersonalizedRecommendations()).catch((error) => {
         console.error('Force fetch error:', error);
       });
     }
-  }, [cartHistory, personalizedRecommendations.length, purchaseHistory.length, dispatch]);
+  }, [cartHistory.length, purchaseHistory.length, personalizedRecommendations.length, dispatch, user]);
 
-  // Force fetch recommendations on page load - ONLY if user has made purchases
+  // Force fetch recommendations on page load - if user has any activity
   useEffect(() => {
-    if (purchaseHistory.length > 0 && personalizedRecommendations.length === 0) {
+    if (user && user.token && (cartHistory.length > 0 || purchaseHistory.length > 0) && personalizedRecommendations.length === 0) {
       setTimeout(() => {
         dispatch(fetchPersonalizedRecommendations()).catch((error) => {
           console.error('Manual trigger error:', error);
         });
       }, 1000);
     }
-  }, [purchaseHistory.length, personalizedRecommendations.length, dispatch]);
+  }, [cartHistory.length, purchaseHistory.length, personalizedRecommendations.length, dispatch, user]);
 
 
   useEffect(() => {
@@ -272,6 +378,19 @@ export default function Hero() {
     if (featuresSection) {
       featuresSection.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  // Handle slider image click navigation
+  const handleSliderImageClick = (index: number) => {
+    const route = sliderRoutes[index] || '/collections';
+    console.log('🎯 Navigating to:', route);
+    navigate(route);
+  };
+
+  // Function to refresh images with new random selection
+  const refreshSliderImages = () => {
+    console.log('🔄 Refreshing slider with new random images...');
+    fetchSliderImages();
   };
 
 
@@ -452,52 +571,91 @@ export default function Hero() {
             </div>
             
             <div className="w-full lg:w-1/2 relative mt-6 lg:mt-0">
+              
               {/* Modern Dynamic Slider */}
-              <div ref={sliderRef} className="relative overflow-hidden rounded-3xl shadow-2xl bg-gradient-to-br from-gray-100 to-gray-200">
-                <div className="relative h-72 sm:h-96 md:h-[28rem] lg:h-[32rem]">
-                  {sliderImages.map((image, index) => (
-                    <div
-                      key={index}
-                      className={`absolute inset-0 transition-all duration-1000 ease-in-out transform ${
-                        index === currentSlide 
-                          ? 'opacity-100 scale-100 translate-x-0' 
-                          : index < currentSlide 
-                            ? 'opacity-0 scale-95 -translate-x-full' 
-                            : 'opacity-0 scale-95 translate-x-full'
-                      }`}
-                    >
-                      <img
-                        src={image}
-                        alt={`Slide ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
+              <div ref={sliderRef} className="relative overflow-hidden rounded-3xl shadow-2xl bg-gradient-to-br from-gray-100 to-gray-200" style={{
+                imageRendering: 'auto',
+                backfaceVisibility: 'hidden',
+                transform: 'translateZ(0)'
+              } as React.CSSProperties}>
+                <div className="relative h-72 sm:h-96 md:h-[28rem] lg:h-[32rem]" style={{
+                  imageRendering: 'auto'
+                } as React.CSSProperties}>
+                  {isLoadingImages ? (
+                    // Loading skeleton
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="animate-pulse bg-gray-300 w-full h-full rounded-3xl"></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-gray-500 text-lg">Loading images...</div>
+                      </div>
+                    </div>
+                  ) : (
+                    sliderImages.map((image, index) => (
+                      <div
+                        key={index}
+                        className={`absolute inset-0 transition-all duration-1000 ease-in-out transform cursor-pointer group ${
+                          index === currentSlide 
+                            ? 'opacity-100 scale-100 translate-x-0' 
+                            : index < currentSlide 
+                              ? 'opacity-0 scale-95 -translate-x-full' 
+                              : 'opacity-0 scale-95 translate-x-full'
+                        }`}
+                        onClick={() => handleSliderImageClick(index)}
+                      >
+                        <img
+                          src={image}
+                          alt={`Slide ${index + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="eager"
+                          decoding="async"
+                          style={{
+                            imageRendering: 'auto',
+                            backfaceVisibility: 'hidden',
+                            transform: 'translateZ(0)',
+                            willChange: 'transform'
+                          } as React.CSSProperties}
+                          onError={(e) => {
+                            // Use the same fallback logic as ProductCard
+                            const target = e.target as HTMLImageElement;
+                            target.src = "https://via.placeholder.com/1920x1080/1f2937/ffffff?text=Image+Not+Available";
+                          }}
+                        />
                       {/* Modern Gradient Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/30"></div>
                       
                       {/* Modern Content Overlay */}
                       <div className="absolute bottom-6 sm:bottom-8 left-6 sm:left-8 right-6 sm:right-8 text-white">
-                        <div className="backdrop-blur-sm bg-white/10 rounded-2xl p-4 sm:p-6 border border-white/20">
+                        <div className="backdrop-blur-sm bg-white/10 rounded-2xl p-4 sm:p-6 border border-white/20 group-hover:bg-white/20 transition-all duration-300">
                           <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">
                             {sliderTitles[index]}
                           </h3>
                           <p className="text-sm sm:text-base md:text-lg opacity-90 leading-relaxed">
                             {sliderDescriptions[index]}
                           </p>
-                          <div className="mt-4 flex items-center space-x-4">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                              <span className="text-sm font-medium">Premium Quality</span>
+                          <div className="mt-4 flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                                <span className="text-sm font-medium">Premium Quality</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                                <span className="text-sm font-medium">Free Delivery</span>
+                              </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                              <span className="text-sm font-medium">Free Delivery</span>
+                            {/* Click indicator and image source */}
+                            <div className="flex items-center space-x-2 text-white/80 group-hover:text-white transition-colors">
+                              <span className="text-sm font-medium">Click to explore</span>
+                              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                             </div>
                           </div>
+                          
                         </div>
                       </div>
                     </div>
-                  ))}
+                    ))
+                  )}
                 </div>
 
                 {/* Modern Slider Controls */}
@@ -521,6 +679,17 @@ export default function Hero() {
                   className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 p-3 rounded-full shadow-xl transition-all duration-300 border border-white/20 group"
                 >
                   {isPlaying ? <Pause className="w-4 h-4 group-hover:scale-110 transition-transform" /> : <Play className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                </button>
+
+                {/* Refresh Images Button */}
+                <button
+                  onClick={refreshSliderImages}
+                  className="absolute top-4 right-16 bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 p-3 rounded-full shadow-xl transition-all duration-300 border border-white/20 group"
+                  title="Get new random images"
+                >
+                  <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
                 </button>
 
                 {/* Modern Slider Dots */}
@@ -610,7 +779,7 @@ export default function Hero() {
         </div>
 
         {/* 2. Personalized Recommendations */}
-        {user && purchaseHistory.length > 0 && personalizedRecommendations.length > 0 && (
+        {user && (cartHistory.length > 0 || purchaseHistory.length > 0) && personalizedRecommendations.length > 0 && (
           <div className="py-8 sm:py-12 md:py-16 bg-gradient-to-r from-indigo-50 to-purple-50">
             <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
               <div className="text-center mb-6 sm:mb-8">

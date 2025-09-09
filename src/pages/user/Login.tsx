@@ -12,6 +12,10 @@ const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({
+    email: "",
+    password: "",
+  });
   
   const [data, setData] = useState({
     email: "",
@@ -24,16 +28,171 @@ const Login = () => {
       ...data,
       [name]: value,
     });
+
+    // Real-time validation
+    validateField(name, value);
+  };
+
+  const validateField = (fieldName: string, value: string) => {
+    const newErrors = { ...errors };
+
+    switch (fieldName) {
+      case 'email':
+        if (!value.trim()) {
+          newErrors.email = "";
+        } else {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value)) {
+            newErrors.email = "Invalid email format";
+          } else {
+            newErrors.email = "";
+          }
+        }
+        break;
+      case 'password':
+        if (!value.trim()) {
+          newErrors.password = "";
+        } else if (value.length < 6) {
+          newErrors.password = "Password must be at least 6 characters";
+        } else if (value.length > 50) {
+          newErrors.password = "Password is too long (max 50 characters)";
+        } else {
+          newErrors.password = "";
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    // Clear previous errors
+    setErrors({ email: "", password: "" });
+    
+    // Validation
+    if (!data.email.trim()) {
+      toast.error("Email address is required. Please enter your email", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      setErrors(prev => ({ ...prev, email: "Email is required" }));
+      return;
+    }
+
+    if (!data.password.trim()) {
+      toast.error("Password is required. Please enter your password", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      setErrors(prev => ({ ...prev, password: "Password is required" }));
+      return;
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      toast.error("Invalid email format. Please enter a valid email address (e.g., user@example.com)", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      setErrors(prev => ({ ...prev, email: "Invalid email format" }));
+      return;
+    }
+
+    // Password length validation
+    if (data.password.length < 6) {
+      toast.error("Password is too short. Please enter at least 6 characters", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      setErrors(prev => ({ ...prev, password: "Password too short" }));
+      return;
+    }
+
+    // Check for common password mistakes
+    if (data.password.length > 50) {
+      toast.error("Password is too long. Please enter a password with less than 50 characters", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      setErrors(prev => ({ ...prev, password: "Password too long" }));
+      return;
+    }
+
     setIsLoading(true);
     
     try {
       await dispatch(loginUser(data));
-    } catch {
-      toast.error("Login failed. Please check your credentials.");
+    } catch (error: any) {
+      // Handle specific error cases
+      if (error?.message?.includes('Invalid credentials') || error?.message?.includes('User not found')) {
+        toast.error("Invalid email or password. Please check your credentials and try again.", {
+          duration: 5000,
+          position: "top-center",
+          style: {
+            background: "#dc2626",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+      } else if (error?.message?.includes('Account not verified')) {
+        toast.error("Please verify your email address before logging in. Check your inbox for verification link.", {
+          duration: 6000,
+          position: "top-center",
+          style: {
+            background: "#f59e0b",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+      } else {
+        toast.error("Login failed. Please try again later.", {
+          duration: 5000,
+          position: "top-center",
+          style: {
+            background: "#dc2626",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +283,7 @@ const Login = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
+                    <Mail className={`h-5 w-5 ${errors.email ? 'text-red-400' : 'text-gray-400'}`} />
                   </div>
                   <input
                     id="email"
@@ -132,12 +291,22 @@ const Login = () => {
                     type="email"
                     autoComplete="email"
                     required
-                    className="w-full pl-12 pr-4 py-4 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all duration-200"
+                    className={`w-full pl-12 pr-4 py-4 bg-white/10 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                      errors.email 
+                        ? 'border-red-400 focus:ring-red-400' 
+                        : 'border-white/20 focus:ring-yellow-400'
+                    }`}
                     placeholder="Enter your email"
                     value={data.email}
                     onChange={handleChange}
                   />
                 </div>
+                {errors.email && (
+                  <p className="mt-2 text-sm text-red-400 flex items-center">
+                    <span className="mr-1">⚠️</span>
+                    {errors.email}
+                  </p>
+                )}
               </div>
 
               {/* Password Field */}
@@ -147,7 +316,7 @@ const Login = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
+                    <Lock className={`h-5 w-5 ${errors.password ? 'text-red-400' : 'text-gray-400'}`} />
                   </div>
                   <input
                     id="password"
@@ -155,7 +324,11 @@ const Login = () => {
                     type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     required
-                    className="w-full pl-12 pr-12 py-4 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all duration-200"
+                    className={`w-full pl-12 pr-12 py-4 bg-white/10 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                      errors.password 
+                        ? 'border-red-400 focus:ring-red-400' 
+                        : 'border-white/20 focus:ring-yellow-400'
+                    }`}
                     placeholder="Enter your password"
                     value={data.password}
                     onChange={handleChange}
@@ -172,6 +345,12 @@ const Login = () => {
                     )}
                   </button>
                 </div>
+                {errors.password && (
+                  <p className="mt-2 text-sm text-red-400 flex items-center">
+                    <span className="mr-1">⚠️</span>
+                    {errors.password}
+                  </p>
+                )}
               </div>
 
               {/* Forgot Password */}

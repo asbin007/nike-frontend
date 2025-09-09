@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchRecommendations } from '../../store/recommendationsSlice';
+import { fetchRecommendations, fetchPersonalizedRecommendations } from '../../store/recommendationsSlice';
 import ProductRecommendations from '../../components/ProductRecommendations';
 
 const Recommended: React.FC = () => {
@@ -8,14 +9,25 @@ const Recommended: React.FC = () => {
   const { 
     personalizedRecommendations, 
     trendingProducts, 
-    status 
+    status,
+    cartHistory,
+    purchaseHistory
   } = useAppSelector((store) => store.recommendations);
+  
+  const { user } = useAppSelector((store) => store.auth);
 
   useEffect(() => {
     if (status === 'idle') {
-    dispatch(fetchRecommendations());
+      dispatch(fetchRecommendations());
+      
+      // Only fetch personalized recommendations if user is logged in AND has activity
+      if (user && user.token && (cartHistory.length > 0 || purchaseHistory.length > 0)) {
+        dispatch(fetchPersonalizedRecommendations()).catch((error) => {
+          console.error('fetchPersonalizedRecommendations error:', error);
+        });
+      }
     }
-  }, [dispatch, status]);
+  }, [dispatch, status, user, cartHistory.length, purchaseHistory.length]);
 
   const isLoading = status === 'loading';
 
@@ -33,16 +45,74 @@ const Recommended: React.FC = () => {
           </p>
         </div>
 
-        {/* Personalized Recommendations */}
-        <div className="mb-16">
-          <ProductRecommendations
-            title="Personalized Recommendations"
-            products={personalizedRecommendations}
-            type="personalized"
-            loading={isLoading}
-            className="mb-8"
-          />
+        {/* Personalized Recommendations - Only show if user is logged in AND has activity */}
+        {user && user.token && (cartHistory.length > 0 || purchaseHistory.length > 0) ? (
+          personalizedRecommendations.length > 0 ? (
+            <div className="mb-16">
+              <ProductRecommendations
+                title="Personalized Recommendations"
+                products={personalizedRecommendations}
+                type="personalized"
+                loading={isLoading}
+                className="mb-8"
+              />
+            </div>
+          ) : (
+            <div className="mb-16 bg-yellow-50 rounded-lg p-8 text-center">
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Loading Your Recommendations...
+              </h3>
+              <p className="text-gray-600 mb-4">
+                We're analyzing your shopping activity to provide personalized recommendations.
+              </p>
+            </div>
+          )
+        ) : (
+          <div className="mb-16 bg-blue-50 rounded-lg p-8 text-center">
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              {user && user.token ? "No Shopping Activity Yet" : "Please Log In"}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {user && user.token 
+                ? "Add items to your cart or make a purchase to get personalized recommendations!"
+                : "Log in and start shopping to get personalized recommendations based on your preferences!"
+              }
+            </p>
+            <div className="flex justify-center space-x-4">
+              {user && user.token ? (
+                <>
+                  <Link 
+                    to="/all-shoes" 
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Browse All Shoes
+                  </Link>
+                  <Link 
+                    to="/collections" 
+                    className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    View Collections
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link 
+                    to="/login" 
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Log In
+                  </Link>
+                  <Link 
+                    to="/register" 
+                    className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Sign Up
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
+        )}
 
         {/* Trending Products */}
         <div className="mb-16">

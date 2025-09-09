@@ -78,7 +78,16 @@ const ResetPassword = () => {
     }
 
     if (data.newPassword !== data.confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error("Passwords do not match. Please make sure both password fields are identical", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
       return;
     }
 

@@ -9,47 +9,61 @@ import {
   checkKhaltiPaymentStatus,
   refreshOrders,
 } from "../../store/orderSlice";
-import { Package, Search, Clock, CheckCircle, XCircle, Truck, CreditCard, Eye, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { Package, Search, Clock, CheckCircle, XCircle, Truck, CreditCard, Eye, RefreshCw, Wifi, WifiOff, Calendar } from "lucide-react";
 import { OrderStatus, PaymentStatus } from "./types";
 import { OrderSkeleton } from "../../components/SkeletonLoader";
 import toast from "react-hot-toast";
 
 function MyOrder() {
-  const dispatch = useAppDispatch();
-  const { items } = useAppSelector((store) => store.orders);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [isSocketConnected, setIsSocketConnected] = useState<boolean>(false);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  try {
+    const dispatch = useAppDispatch();
+    const { items, status } = useAppSelector((store) => store.orders);
+    const [searchTerm, setSearchTerm] = useState<string>("");
+    const [selectedStatus, setSelectedStatus] = useState<string>("all");
+    const [isSocketConnected, setIsSocketConnected] = useState<boolean>(false);
+    const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  const newItems = items.filter(
-    (item) =>
-      item.id.toLowerCase().includes(searchTerm) ||
-      item.orderStatus?.toLowerCase().includes(searchTerm) ||
-      item.Payment?.paymentMethod.toLowerCase().includes(searchTerm) ||
-      item.totalPrice == parseInt(searchTerm)
-  );
+  const handleManualRefresh = () => {
+    dispatch(refreshOrders());
+    setLastUpdate(new Date());
+    toast.success("Orders refreshed manually");
+  };
 
-  // Debug logging
-  console.log('🔄 MyOrders: All items from store:', items);
-  console.log('🔄 MyOrders: Filtered items:', newItems);
-  console.log('🔄 MyOrders: Selected status:', selectedStatus);
+    // Only process data if items is available and is an array
+    const newItems = (items && Array.isArray(items)) ? items.filter(
+      (item) =>
+        item.id?.toLowerCase().includes(searchTerm) ||
+        item.orderStatus?.toLowerCase().includes(searchTerm) ||
+        item.Payment?.paymentMethod?.toLowerCase().includes(searchTerm) ||
+        item.totalPrice == parseInt(searchTerm)
+    ) : [];
 
-  const filteredItems = selectedStatus === "all" 
-    ? newItems 
-    : newItems.filter(item => item.orderStatus === selectedStatus);
+    const filteredItems = selectedStatus === "all" 
+      ? newItems 
+      : newItems.filter(item => item.orderStatus === selectedStatus);
 
   useEffect(() => {
-    console.log('🔄 MyOrders: Fetching orders...');
-    dispatch(fetchMyOrders());
+    const loadOrders = async () => {
+      try {
+        console.log('🔄 MyOrders: Fetching orders...');
+        await dispatch(fetchMyOrders());
+        setIsInitialLoad(false);
+        
+        // Check for Khalti payment verification on page load
+        const pidx = localStorage.getItem('khalti_pidx');
+        if (pidx) {
+          console.log('Found pidx in localStorage:', pidx);
+          dispatch(checkKhaltiPaymentStatus(pidx));
+          localStorage.removeItem('khalti_pidx');
+        }
+      } catch (error) {
+        console.error('Error loading orders:', error);
+        setIsInitialLoad(false);
+      }
+    };
     
-    // Check for Khalti payment verification on page load
-    const pidx = localStorage.getItem('khalti_pidx');
-    if (pidx) {
-      console.log('Found pidx in localStorage:', pidx);
-      dispatch(checkKhaltiPaymentStatus(pidx));
-      localStorage.removeItem('khalti_pidx');
-    }
+    loadOrders();
     
     // Auto-refresh orders every 60 seconds for real-time updates
     const autoRefreshInterval = setInterval(() => {
@@ -172,9 +186,80 @@ function MyOrder() {
     };
   }, [dispatch]);
 
-  // Show skeleton while loading
-  if (!items || items.length === 0) {
+  // Show skeleton during initial load or when data is not available
+  if (isInitialLoad || items === null || items === undefined || status === 'loading') {
     return <OrderSkeleton />;
+  }
+
+  // Safety check - if items is not an array, show error
+  if (!Array.isArray(items)) {
+    console.error("❌ MyOrders: items is not an array:", items);
+    console.error("❌ MyOrders: status:", status);
+    console.error("❌ MyOrders: error:", "Unknown error");
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-4 sm:py-6 md:py-8 px-3 sm:px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+            <div className="flex flex-col items-center space-y-4">
+              <Package className="w-16 h-16 text-red-400" />
+              <h2 className="text-2xl font-bold text-gray-800">Error Loading Orders</h2>
+              <p className="text-gray-600">There was an issue loading your orders. Please try again.</p>
+              {status === 'error' && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md">
+                  <p className="text-sm text-red-600">Error: Failed to load orders</p>
+                </div>
+              )}
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => {
+                    console.log("🔄 Manual retry triggered");
+                    setIsInitialLoad(true);
+                    dispatch(fetchMyOrders());
+                  }}
+                  className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors duration-200"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                  <span>Retry</span>
+                </button>
+                <button
+                  onClick={() => {
+                    window.location.reload();
+                  }}
+                  className="flex items-center space-x-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl transition-colors duration-200"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                  <span>Refresh Page</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state if items is empty but we're still loading
+  if (items.length === 0 && !isInitialLoad) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-4 sm:py-6 md:py-8 px-3 sm:px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+            <div className="flex flex-col items-center space-y-4">
+              <Package className="w-16 h-16 text-gray-400" />
+              <h2 className="text-2xl font-bold text-gray-800">No Orders Found</h2>
+              <p className="text-gray-600">You haven't placed any orders yet.</p>
+              <button
+                onClick={handleManualRefresh}
+                className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors duration-200"
+              >
+                <RefreshCw className="w-5 h-5" />
+                <span>Refresh Orders</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const getStatusInfo = (status: string) => {
@@ -203,12 +288,6 @@ function MyOrder() {
       default:
         return { color: "text-gray-600", bgColor: "bg-gray-100" };
     }
-  };
-
-  const handleManualRefresh = () => {
-    dispatch(refreshOrders());
-    setLastUpdate(new Date());
-    toast.success("Orders refreshed manually");
   };
 
   return (
@@ -304,6 +383,9 @@ function MyOrder() {
                     Order ID
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">
+                    Order Date
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">
                     Status
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">
@@ -342,29 +424,66 @@ function MyOrder() {
                           </Link>
                         </td>
                         <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="w-4 h-4 text-gray-500" />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-gray-800">
+                                {item.createdAt 
+                                  ? new Date(item.createdAt).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })
+                                  : (item as any).orderDate
+                                    ? new Date((item as any).orderDate).toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric'
+                                      })
+                                    : "Loading..."
+                                }
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {item.createdAt 
+                                  ? new Date(item.createdAt).toLocaleTimeString('en-US', {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })
+                                  : (item as any).orderDate
+                                    ? new Date((item as any).orderDate).toLocaleTimeString('en-US', {
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })
+                                    : ""
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
                           <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full ${statusInfo.bgColor} ${statusInfo.borderColor} border`}>
                             <StatusIcon className={`w-4 h-4 ${statusInfo.color}`} />
                             <span className={`text-sm font-medium capitalize ${statusInfo.color}`}>
-                              {item.orderStatus}
+                              {item.orderStatus || (item as any).status || "Processing"}
                             </span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <p className="font-semibold text-gray-800">
-                            Rs. {item.totalPrice?.toLocaleString()}
+                            Rs. {item.totalPrice?.toLocaleString() || (item as any).price?.toLocaleString() || "0"}
                           </p>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
                             <CreditCard className="w-4 h-4 text-gray-500" />
                             <span className="text-sm text-gray-600 capitalize">
-                              {item.Payment?.paymentMethod}
+                              {item.Payment?.paymentMethod || (item as any).paymentMethod || "Not specified"}
                             </span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${paymentStatusInfo.bgColor} ${paymentStatusInfo.color}`}>
-                            {item.Payment?.paymentStatus}
+                            {item.Payment?.paymentStatus || (item as any).paymentStatus || "Pending"}
                           </span>
                         </td>
                         <td className="px-6 py-4">
@@ -380,7 +499,7 @@ function MyOrder() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center space-y-4">
                         <Package className="w-16 h-16 text-gray-400" />
                         <div>
@@ -464,6 +583,23 @@ function MyOrder() {
       </div>
     </div>
   );
+  } catch (error) {
+    console.error("❌ Error in MyOrder component:", error);
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-red-600 mb-4">Error</h1>
+          <p className="text-gray-600 mb-4">Something went wrong loading the orders page.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 }
 
 export default MyOrder;

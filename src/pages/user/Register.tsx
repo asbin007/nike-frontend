@@ -45,6 +45,96 @@ const Register = () => {
 
   const handleRegisterSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    // Validation
+    if (!registerData.username.trim()) {
+      toast.error("Please enter your username", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (!registerData.email.trim()) {
+      toast.error("Please enter your email address", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (!registerData.password.trim()) {
+      toast.error("Please enter your password", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Username validation
+    if (registerData.username.length < 3) {
+      toast.error("Username must be at least 3 characters long", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(registerData.email)) {
+      toast.error("Please enter a valid email address", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Password validation
+    if (registerData.password.length < 6) {
+      toast.error("Password must be at least 6 characters long", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -52,9 +142,27 @@ const Register = () => {
       setOtpData({ ...otpData, email: registerData.email });
       setStep('otp');
       setCountdown(60);
-      toast.success("Registration successful! Please check your email for OTP.");
+      toast.success("Registration successful! Please check your email for OTP.", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#10b981",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
     } catch {
-      toast.error("Registration failed. Please try again.");
+      toast.error("Registration failed. Please try again.", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
     } finally {
       setIsLoading(false);
     }
@@ -62,29 +170,171 @@ const Register = () => {
 
   const handleOtpSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    // Validation
+    if (!otpData.otp.trim()) {
+      toast.error("Please enter the OTP", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (otpData.otp.length !== 6) {
+      toast.error("Please enter a valid 6-digit OTP", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Check if OTP contains only numbers
+    if (!/^\d{6}$/.test(otpData.otp)) {
+      toast.error("OTP must contain only numbers", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      await dispatch(verifyOtp(otpData));
-      toast.success("OTP verified successfully! You can now login.");
-      navigate("/login");
-    } catch {
-      toast.error("Invalid OTP. Please try again.");
+      const result = await dispatch(verifyOtp(otpData));
+      
+      // Check if verification was successful
+      if (result.type === 'auth/verifyOtp/fulfilled') {
+        toast.success("Email verified successfully! You can now login.", {
+          duration: 5000,
+          position: "top-center",
+          style: {
+            background: "#10b981",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+        
+        // Clear any pending registration data
+        localStorage.removeItem("pendingRegistration");
+        
+        // Navigate to login page after a short delay
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+      } else {
+        throw new Error("OTP verification failed");
+      }
+    } catch (error: any) {
+      console.error("OTP verification error:", error);
+      
+      // Handle specific error cases
+      if (error?.message?.includes('Invalid OTP') || error?.message?.includes('OTP expired')) {
+        toast.error("Invalid or expired OTP. Please try again or request a new one.", {
+          duration: 5000,
+          position: "top-center",
+          style: {
+            background: "#dc2626",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+      } else {
+        toast.error("OTP verification failed. Please try again.", {
+          duration: 5000,
+          position: "top-center",
+          style: {
+            background: "#dc2626",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleResendOtp = async () => {
-    if (countdown > 0) return;
+    if (countdown > 0) {
+      toast.error(`Please wait ${countdown} seconds before requesting a new OTP`, {
+        duration: 3000,
+        position: "top-center",
+        style: {
+          background: "#f59e0b",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+    
+    if (!otpData.email.trim()) {
+      toast.error("Email address is required to resend OTP", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
     
     setIsLoading(true);
     try {
-      await dispatch(resendOtp({ email: otpData.email }));
-      setCountdown(60);
-      toast.success("New OTP sent to your email!");
-    } catch {
-      toast.error("Failed to resend OTP. Please try again.");
+      const result = await dispatch(resendOtp({ email: otpData.email }));
+      
+      if (result.type === 'auth/resendOtp/fulfilled') {
+        setCountdown(60);
+        toast.success("New OTP sent to your email!", {
+          duration: 5000,
+          position: "top-center",
+          style: {
+            background: "#10b981",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+      } else {
+        throw new Error("Failed to resend OTP");
+      }
+    } catch (error: any) {
+      console.error("Resend OTP error:", error);
+      toast.error(error?.message || "Failed to resend OTP. Please try again.", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
     } finally {
       setIsLoading(false);
     }

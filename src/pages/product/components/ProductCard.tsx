@@ -7,6 +7,7 @@ import { addToComparison, removeFromComparison } from "../../../store/comparison
 import { Heart, BarChart3 } from "lucide-react";
 import toast from "react-hot-toast";
 import { ProductCardSkeleton } from "../../../components/SkeletonLoader";
+import { shouldShowCostPrice } from "../../../utils/adminUtils";
 
 // Redefine ICardProps to override images type
 interface ICardProps {
@@ -57,14 +58,46 @@ const ProductCard: React.FC<ICardProps> = ({ product, showActions = true }) => {
     e.preventDefault(); // Prevent navigation
     e.stopPropagation();
     
+    if (!isLoggedIn) {
+      toast.error("Please log in to add items to comparison", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+    
     const isInComparison = comparisonProducts.some(item => item.id === product.id);
 
     if (isInComparison) {
       dispatch(removeFromComparison(product.id));
-      toast.success("Removed from comparison");
+      toast.success("Removed from comparison", {
+        duration: 3000,
+        position: "top-center",
+        style: {
+          background: "#10b981",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
     } else {
       if (comparisonProducts.length >= maxProducts) {
-        toast.error(`You can only compare up to ${maxProducts} products`);
+        toast.error(`You can only compare up to ${maxProducts} products. Remove some items to add new ones`, {
+          duration: 5000,
+          position: "top-center",
+          style: {
+            background: "#dc2626",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
         return;
       }
       
@@ -86,7 +119,16 @@ const ProductCard: React.FC<ICardProps> = ({ product, showActions = true }) => {
         reviewCount: 0,
       };
       dispatch(addToComparison(comparisonItem));
-      toast.success("Added to comparison");
+      toast.success("Added to comparison", {
+        duration: 3000,
+        position: "top-center",
+        style: {
+          background: "#10b981",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
     }
   };
   const imageUrl =
@@ -185,6 +227,16 @@ const ProductCard: React.FC<ICardProps> = ({ product, showActions = true }) => {
                 <span className="text-gray-400 text-sm line-through ml-2">
                   Rs{((product.price * 100) / (100 - product.discount)).toFixed(2)}
                 </span>
+              )}
+              
+              {/* Admin Cost Price Display */}
+              {shouldShowCostPrice() && product.costPrice && (
+                <div className="mt-1 text-xs text-gray-500">
+                  <span>Cost: Rs{product.costPrice.toFixed(2)}</span>
+                  <span className="ml-2 text-green-600">
+                    Profit: Rs{(product.price - product.costPrice).toFixed(2)}
+                  </span>
+                </div>
               )}
             </div>
             <button className="text-indigo-600 hover:text-indigo-800 font-medium">

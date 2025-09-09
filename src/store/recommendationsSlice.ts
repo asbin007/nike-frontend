@@ -248,19 +248,17 @@ const getSimilarProducts = (currentProduct: IProduct, allProducts: IProduct[], l
   return similar;
 };
 
-// Helper function to get trending products (newest, highest rated, or discounted)
+// Helper function to get trending products using consistent filtering logic
 const getTrendingProducts = (allProducts: IProduct[], limit: number = 8): RecommendationProduct[] => {
   const trending = allProducts
-    .filter(product => product.isStock)
+    .filter(product => {
+      // Must be in stock (same as ProductFilters)
+      if (product.isStock === false) return false;
+      return true;
+    })
     .sort((a, b) => {
-      // Prioritize new products, then high ratings, then discounts
-      if (a.isNew && !b.isNew) return -1;
-      if (b.isNew && !a.isNew) return 1;
-      if (a.rating > b.rating) return -1;
-      if (b.rating < a.rating) return 1;
-      if (a.discount > b.discount) return -1;
-      if (b.discount < a.discount) return 1;
-      return 0;
+      // Sort by creation date (newest first) - same as ProductFilters default sort
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     })
     .slice(0, limit)
     .map(product => convertToRecommendationProduct(product, 'Trending now'));
@@ -308,24 +306,15 @@ export const fetchRecommendations = createAsyncThunk(
       // Generate trending products
       const trendingProducts = getTrendingProducts(products, 8);
       
-      // Generate personalized recommendations (mix of new, discounted, and high-rated)
-      const personalizedRecommendations = products
-        .filter(product => product.isStock)
-        .sort((a, b) => {
-          // Mix of new products, discounts, and ratings
-          const scoreA = (a.isNew ? 3 : 0) + (a.discount > 0 ? 2 : 0) + (a.rating || 0);
-          const scoreB = (b.isNew ? 3 : 0) + (b.discount > 0 ? 2 : 0) + (b.rating || 0);
-          return scoreB - scoreA;
-        })
-        .slice(0, 6)
-        .map(product => convertToRecommendationProduct(product, 'Recommended for you'));
+      // Don't generate personalized recommendations by default
+      // They should only be shown when user has activity
 
       return {
         recentlyViewed: [],
         frequentlyBought: [],
         similarProducts: [],
         trendingProducts,
-        personalizedRecommendations,
+        personalizedRecommendations: [], // Don't show personalized recommendations by default
       };
     } catch (error) {
       console.error('Error fetching recommendations:', error);
@@ -389,12 +378,16 @@ export const fetchTrendingProducts = createAsyncThunk(
         const productsResponse = await API.get('/product');
         const allProducts = productsResponse.data.data || [];
         
+        // Use consistent filtering logic for trending products
         const trendingProducts = allProducts
-          .filter((p: BackendProduct) => p.inStock !== false && p.isStock !== false)
+          .filter((p: BackendProduct) => {
+            // Must be in stock (same as ProductFilters)
+            if (p.inStock === false || p.isStock === false) return false;
+            return true;
+          })
           .sort((a: BackendProduct, b: BackendProduct) => {
-            const scoreA = (a.isNew ? 3 : 0) + (a.rating || 4.0) + (a.discount ? 1 : 0);
-            const scoreB = (b.isNew ? 3 : 0) + (b.rating || 4.0) + (b.discount ? 1 : 0);
-            return scoreB - scoreA;
+            // Sort by creation date (newest first) - same as ProductFilters default sort
+            return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
           })
           .slice(0, limit)
           .map((product: BackendProduct) => 
@@ -432,14 +425,19 @@ export const fetchNewArrivals = createAsyncThunk(
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
+        // Use the same filtering logic as all-shoes route (ProductFilters component)
         const newArrivals = allProducts
           .filter((p: BackendProduct) => {
-            if (p.isNew || p.isNewProduct) return true;
-            if (p.createdAt) {
-              const createdDate = new Date(p.createdAt);
-              return createdDate >= thirtyDaysAgo;
-            }
-            return false;
+            // Must be in stock (same as ProductFilters)
+            if (p.inStock === false || p.isStock === false) return false;
+            
+            // Use exact same isNew logic as ProductFilters component
+            // Only show products that are marked as new
+            return p.isNew === true || p.isNewProduct === true;
+          })
+          .sort((a: BackendProduct, b: BackendProduct) => {
+            // Sort by creation date (newest first) - same as ProductFilters default sort
+            return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
           })
           .slice(0, limit)
           .map((product: BackendProduct) => 
@@ -473,9 +471,21 @@ export const fetchBestSellers = createAsyncThunk(
         const productsResponse = await API.get('/product');
         const allProducts = productsResponse.data.data || [];
         
+        // Use consistent filtering logic for best sellers
         const bestSellers = allProducts
-          .filter((p: BackendProduct) => (p.rating || 4.0) >= 3.5 && (p.inStock !== false && p.isStock !== false))
-          .sort((a: BackendProduct, b: BackendProduct) => (b.rating || 4.0) - (a.rating || 4.0))
+          .filter((p: BackendProduct) => {
+            // Must be in stock (same as ProductFilters)
+            if (p.inStock === false || p.isStock === false) return false;
+            
+            // Only show products with high ratings (4.0+)
+            return (p.rating || 0) >= 4.0;
+          })
+          .sort((a: BackendProduct, b: BackendProduct) => {
+            // Sort by rating (highest first), then by creation date
+            const ratingDiff = (b.rating || 0) - (a.rating || 0);
+            if (ratingDiff !== 0) return ratingDiff;
+            return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+          })
           .slice(0, limit)
           .map((product: BackendProduct) => 
             convertToRecommendationProduct(product, 'Best seller')
@@ -508,9 +518,21 @@ export const fetchOnSaleProducts = createAsyncThunk(
         const productsResponse = await API.get('/product');
         const allProducts = productsResponse.data.data || [];
         
+        // Use consistent filtering logic for on sale products
         const onSaleProducts = allProducts
-          .filter((p: BackendProduct) => p.discount && p.discount >= 5 && (p.inStock !== false && p.isStock !== false))
-          .sort((a: BackendProduct, b: BackendProduct) => (b.discount || 0) - (a.discount || 0))
+          .filter((p: BackendProduct) => {
+            // Must be in stock (same as ProductFilters)
+            if (p.inStock === false || p.isStock === false) return false;
+            
+            // Only show products with discount >= 10%
+            return p.discount && p.discount >= 10;
+          })
+          .sort((a: BackendProduct, b: BackendProduct) => {
+            // Sort by discount (highest first), then by creation date
+            const discountDiff = (b.discount || 0) - (a.discount || 0);
+            if (discountDiff !== 0) return discountDiff;
+            return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+          })
           .slice(0, limit)
           .map((product: BackendProduct) => 
             convertToRecommendationProduct(product, 'On sale')
@@ -685,18 +707,20 @@ export const fetchAllCollections = createAsyncThunk(
       // Last resort: create recommendations from regular products
       console.log('🔄 Creating recommendations from regular products...');
       
-      // Create trending products (mix of new and high-rated products)
+      // Create trending products using consistent filtering logic
       const trendingProducts = allProducts
-        .filter((p: BackendProduct) => p.inStock !== false && p.isStock !== false)
+        .filter((p: BackendProduct) => {
+          // Must be in stock (same as ProductFilters)
+          if (p.inStock === false || p.isStock === false) return false;
+          return true;
+        })
         .sort((a: BackendProduct, b: BackendProduct) => {
-          // Prioritize new products, then high ratings, then discounts
-          const scoreA = (a.isNew ? 3 : 0) + (a.rating || 4.0) + (a.discount ? 1 : 0);
-          const scoreB = (b.isNew ? 3 : 0) + (b.rating || 4.0) + (b.discount ? 1 : 0);
-          return scoreB - scoreA;
+          // Sort by creation date (newest first) - same as ProductFilters default sort
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
         })
         .slice(0, limit)
         .map((product: BackendProduct) => {
-          console.log('🔄 Creating trending product:', product.name, 'with images:', product.images);
+          console.log('🔄 Creating trending product (using consistent logic):', product.name, 'with images:', product.images);
           return convertToRecommendationProduct(product, 'Trending now');
         });
       
@@ -723,30 +747,23 @@ export const fetchAllCollections = createAsyncThunk(
         }))
       });
       
+      // Use the same filtering logic as all-shoes route (ProductFilters component)
       const newArrivals = allProducts
         .filter((p: BackendProduct) => {
-          // Must be in stock
+          // Must be in stock (same as ProductFilters)
           if (p.inStock === false || p.isStock === false) return false;
           
-          // Check if marked as new
-          if (p.isNew || p.isNewProduct) return true;
-          
-          // Check if created in last 30 days
-          if (p.createdAt) {
-            const createdDate = new Date(p.createdAt);
-            return createdDate >= thirtyDaysAgo;
-          }
-          return false;
+          // Use exact same isNew logic as ProductFilters component
+          // Only show products that are marked as new
+          return p.isNew === true || p.isNewProduct === true;
         })
         .sort((a: BackendProduct, b: BackendProduct) => {
-          // Prioritize new products, then by creation date
-          if (a.isNew && !b.isNew) return -1;
-          if (!a.isNew && b.isNew) return 1;
+          // Sort by creation date (newest first) - same as ProductFilters default sort
           return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
         })
         .slice(0, limit)
         .map((product: BackendProduct) => {
-          console.log('🔄 Creating new arrival product:', {
+          console.log('🔄 Creating new arrival product (using all-shoes logic):', {
             name: product.name,
             isNew: product.isNew,
             isNewProduct: product.isNewProduct,
@@ -758,40 +775,54 @@ export const fetchAllCollections = createAsyncThunk(
           return convertToRecommendationProduct(product, 'Just arrived');
         });
       
-      // If no new arrivals found with strict criteria, use a more lenient approach
+      // If no new arrivals found, return empty array (don't show all products)
       let finalNewArrivals = newArrivals;
       if (newArrivals.length === 0) {
-        console.log('⚠️ No strict new arrivals found, using lenient fallback...');
-        finalNewArrivals = allProducts
-          .filter((p: BackendProduct) => p.inStock !== false && p.isStock !== false)
-          .sort((a: BackendProduct, b: BackendProduct) => {
-            // Sort by creation date (newest first) as fallback
-            return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-          })
-                .slice(0, limit)
-          .map((product: BackendProduct) => {
-            console.log('🔄 Creating lenient new arrival product:', product.name);
-            return convertToRecommendationProduct(product, 'Just arrived');
-          });
+        console.log('⚠️ No products marked as new found. New arrivals section will be empty.');
+        finalNewArrivals = [];
       }
       
-      // Create best sellers (products with high ratings)
+      // Create best sellers using consistent filtering logic
       const bestSellers = allProducts
-        .filter((p: BackendProduct) => (p.rating || 4.0) >= 3.5 && (p.inStock !== false && p.isStock !== false))
-        .sort((a: BackendProduct, b: BackendProduct) => (b.rating || 4.0) - (a.rating || 4.0))
-                .slice(0, limit)
-                .map((product: BackendProduct) => 
-                  convertToRecommendationProduct(product, 'Best seller')
-        );
+        .filter((p: BackendProduct) => {
+          // Must be in stock (same as ProductFilters)
+          if (p.inStock === false || p.isStock === false) return false;
+          
+          // Only show products with high ratings (4.0+)
+          return (p.rating || 0) >= 4.0;
+        })
+        .sort((a: BackendProduct, b: BackendProduct) => {
+          // Sort by rating (highest first), then by creation date
+          const ratingDiff = (b.rating || 0) - (a.rating || 0);
+          if (ratingDiff !== 0) return ratingDiff;
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        })
+        .slice(0, limit)
+        .map((product: BackendProduct) => {
+          console.log('🔄 Creating best seller product (using consistent logic):', product.name, 'rating:', product.rating);
+          return convertToRecommendationProduct(product, 'Best seller');
+        });
       
-      // Create on sale products (products with discount)
+      // Create on sale products using consistent filtering logic
       const onSaleProducts = allProducts
-        .filter((p: BackendProduct) => p.discount && p.discount >= 5 && (p.inStock !== false && p.isStock !== false))
-        .sort((a: BackendProduct, b: BackendProduct) => (b.discount || 0) - (a.discount || 0))
-                .slice(0, limit)
-                .map((product: BackendProduct) => 
-                  convertToRecommendationProduct(product, 'On sale')
-        );
+        .filter((p: BackendProduct) => {
+          // Must be in stock (same as ProductFilters)
+          if (p.inStock === false || p.isStock === false) return false;
+          
+          // Only show products with discount >= 10%
+          return p.discount && p.discount >= 10;
+        })
+        .sort((a: BackendProduct, b: BackendProduct) => {
+          // Sort by discount (highest first), then by creation date
+          const discountDiff = (b.discount || 0) - (a.discount || 0);
+          if (discountDiff !== 0) return discountDiff;
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        })
+        .slice(0, limit)
+        .map((product: BackendProduct) => {
+          console.log('🔄 Creating on sale product (using consistent logic):', product.name, 'discount:', product.discount);
+          return convertToRecommendationProduct(product, 'On sale');
+        });
       
       const lastResortResult = {
         trending: trendingProducts,
@@ -831,8 +862,19 @@ export const fetchPersonalizedRecommendations = createAsyncThunk(
       console.log('🎯 Fetching personalized recommendations...');
       console.log('🎯 Thunk started at:', new Date().toISOString());
       
-      // Get current state to access cart and purchase history
-      const state = getState() as { recommendations: RecommendationsState };
+      // Get current state to access auth and recommendations
+      const state = getState() as { 
+        recommendations: RecommendationsState;
+        auth: { user: { token: string | null } };
+      };
+      
+      // Check if user is logged in
+      const isLoggedIn = !!state.auth?.user?.token || !!localStorage.getItem("tokenauth");
+      if (!isLoggedIn) {
+        console.log('🚫 User not logged in, returning empty recommendations');
+        return [];
+      }
+      
       const cartHistory = state.recommendations?.cartHistory || [];
       const purchaseHistory = state.recommendations?.purchaseHistory || [];
       
@@ -843,26 +885,12 @@ export const fetchPersonalizedRecommendations = createAsyncThunk(
         purchaseHistory: purchaseHistory.map((item: RecommendationProduct) => ({ id: item.id, name: item.name, brand: item.brand }))
       });
       
-      // If user has no activity, fetch general recommendations
+      // If user has no activity, return empty recommendations
       if (cartHistory.length === 0 && purchaseHistory.length === 0) {
-        console.log('📝 No user activity found, fetching general recommendations');
+        console.log('📝 No user activity found, returning empty recommendations');
         console.log('📝 Cart history length:', cartHistory.length, 'Purchase history length:', purchaseHistory.length);
-        const response = await API.get("/product");
-        if (response.status === 200 && response.data?.data) {
-          const products: BackendProduct[] = response.data.data;
-          const generalRecommendations = products
-            .filter(product => product.isStock)
-            .sort((a, b) => {
-              // Prioritize new products, discounts, and ratings
-              const scoreA = (a.isNew ? 3 : 0) + ((a.discount || 0) > 0 ? 2 : 0) + (a.rating || 0);
-              const scoreB = (b.isNew ? 3 : 0) + ((b.discount || 0) > 0 ? 2 : 0) + (b.rating || 0);
-              return scoreB - scoreA;
-            })
-            .slice(0, 6)
-            .map(product => convertToRecommendationProduct(product, 'Popular items'));
-          
-          return generalRecommendations;
-        }
+        console.log('📝 User must have cart or purchase activity to get personalized recommendations');
+        return [];
       }
       
       // Try backend recommendations first
@@ -942,51 +970,9 @@ export const fetchPersonalizedRecommendations = createAsyncThunk(
         }
       }
       
-      // Final fallback: general recommendations
-      console.log('📝 Using general recommendations as fallback');
-      const generalRecommendations = allProducts
-        .filter(product => product.isStock)
-        .sort((a, b) => {
-          const scoreA = (a.isNew ? 3 : 0) + ((a.discount || 0) > 0 ? 2 : 0) + (a.rating || 0);
-          const scoreB = (b.isNew ? 3 : 0) + ((b.discount || 0) > 0 ? 2 : 0) + (b.rating || 0);
-          return scoreB - scoreA;
-        })
-        .slice(0, 6)
-        .map(product => convertToRecommendationProduct(product, 'Popular items'));
-      
-      console.log('🎯 Final fallback recommendations:', generalRecommendations.length, generalRecommendations);
-      console.log('🎯 Returning from fetchPersonalizedRecommendations with:', generalRecommendations.length, 'items');
-      
-      // TEMPORARY: Add test data if no recommendations found
-      if (generalRecommendations.length === 0) {
-        console.log('🧪 TEMPORARY: Adding test recommendations for debugging');
-        const testRecommendations = [
-          {
-            id: 'test-rec-1',
-            name: 'Test Recommendation 1',
-            price: 5000,
-            originalPrice: 6000,
-            images: ['/images/product-1.jpg'],
-            brand: 'Nike',
-            category: 'Shoes',
-            reason: 'Test recommendation 1'
-          },
-          {
-            id: 'test-rec-2', 
-            name: 'Test Recommendation 2',
-            price: 7000,
-            originalPrice: 8000,
-            images: ['/images/product-2.jpg'],
-            brand: 'Adidas',
-            category: 'Shoes',
-            reason: 'Test recommendation 2'
-          }
-        ];
-        console.log('🧪 Returning test recommendations:', testRecommendations);
-        return testRecommendations;
-      }
-      
-      return generalRecommendations;
+      // If no personalized recommendations found, return empty array
+      console.log('📝 No personalized recommendations found, returning empty array');
+      return [];
     } catch (error) {
       console.error('Error fetching personalized recommendations:', error);
       throw error;

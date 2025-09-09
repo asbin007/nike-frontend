@@ -26,6 +26,14 @@ export default function Navbar() {
 
   const { data: cartItems } = useAppSelector((store) => store.cart);
   const user = useAppSelector((store) => store.auth.user);
+  
+  // Debug cart state
+  console.log('🛒 Navbar Cart Debug:', {
+    cartItemsLength: cartItems?.length || 0,
+    cartItems: cartItems,
+    isLogin: isLogin,
+    shouldShowCartCount: isLogin && cartItems?.length > 0
+  });
   const wishlistItems = useAppSelector((store) => store.wishlist.items);
   const { products: comparisonProducts } = useAppSelector((store) => store.comparison);
   const { personalizedRecommendations, trendingProducts } = useAppSelector((store) => store.recommendations);
@@ -168,11 +176,15 @@ export default function Navbar() {
   };
 
   const handleCartClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (isLogin && cartItems?.length > 0) {
+    console.log('🛒 Cart clicked:', { isLogin, cartItemsLength: cartItems?.length });
+    
+    if (isLogin) {
+      // Always fetch fresh cart data when clicking cart
       dispatch(fetchCartItems());
+      // Don't prevent navigation, let it go to cart page
     } else {
       e.preventDefault();
-      toast.error("No items in the cart", {
+      toast.error("Please login to view your cart", {
         duration: 3000,
         position: "top-center",
         style: {

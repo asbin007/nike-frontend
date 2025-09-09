@@ -26,28 +26,26 @@ function MyCart() {
     (total, item) => item.Shoe.price * item.quantity + total,
     0
   );
+
   const totalQtyInCarts = data.reduce(
     (total, item) => item.quantity + total,
     0
   );
+
   const shippingPrice = 100;
-  
+
   // Calculate discount amount
   const calculateDiscount = () => {
     if (!appliedCoupon) return 0;
-    
     let discount = 0;
-    
     switch (appliedCoupon.discountType) {
       case 'percentage':
         discount = (subTotal * appliedCoupon.discountValue) / 100;
         discount = Math.min(discount, appliedCoupon.maxDiscount);
         break;
-        
       case 'fixed':
         discount = appliedCoupon.discountValue;
         break;
-        
       case 'b2g1':
         const normalizeBrand = (brand: string) => {
           if (!brand) return '';
@@ -55,11 +53,9 @@ function MyCart() {
             .replace(/\s+/g, '') // Remove spaces
             .replace(/[^a-z0-9]/g, ''); // Remove special characters
         };
-        
         const getBrandVariants = (brand: string) => {
           const normalized = normalizeBrand(brand);
           const variants = [normalized];
-          
           // Add common brand variants
           if (normalized.includes('nike') || normalized.includes('airmax') || normalized.includes('jordan')) {
             variants.push('nike', 'airmax', 'jordan');
@@ -70,36 +66,31 @@ function MyCart() {
           if (normalized.includes('puma') || normalized.includes('suede') || normalized.includes('rs')) {
             variants.push('puma', 'suede', 'rs');
           }
-          
           return [...new Set(variants)]; // Remove duplicates
         };
-        
         const eligibleItems = data.filter(item => {
           const itemBrand = item.Shoe.brand || item.Shoe.name.split(' ')[0];
           const itemBrandVariants = getBrandVariants(itemBrand);
           const couponBrandVariants = getBrandVariants(appliedCoupon.category || '');
-          
-          return itemBrandVariants.some(itemVariant => 
-            couponBrandVariants.some(couponVariant => 
-              itemVariant.includes(couponVariant) || 
+          return itemBrandVariants.some(itemVariant =>
+            couponBrandVariants.some(couponVariant =>
+              itemVariant.includes(couponVariant) ||
               couponVariant.includes(itemVariant) ||
               itemVariant === couponVariant
             )
           );
         });
-        
         if (eligibleItems.length >= 2) {
-          const cheapestItem = eligibleItems.reduce((min, item) => 
+          const cheapestItem = eligibleItems.reduce((min, item) =>
             item.Shoe.price < min.Shoe.price ? item : min
           );
           discount = cheapestItem.Shoe.price;
         }
         break;
     }
-    
     return discount;
   };
-  
+
   const discountAmount = calculateDiscount();
   const total = subTotal + shippingPrice - discountAmount;
 
@@ -116,7 +107,7 @@ function MyCart() {
   }
 
   return (
-  <div className="bg-gray-100 min-h-screen py-4 sm:py-6 md:py-8">
+    <div className="bg-gray-100 min-h-screen py-4 sm:py-6 md:py-8">
       <div className="container mx-auto px-3 sm:px-4">
         <h1 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">Shopping Cart</h1>
 
@@ -160,10 +151,8 @@ function MyCart() {
                         <td className="py-3 sm:py-4">
                           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
                             <button
-                              className="border rounded-md py-1 px-2 sm:px-3 text-xs sm:text-sm"
-                              onClick={() =>
-                                handleUpdate(item.id, item.quantity - 1)
-                              }
+                              className="border rounded-md py-1 px-2 sm:px-3 text-xs sm:text-sm hover:bg-gray-100"
+                              onClick={() => handleUpdate(item.id, item.quantity - 1)}
                             >
                               -
                             </button>
@@ -171,10 +160,8 @@ function MyCart() {
                               {item.quantity}
                             </span>
                             <button
-                              className="border rounded-md py-1 px-2 sm:px-3 text-xs sm:text-sm"
-                              onClick={() =>
-                                handleUpdate(item.id, item.quantity + 1)
-                              }
+                              className="border rounded-md py-1 px-2 sm:px-3 text-xs sm:text-sm hover:bg-gray-100"
+                              onClick={() => handleUpdate(item.id, item.quantity + 1)}
                             >
                               +
                             </button>

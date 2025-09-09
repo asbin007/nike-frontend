@@ -17,7 +17,44 @@ const CouponInput = ({ cartTotal, cartItems, className = '' }: CouponInputProps)
 
   const handleApplyCoupon = () => {
     if (!couponCode.trim()) {
-      toast.error('Please enter a coupon code');
+      toast.error('Please enter a coupon code', {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (couponCode.trim().length < 3) {
+      toast.error('Coupon code must be at least 3 characters long', {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (cartTotal < 100) {
+      toast.error('Minimum order amount of ₹100 required to apply coupon', {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
       return;
     }
 
@@ -33,7 +70,16 @@ const CouponInput = ({ cartTotal, cartItems, className = '' }: CouponInputProps)
 
   const handleRemoveCoupon = () => {
     dispatch(removeCoupon());
-    toast.success('Coupon removed');
+    toast.success('Coupon removed successfully', {
+      duration: 3000,
+      position: "top-center",
+      style: {
+        background: "#10b981",
+        color: "#ffffff",
+        padding: "12px 16px",
+        borderRadius: "8px",
+      },
+    });
   };
 
   const handleClearError = () => {

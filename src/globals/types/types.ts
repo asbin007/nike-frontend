@@ -20,6 +20,7 @@ export interface IProduct {
   description: string;
   price: number;
   originalPrice: number;
+  costPrice?: number; // Cost price for profit calculation (admin only)
   isNew: boolean;
   isStock: boolean;
   features: string[];

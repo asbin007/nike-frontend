@@ -98,10 +98,24 @@ export function verifyOtp(data: { email: string; otp: string }) {
         // Clear pending registration
         localStorage.removeItem("pendingRegistration");
         dispatch(setStatus(Status.SUCCESS));
-      } else dispatch(setStatus(Status.ERROR));
-    } catch (error) {
-      console.log(error);
+        return { type: 'auth/verifyOtp/fulfilled', payload: res.data };
+      } else {
+        dispatch(setStatus(Status.ERROR));
+        throw new Error("OTP verification failed");
+      }
+    } catch (error: unknown) {
+      console.log("OTP verification error:", error);
       dispatch(setStatus(Status.ERROR));
+      
+      // Handle specific error cases
+      const axiosError = error as { response?: { status: number } };
+      if (axiosError?.response?.status === 400) {
+        throw new Error("Invalid OTP");
+      } else if (axiosError?.response?.status === 410) {
+        throw new Error("OTP expired");
+      } else {
+        throw new Error("OTP verification failed");
+      }
     }
   };
 }
@@ -112,10 +126,15 @@ export function resendOtp(data: { email: string }) {
       const res = await API.post("/auth/resend-otp", data);
       if (res.status === 200) {
         dispatch(setStatus(Status.SUCCESS));
-      } else dispatch(setStatus(Status.ERROR));
-    } catch (error) {
-      console.log(error);
+        return { type: 'auth/resendOtp/fulfilled', payload: res.data };
+      } else {
+        dispatch(setStatus(Status.ERROR));
+        throw new Error("Failed to resend OTP");
+      }
+    } catch (error: unknown) {
+      console.log("Resend OTP error:", error);
       dispatch(setStatus(Status.ERROR));
+      throw new Error("Failed to resend OTP. Please try again.");
     }
   };
 }

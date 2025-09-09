@@ -14,7 +14,7 @@ import MyCart from "./pages/cart/MyCart";
 import Checkout from "./pages/checkout/Checkout";
 import io from "socket.io-client";
 import MyOrder from "./pages/order/MyOrders";
-import MyOrderDetails from "./pages/order/MyOrderDetaills";
+import MyOrderDetail from "./pages/order/MyOrderDetaills";
 import { useEffect } from "react";
 import { useAppDispatch } from "./store/hooks";
 import { loadUserFromStorage } from "./store/authSlice";
@@ -27,6 +27,7 @@ import ChatWidget from "./components/ChatWidget";
 import AllCollections from "./pages/product/Collection/AllCollections";
 import PaymentSuccess from "./pages/payment/PaymentSuccess";
 import CODSuccess from "./pages/payment/CODSuccess";
+import RoleProtection from "./components/RoleProtection";
 
 // Add version for deployment tracking
 const APP_VERSION = "1.0.2";
@@ -351,12 +352,36 @@ const AppContent = () => {
         <Route path="/search" element={<SearchProducts />} />
         <Route path="/collection" element={<Collections />} />
         <Route path="/collections" element={<AllCollections />} />
-        <Route path="/my-cart" element={<MyCart />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/my-orders" element={<MyOrder />} />
-        <Route path="/my-orders/:id" element={<MyOrderDetails />} />
-        <Route path="/wishlist" element={<Wishlist />} />
-        <Route path="/comparison" element={<ProductComparison />} />
+        <Route path="/my-cart" element={
+          <RoleProtection allowedRoles={['customer']}>
+            <MyCart />
+          </RoleProtection>
+        } />
+        <Route path="/checkout" element={
+          <RoleProtection allowedRoles={['customer']}>
+            <Checkout />
+          </RoleProtection>
+        } />
+        <Route path="/my-orders" element={
+          <RoleProtection allowedRoles={['customer']}>
+            <MyOrder />
+          </RoleProtection>
+        } />
+        <Route path="/my-orders/:id" element={
+          <RoleProtection allowedRoles={['customer']}>
+            <MyOrderDetail />
+          </RoleProtection>
+        } />
+        <Route path="/wishlist" element={
+          <RoleProtection allowedRoles={['customer']}>
+            <Wishlist />
+          </RoleProtection>
+        } />
+        <Route path="/comparison" element={
+          <RoleProtection allowedRoles={['customer']}>
+            <ProductComparison />
+          </RoleProtection>
+        } />
         <Route path="/trending" element={<ProductFilters />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/cod-success" element={<CODSuccess />} />

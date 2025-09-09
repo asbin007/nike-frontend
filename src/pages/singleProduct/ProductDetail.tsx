@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { fetchProduct, fetchProducts } from "../../store/productSlice";
@@ -11,6 +11,8 @@ import ProductRecommendations from "../../components/ProductRecommendations";
 import { ProductDetailSkeleton } from "../../components/SkeletonLoader";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Heart } from "lucide-react";
 import toast from "react-hot-toast";
+import { debounce } from "../../utils/debounce";
+import { shouldShowCostPrice } from "../../utils/adminUtils";
 
 const CLOUDINARY_VERSION = "v1750340657";
 
@@ -27,6 +29,7 @@ const ProductDetail = () => {
   const { product } = useAppSelector((store) => store.products);
   const { review } = useAppSelector((store) => store.reviews);
   const { similarProducts, frequentlyBought, status } = useAppSelector((store) => store.recommendations);
+  const { isAddingToCart } = useAppSelector((store) => store.cart);
 
   const isLoggedIn = useAppSelector(
     (store) => !!store.auth.user.token || !!localStorage.getItem("tokenauth")
@@ -115,34 +118,183 @@ const ProductDetail = () => {
     }
   }, [product]);
 
-  const handleAddToCart = async () => {
+  // Debounced add to cart function to prevent multiple rapid clicks
+  const debouncedAddToCart = useMemo(
+    () => debounce(async () => {
+      // Prevent multiple clicks while adding to cart
+      if (isAddingToCart) {
+        toast.error("Please wait, adding to cart...", {
+          duration: 2000,
+          position: "top-center",
+          style: {
+            background: "#f59e0b",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+        return;
+      }
+
     if (!isLoggedIn) {
-      alert("Please log in to add to cart");
+      toast.error("Please log in to add items to cart", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
       return;
     }
 
-    if (!product?.id || !selectedSize || !selectedColor) {
-      alert("Please select a size and color before adding to cart.");
+    if (!product?.id) {
+      toast.error("Product not found. Please try again.", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
       return;
-    } else {
-      await dispatch(addToCart({ productId: product.id, size: selectedSize, color: selectedColor }));
-      navigate("/");
     }
-  };
+
+    if (!selectedSize) {
+      toast.error("Please select a size before adding to cart", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (!selectedColor) {
+      toast.error("Please select a color before adding to cart", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Check if product is in stock
+    if (product.totalStock && product.totalStock <= 0) {
+      toast.error("Sorry, this product is currently out of stock. Please check back later or try a different product", {
+        duration: 6000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Check if product has low stock
+    if (product.totalStock && product.totalStock <= 5 && product.totalStock > 0) {
+      toast.error(`Only ${product.totalStock} items left in stock! Add to cart quickly`, {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#f59e0b",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+    }
+
+    try {
+      await dispatch(addToCart({ productId: product.id, size: selectedSize, color: selectedColor }));
+      toast.success("Item added to cart successfully!", {
+        duration: 3000,
+        position: "top-center",
+        style: {
+          background: "#10b981",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      navigate("/");
+    } catch (error) {
+      toast.error("Failed to add item to cart. Please try again.", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+    }
+    }, 500), // 500ms debounce delay
+    [isAddingToCart, isLoggedIn, product, selectedSize, selectedColor, dispatch, navigate]
+  );
+
+  const handleAddToCart = debouncedAddToCart;
 
   const handleWishlistToggle = () => {
     if (!isLoggedIn) {
-      toast.error("Please log in to add to wishlist");
+      toast.error("Please log in to add items to wishlist", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
       return;
     }
 
-    if (!product) return;
+    if (!product) {
+      toast.error("Product not found. Please try again.", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
 
     const isInWishlist = wishlistItems.some(item => item.id === product.id);
 
     if (isInWishlist) {
       dispatch(removeFromWishlist(product.id));
-      toast.success("Removed from wishlist");
+      toast.success("Removed from wishlist", {
+        duration: 3000,
+        position: "top-center",
+        style: {
+          background: "#10b981",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
     } else {
       const wishlistItem = {
         id: product.id,
@@ -157,7 +309,16 @@ const ProductDetail = () => {
         brand: product.brand,
       };
       dispatch(addToWishlist(wishlistItem));
-      toast.success("Added to wishlist");
+      toast.success("Added to wishlist", {
+        duration: 3000,
+        position: "top-center",
+        style: {
+          background: "#10b981",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
     }
   };
 
@@ -401,6 +562,32 @@ const ProductDetail = () => {
                     </div>
                   )}
                 </div>
+                
+                {/* Admin Cost Price Display */}
+                {shouldShowCostPrice() && product?.costPrice && (
+                  <div className="mt-2 p-3 bg-gray-100 rounded-lg">
+                    <div className="text-sm text-gray-600 mb-1">Admin View - Cost Analysis:</div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Cost Price: </span>
+                        <span className="font-semibold text-gray-700">Rs{product.costPrice.toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Profit: </span>
+                        <span className="font-semibold text-green-600">
+                          Rs{(product.price - product.costPrice).toFixed(2)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Profit %: </span>
+                        <span className="font-semibold text-green-600">
+                          {product.costPrice > 0 ? (((product.price - product.costPrice) / product.costPrice) * 100).toFixed(1) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {(product?.totalStock ?? 0) > 0 ? (
                   <span className="text-green-600 text-xs sm:text-sm">In Stock</span>
                 ) : (
@@ -464,9 +651,21 @@ const ProductDetail = () => {
               <div className="mb-4 sm:mb-6">
                 <button
                   onClick={handleAddToCart}
-                  className="w-full bg-indigo-600 text-white py-2 sm:py-3 px-4 sm:px-6 rounded-md hover:bg-indigo-700 text-sm sm:text-base"
+                  disabled={isAddingToCart}
+                  className={`w-full py-2 sm:py-3 px-4 sm:px-6 rounded-md text-sm sm:text-base transition-all duration-200 ${
+                    isAddingToCart
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
                 >
-                  Add to Cart
+                  {isAddingToCart ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Adding to Cart...
+                    </div>
+                  ) : (
+                    'Add to Cart'
+                  )}
                 </button>
               </div>
 

@@ -137,7 +137,192 @@ function Checkout() {
 
     // Check if cart is empty
     if (data.length === 0) {
-      toast.error("Your cart is empty!");
+      toast.error("Your cart is empty! Please add items to your cart before checkout", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Validate required fields
+    if (!item.firstName.trim()) {
+      toast.error("Please enter your first name", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (!item.lastName.trim()) {
+      toast.error("Please enter your last name", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (!item.email.trim()) {
+      toast.error("Please enter your email address", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(item.email)) {
+      toast.error("Please enter a valid email address", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (!item.phoneNumber.trim()) {
+      toast.error("Please enter your phone number", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Phone number validation (Nepal format)
+    const phoneRegex = /^[9][6-8]\d{8}$/;
+    if (!phoneRegex.test(item.phoneNumber.replace(/\s/g, ''))) {
+      toast.error("Please enter a valid Nepal phone number (e.g., 9841234567)", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (!item.addressLine.trim()) {
+      toast.error("Please enter your address", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (!item.city.trim()) {
+      toast.error("Please enter your city", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (!item.street.trim()) {
+      toast.error("Please enter your street address", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (!item.zipcode.trim()) {
+      toast.error("Please enter your zip code", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Check minimum order amount
+    if (total < 100) {
+      toast.error("Minimum order amount is ₹100. Please add more items to your cart", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Check if any item is out of stock
+    const outOfStockItems = data.filter(item => (item.Shoe as any).totalStock && (item.Shoe as any).totalStock <= 0);
+    if (outOfStockItems.length > 0) {
+      toast.error(`Some items in your cart are out of stock. Please remove them before checkout`, {
+        duration: 6000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
       return;
     }
 
@@ -157,7 +342,20 @@ function Checkout() {
 
     console.log('Sending data to backend:', finalData); // Debug log
 
-    await dispatch(orderItem(finalData));
+    try {
+      await dispatch(orderItem(finalData));
+    } catch (error) {
+      toast.error("Failed to place order. Please try again.", {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+    }
     
     // Note: COD redirect is handled in orderSlice.ts
     // Khalti redirect is also handled in orderSlice.ts

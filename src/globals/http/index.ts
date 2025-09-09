@@ -52,6 +52,12 @@ const handleError = (error: unknown) => {
   }
   
   if ((error as { response?: { status?: number } }).response?.status === 404) {
+    // Suppress 404 logging for orders endpoint since it's expected fallback behavior
+    const url = (error as { config?: { url?: string } }).config?.url;
+    if (url && url.includes('/orders')) {
+      // Don't log 404 for orders endpoint - it's expected fallback behavior
+      return Promise.reject(error);
+    }
     console.error('❌ Not Found: API endpoint does not exist');
     return Promise.reject({
       ...(error as object),

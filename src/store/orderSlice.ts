@@ -13,6 +13,7 @@ interface IProduct {
   totalPrice?: number;
   orderStatus: Status;
   paymentId: string;
+  createdAt?: string;
   Payment?: {
     pidx?: string; // Make pidx optional
     paymentMethod: PaymentMethod;
@@ -355,16 +356,82 @@ export function orderItem(data: IData) {
 export function fetchMyOrders() {
   return async function fetchMyOrdersThunk(dispatch: AppDispatch) {
     try {
-      const response = await APIS.get("/order");
-      if (response.status === 201) {
+      console.log("🔄 Fetching orders from API...");
+      
+      // First, test if backend is reachable
+      try {
+        await APIS.get("/health");
+        console.log("✅ Backend is reachable");
+      } catch (healthError) {
+        console.log("⚠️ Backend health check failed, but continuing with order fetch...");
+      }
+      
+      // Skip /orders endpoint since it's known to return 404, try working endpoints directly
+      let response;
+      try {
+        response = await APIS.get("/order");
+        console.log("✅ Orders fetched from /order endpoint");
+      } catch (firstError) {
+        console.log("⚠️ /order endpoint failed, trying /user/orders...");
+        response = await APIS.get("/user/orders");
+        console.log("✅ Orders fetched from /user/orders endpoint");
+      }
+      
+      if (response && (response.status === 200 || response.status === 201)) {
         dispatch(setStatus(Status.SUCCESS));
-        dispatch(setItems(response.data.data));
+        const ordersData = response.data.data || response.data;
+        
+        // Debug: Log the structure of the first order to understand the data format
+        if (ordersData && ordersData.length > 0) {
+          console.log("🔍 First order structure:", ordersData[0]);
+          console.log("🔍 Order keys:", Object.keys(ordersData[0]));
+        }
+        
+        // Transform and normalize the order data
+        const normalizedOrders = ordersData.map((order: any) => ({
+          ...order,
+          // Ensure we have all required fields with fallbacks
+          id: order.id || order.orderId || order._id || 'unknown',
+          orderStatus: order.orderStatus || order.status || 'pending',
+          totalPrice: order.totalPrice || order.price || order.amount || 0,
+          createdAt: order.createdAt || order.orderDate || order.created_at || new Date().toISOString(),
+          Payment: order.Payment || {
+            paymentMethod: order.paymentMethod || 'cod',
+            paymentStatus: order.paymentStatus || order.payment_status || 'pending'
+          }
+        }));
+        
+        dispatch(setItems(normalizedOrders));
+        console.log("✅ Orders loaded successfully:", ordersData);
       } else {
+        console.error("❌ Invalid response status:", response?.status);
         dispatch(setStatus(Status.ERROR));
       }
     } catch (error) {
-      console.log(error);
+      console.error("❌ All order endpoints failed:", error);
+      console.error("❌ Error details:", {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        status: (error as { response?: { status?: number } })?.response?.status,
+        data: (error as { response?: { data?: unknown } })?.response?.data
+      });
       dispatch(setStatus(Status.ERROR));
+      
+      // Show user-friendly error message with more details
+      const errorMessage = error instanceof Error 
+        ? `Unable to load orders: ${error.message}` 
+        : "Unable to load orders. Please check your connection and try again.";
+        
+      toast.error(errorMessage, {
+        duration: 7000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+          maxWidth: "400px"
+        },
+      });
     }
   };
 }
@@ -421,18 +488,30 @@ export function refreshOrders() {
   return async function refreshOrdersThunk(dispatch: AppDispatch) {
     try {
       console.log("🔄 Manually refreshing orders...");
-      const response = await APIS.get("/order");
-      if (response.status === 201) {
+      
+      // Skip /orders endpoint since it's known to return 404, try working endpoints directly
+      let response;
+      try {
+        response = await APIS.get("/order");
+        console.log("✅ Orders refreshed from /order endpoint");
+      } catch (firstError) {
+        console.log("⚠️ /order endpoint failed, trying /user/orders...");
+        response = await APIS.get("/user/orders");
+        console.log("✅ Orders refreshed from /user/orders endpoint");
+      }
+      
+      if (response && (response.status === 200 || response.status === 201)) {
         dispatch(setStatus(Status.SUCCESS));
-        dispatch(setItems(response.data.data));
+        dispatch(setItems(response.data.data || response.data));
         console.log("✅ Orders refreshed successfully");
         toast.success("Orders refreshed successfully");
       } else {
+        console.error("❌ Invalid response status:", response?.status);
         dispatch(setStatus(Status.ERROR));
         toast.error("Failed to refresh orders");
       }
     } catch (error) {
-      console.log("❌ Error refreshing orders:", error);
+      console.error("❌ Error refreshing orders:", error);
       dispatch(setStatus(Status.ERROR));
       toast.error("Failed to refresh orders");
     }
@@ -452,8 +531,18 @@ export function startAutoRefresh() {
 export function updateOrderStatusAPI(orderId: string, status: OrderStatus) {
   return async function updateOrderStatusAPIThunk(dispatch: AppDispatch) {
     try {
-      console.log(`Updating order status via API: ${orderId} -> ${status}`);
+      console.log(`🔄 Updating order status via API: ${orderId} -> ${status}`);
+      console.log(`🌐 API URL: /order/admin/change-status/${orderId}`);
+      console.log(`📤 Request payload:`, { orderStatus: status });
+      
       const response = await APIS.patch(`/order/admin/change-status/${orderId}`, { orderStatus: status });
+      
+      console.log(`📥 API Response:`, {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data,
+        headers: response.headers
+      });
       
       if (response.status === 200) {
         // Update local state
@@ -463,17 +552,43 @@ export function updateOrderStatusAPI(orderId: string, status: OrderStatus) {
           orderId
         }));
         
-        console.log("Order status updated successfully via API");
+        console.log("✅ Order status updated successfully via API");
         toast.success(`Order status updated to: ${status}`);
         return true;
       } else {
-        console.error("Failed to update order status via API");
-        toast.error("Failed to update order status");
+        console.error("❌ Failed to update order status via API - Invalid response status:", response.status);
+        console.error("❌ Response data:", response.data);
+        toast.error(`Failed to update order status: ${response.statusText}`);
         return false;
       }
     } catch (error) {
-      console.error("Error updating order status via API:", error);
-      toast.error("Failed to update order status");
+      console.error("❌ Error updating order status via API:", error);
+      
+      // More detailed error logging
+      if (error && typeof error === 'object') {
+        const axiosError = error as any;
+        console.error("❌ Error details:", {
+          message: axiosError.message,
+          code: axiosError.code,
+          response: axiosError.response ? {
+            status: axiosError.response.status,
+            statusText: axiosError.response.statusText,
+            data: axiosError.response.data
+          } : 'No response',
+          request: axiosError.request ? 'Request made but no response' : 'No request made'
+        });
+        
+        if (axiosError.response) {
+          toast.error(`API Error: ${axiosError.response.status} - ${axiosError.response.data?.message || axiosError.response.statusText}`);
+        } else if (axiosError.request) {
+          toast.error("Network Error: No response from server");
+        } else {
+          toast.error(`Request Error: ${axiosError.message}`);
+        }
+      } else {
+        toast.error("Failed to update order status");
+      }
+      
       return false;
     }
   };
@@ -483,8 +598,18 @@ export function updateOrderStatusAPI(orderId: string, status: OrderStatus) {
 export function updatePaymentStatusAPI(paymentId: string, status: PaymentStatus) {
   return async function updatePaymentStatusAPIThunk(dispatch: AppDispatch) {
     try {
-      console.log(`Updating payment status via API: ${paymentId} -> ${status}`);
+      console.log(`🔄 Updating payment status via API: ${paymentId} -> ${status}`);
+      console.log(`🌐 API URL: /order/admin/change-payment-status/${paymentId}`);
+      console.log(`📤 Request payload:`, { status });
+      
       const response = await APIS.patch(`/order/admin/change-payment-status/${paymentId}`, { status });
+      
+      console.log(`📥 API Response:`, {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data,
+        headers: response.headers
+      });
       
       if (response.status === 200) {
         // Update local state
@@ -494,17 +619,43 @@ export function updatePaymentStatusAPI(paymentId: string, status: PaymentStatus)
           paymentId: paymentId
         }));
         
-        console.log("Payment status updated successfully via API");
+        console.log("✅ Payment status updated successfully via API");
         toast.success(`Payment status updated to: ${status}`);
         return true;
       } else {
-        console.error("Failed to update payment status via API");
-        toast.error("Failed to update payment status");
+        console.error("❌ Failed to update payment status via API - Invalid response status:", response.status);
+        console.error("❌ Response data:", response.data);
+        toast.error(`Failed to update payment status: ${response.statusText}`);
         return false;
       }
     } catch (error) {
-      console.error("Error updating payment status via API:", error);
-      toast.error("Failed to update payment status");
+      console.error("❌ Error updating payment status via API:", error);
+      
+      // More detailed error logging
+      if (error && typeof error === 'object') {
+        const axiosError = error as any;
+        console.error("❌ Error details:", {
+          message: axiosError.message,
+          code: axiosError.code,
+          response: axiosError.response ? {
+            status: axiosError.response.status,
+            statusText: axiosError.response.statusText,
+            data: axiosError.response.data
+          } : 'No response',
+          request: axiosError.request ? 'Request made but no response' : 'No request made'
+        });
+        
+        if (axiosError.response) {
+          toast.error(`API Error: ${axiosError.response.status} - ${axiosError.response.data?.message || axiosError.response.statusText}`);
+        } else if (axiosError.request) {
+          toast.error("Network Error: No response from server");
+        } else {
+          toast.error(`Request Error: ${axiosError.message}`);
+        }
+      } else {
+        toast.error("Failed to update payment status");
+      }
+      
       return false;
     }
   };
@@ -705,9 +856,18 @@ export function updateOrderStatusDirect(orderId: string, status: OrderStatus) {
   return async function updateOrderStatusDirectThunk(dispatch: AppDispatch) {
     try {
       console.log(`🔄 Updating order status directly: ${orderId} -> ${status}`);
+      console.log(`🌐 API URL: /order/admin/change-status/${orderId}`);
+      console.log(`📤 Request payload:`, { orderStatus: status });
       
       // Update via API
       const response = await APIS.patch(`/order/admin/change-status/${orderId}`, { orderStatus: status });
+      
+      console.log(`📥 API Response:`, {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data,
+        headers: response.headers
+      });
       
       if (response.status === 200) {
         // Update local state
@@ -721,13 +881,39 @@ export function updateOrderStatusDirect(orderId: string, status: OrderStatus) {
         toast.success(`Order status updated to: ${status}`);
         return true;
       } else {
-        console.error("❌ Failed to update order status");
-        toast.error("Failed to update order status");
+        console.error("❌ Failed to update order status - Invalid response status:", response.status);
+        console.error("❌ Response data:", response.data);
+        toast.error(`Failed to update order status: ${response.statusText}`);
         return false;
       }
     } catch (error) {
       console.error("❌ Error updating order status:", error);
-      toast.error("Failed to update order status");
+      
+      // More detailed error logging
+      if (error && typeof error === 'object') {
+        const axiosError = error as any;
+        console.error("❌ Error details:", {
+          message: axiosError.message,
+          code: axiosError.code,
+          response: axiosError.response ? {
+            status: axiosError.response.status,
+            statusText: axiosError.response.statusText,
+            data: axiosError.response.data
+          } : 'No response',
+          request: axiosError.request ? 'Request made but no response' : 'No request made'
+        });
+        
+        if (axiosError.response) {
+          toast.error(`API Error: ${axiosError.response.status} - ${axiosError.response.data?.message || axiosError.response.statusText}`);
+        } else if (axiosError.request) {
+          toast.error("Network Error: No response from server");
+        } else {
+          toast.error(`Request Error: ${axiosError.message}`);
+        }
+      } else {
+        toast.error("Failed to update order status");
+      }
+      
       return false;
     }
   };
@@ -738,9 +924,18 @@ export function updatePaymentStatusDirect(paymentId: string, status: PaymentStat
   return async function updatePaymentStatusDirectThunk(dispatch: AppDispatch) {
     try {
       console.log(`🔄 Updating payment status directly: ${paymentId} -> ${status}`);
+      console.log(`🌐 API URL: /order/admin/change-payment-status/${paymentId}`);
+      console.log(`📤 Request payload:`, { status });
       
       // Update via API
       const response = await APIS.patch(`/order/admin/change-payment-status/${paymentId}`, { status });
+      
+      console.log(`📥 API Response:`, {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data,
+        headers: response.headers
+      });
       
       if (response.status === 200) {
         // Update local state
@@ -754,13 +949,39 @@ export function updatePaymentStatusDirect(paymentId: string, status: PaymentStat
         toast.success(`Payment status updated to: ${status}`);
         return true;
       } else {
-        console.error("❌ Failed to update payment status");
-        toast.error("Failed to update payment status");
+        console.error("❌ Failed to update payment status - Invalid response status:", response.status);
+        console.error("❌ Response data:", response.data);
+        toast.error(`Failed to update payment status: ${response.statusText}`);
         return false;
       }
     } catch (error) {
       console.error("❌ Error updating payment status:", error);
-      toast.error("Failed to update payment status");
+      
+      // More detailed error logging
+      if (error && typeof error === 'object') {
+        const axiosError = error as any;
+        console.error("❌ Error details:", {
+          message: axiosError.message,
+          code: axiosError.code,
+          response: axiosError.response ? {
+            status: axiosError.response.status,
+            statusText: axiosError.response.statusText,
+            data: axiosError.response.data
+          } : 'No response',
+          request: axiosError.request ? 'Request made but no response' : 'No request made'
+        });
+        
+        if (axiosError.response) {
+          toast.error(`API Error: ${axiosError.response.status} - ${axiosError.response.data?.message || axiosError.response.statusText}`);
+        } else if (axiosError.request) {
+          toast.error("Network Error: No response from server");
+        } else {
+          toast.error(`Request Error: ${axiosError.message}`);
+        }
+      } else {
+        toast.error("Failed to update payment status");
+      }
+      
       return false;
     }
   };

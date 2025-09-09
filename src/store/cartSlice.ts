@@ -4,6 +4,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { Status } from "../globals/types/types";
 import { APIS } from "../globals/http";
 import { addToCartHistory } from './recommendationsSlice'
+import toast from "react-hot-toast";
 
 interface ICartItem {
   id: string;
@@ -31,11 +32,15 @@ interface ICartUpdateItem {
 interface IInitialData {
   data: IData[];
   status: Status;
+  isAddingToCart: boolean;
+  isUpdatingCart: boolean;
 }
 
 const initialState: IInitialData = {
   data: [],
   status: Status.LOADING,
+  isAddingToCart: false,
+  isUpdatingCart: false,
 };
 
 const cartSlice = createSlice({
@@ -72,13 +77,28 @@ const cartSlice = createSlice({
     builder
       .addCase(addToCart.pending, (state) => {
         state.status = Status.LOADING;
+        state.isAddingToCart = true;
       })
       .addCase(addToCart.fulfilled, (state, action) => {
         state.status = Status.SUCCESS;
-        state.data = action.payload;
+        state.isAddingToCart = false;
+        // Ensure we handle both array and single item responses
+        if (Array.isArray(action.payload)) {
+          state.data = action.payload;
+        } else {
+          // If single item, add to existing cart or create new array
+          const existingIndex = state.data.findIndex(item => item.id === action.payload.id);
+          if (existingIndex !== -1) {
+            state.data[existingIndex] = action.payload;
+          } else {
+            state.data.push(action.payload);
+          }
+        }
+        console.log('🛒 Cart state updated:', state.data);
       })
       .addCase(addToCart.rejected, (state) => {
         state.status = Status.ERROR;
+        state.isAddingToCart = false;
       });
   },
 });
@@ -185,12 +205,55 @@ export function fetchCartItems() {
 
 export function updateCart(id: string, quantity: number) {
   return async function updateCartThunk(dispatch: AppDispatch) {
-    // Optimistic update first
+    // Validation
+    if (quantity < 1) {
+      toast.error("Quantity must be at least 1", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    if (quantity > 10) {
+      toast.error("Maximum quantity allowed is 10", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Set loading state
+    dispatch(setStatus(Status.LOADING));
+    
+    // Optimistic update first (like before)
     dispatch(setUpdateCart({ id, quantity }));
+    
     try {
       const res = await APIS.patch("/cart/" + id, { quantity });
       if (res.status >= 200 && res.status < 300) {
         dispatch(setStatus(Status.SUCCESS));
+        toast.success("Cart updated successfully", {
+          duration: 3000,
+          position: "top-center",
+          style: {
+            background: "#10b981",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
       } else {
         dispatch(setStatus(Status.ERROR));
       }
@@ -205,17 +268,63 @@ export function updateCart(id: string, quantity: number) {
 
 export function deleteCart(id: string) {
   return async function deleteCartThunk(dispatch: AppDispatch) {
+    if (!id) {
+      toast.error("Item ID is required", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
+      return;
+    }
+
+    // Optimistic update first (like before)
+    dispatch(setDeleteCartItem({ id }));
+    
     try {
       const res = await APIS.delete("/cart/" + id);
       if (res.status >= 200 && res.status < 300) {
         dispatch(setStatus(Status.SUCCESS));
-        dispatch(setDeleteCartItem({ id }));
+        toast.success("Item removed from cart", {
+          duration: 3000,
+          position: "top-center",
+          style: {
+            background: "#10b981",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
       } else {
         dispatch(setStatus(Status.ERROR));
+        toast.error("Failed to remove item from cart. Please try again.", {
+          duration: 4000,
+          position: "top-center",
+          style: {
+            background: "#dc2626",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
       }
     } catch (error) {
       dispatch(setStatus(Status.ERROR));
       console.log(error);
+      toast.error("Failed to remove item from cart. Please try again.", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#dc2626",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: "8px",
+        },
+      });
     }
   };
 }

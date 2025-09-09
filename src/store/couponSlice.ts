@@ -89,19 +89,19 @@ const couponSlice = createSlice({
       );
       
       if (!coupon) {
-        state.error = 'Invalid coupon code';
+        state.error = 'Invalid coupon code. Please check the code and try again';
         return;
       }
       
       // Check if coupon is expired
       if (new Date() > new Date(coupon.validUntil)) {
-        state.error = 'Coupon has expired';
+        state.error = 'This coupon has expired. Please use a valid coupon code';
         return;
       }
       
       // Check minimum spend
       if (cartTotal < coupon.minSpend) {
-        state.error = `Minimum spend of रु${coupon.minSpend.toLocaleString()} required`;
+        state.error = `Minimum spend of रु${coupon.minSpend.toLocaleString()} required. Add रु${(coupon.minSpend - cartTotal).toLocaleString()} more to use this coupon`;
         return;
       }
       
