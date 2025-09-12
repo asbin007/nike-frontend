@@ -40,8 +40,20 @@ const ChatWidget: React.FC = () => {
 
   // Fetch admin users on component mount
   useEffect(() => {
+    console.log("ChatWidget mounted, fetching admin users...");
     dispatch(fetchAdminUsers());
   }, [dispatch]);
+
+
+  // Debug admin users state changes
+  useEffect(() => {
+    console.log("Admin users state changed:", {
+      adminUsers,
+      adminUsersLoading,
+      adminId,
+      user
+    });
+  }, [adminUsers, adminUsersLoading, adminId, user]);
 
   // Drag event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -241,6 +253,11 @@ const ChatWidget: React.FC = () => {
 
   // Open chat and get/create chatId
   const handleOpenChat = () => {
+    console.log("Chat button clicked");
+    console.log("User:", user);
+    console.log("Admin users:", adminUsers);
+    console.log("Admin users loading:", adminUsersLoading);
+    
     if (!user?.id) {
       toast.error("Please login to chat with support.");
       return;
@@ -251,17 +268,18 @@ const ChatWidget: React.FC = () => {
       return;
     }
     
+    // Check if we have admin users
     if (adminUsers.length === 0) {
-      toast.error("No admin users available.");
+      console.log("No admin users found");
+      toast.error("No admin users available. Please try again later or contact support directly.");
       return;
     }
     
-    if (adminId) {
-      dispatch(getOrCreateChat(user.id, adminId));
-    } else {
-      // Use first admin if none selected
-      dispatch(getOrCreateChat(user.id, adminUsers[0].id));
-    }
+    // Use the selected admin or first available admin
+    const targetAdminId = adminId || adminUsers[0].id;
+    
+    console.log("Creating chat with admin ID:", targetAdminId);
+    dispatch(getOrCreateChat(user.id, targetAdminId));
     
     setIsOpen(true);
     setIsMinimized(false);
@@ -277,6 +295,8 @@ const ChatWidget: React.FC = () => {
       console.log('No content or image to send');
       return;
     }
+
+    // Messages are always allowed - they will be delivered when admin comes online
 
     try {
       if (selectedImage) {
@@ -420,8 +440,17 @@ const ChatWidget: React.FC = () => {
         }}
       >
         <button
-          onClick={handleOpenChat}
-          onMouseDown={handleMouseDown}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleOpenChat();
+          }}
+          onMouseDown={(e) => {
+            // Only handle dragging if clicking on the button itself, not the content
+            if (e.target === e.currentTarget) {
+              handleMouseDown(e);
+            }
+          }}
           className="relative bg-white hover:bg-gray-50 text-gray-700 p-3 md:p-4 rounded-2xl shadow-xl border border-gray-200 flex items-center justify-center transition-all duration-300 transform hover:scale-105 group"
           aria-label="Chat with Support"
         >
@@ -467,7 +496,9 @@ const ChatWidget: React.FC = () => {
               </div>
               <div className="hidden sm:block">
                 <h3 className="text-sm font-semibold text-gray-900">Customer Support</h3>
-                <p className="text-xs text-green-600 font-medium">Online now</p>
+                <p className="text-xs text-green-600 font-medium">
+                  {adminUsers.length > 0 ? 'Available' : 'Always Available'}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-1">

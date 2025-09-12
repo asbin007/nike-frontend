@@ -44,7 +44,7 @@ interface ChatState {
 
 const initialState: ChatState = {
   chatId: "",
-  adminId: "4c264ede-84b4-4455-adc1-801fc169e95e", // Default adminId
+  adminId: "", // No default adminId - will be set when admin is available
   loading: false,
   error: null,
   messages: [],
@@ -179,17 +179,25 @@ export const fetchAdminUsers = () => {
   return async (dispatch: AppDispatch) => {
     dispatch(setAdminUsersLoading(true));
     try {
+      console.log("Fetching admin users from /chats/admins");
       const res = await APIS.get("/chats/admins");
+      console.log("Admin users response:", res.data);
+      
       if (res.status === 200 && res.data.data) {
         dispatch(setAdminUsers(res.data.data));
         // Set first admin as default if no admin is selected
         if (res.data.data.length > 0) {
           dispatch(setAdminId(res.data.data[0].id));
+          console.log("Set default admin ID:", res.data.data[0].id);
+        } else {
+          console.warn("No admin users found in response");
         }
       } else {
-        dispatch(setError("Failed to load admin users"));
+        console.error("Invalid response format:", res.data);
+        dispatch(setError("Failed to load admin users - invalid response"));
       }
     } catch (err: unknown) {
+      console.error("Error fetching admin users:", err);
       const errorMessage = err instanceof Error ? err.message : "Failed to load admin users";
       dispatch(setError(errorMessage));
     } finally {
