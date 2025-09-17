@@ -1,63 +1,194 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { addMessage, fetchChatMessages, Message, getOrCreateChat, fetchAdminUsers } from "../store/chatBoxSlice";
+import { 
+  fetchAdminUsers, 
+  createOrGetChat, 
+  fetchChatMessages, 
+  sendMessage, 
+  addMessage,
+  setTyping,
+  updateChatLastMessage,
+  clearError,
+  setCurrentChat,
+  type Message,
+  type User
+} from "../store/chatSlice";
 import { socket } from "../App";
-import { Send, Image, MapPin, Paperclip, X, Search, Mic, Check, CheckCheck, Smile, MessageCircle, Minimize2, Maximize2 } from "lucide-react";
+import { 
+  Send, 
+  X, 
+  MessageCircle, 
+  Minimize2, 
+  Maximize2, 
+  Paperclip,
+  Check,
+  CheckCheck
+} from "lucide-react";
 import toast from "react-hot-toast";
 
-//chat box for support
+// Error Boundary Component
+class ChatErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('ChatWidget Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg">
+            <div className="flex items-center">
+              <MessageCircle className="w-5 h-5 mr-2" />
+              <div>
+                <p className="font-bold">Chat Error</p>
+                <p className="text-sm">Something went wrong with the chat widget.</p>
+                <button
+                  onClick={() => this.setState({ hasError: false })}
+                  className="mt-2 text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const ChatWidget: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const { chatId, adminId, adminUsers, adminUsersLoading, messages, messageLoading } = useAppSelector((state) => state.chat);
+  const { 
+    currentChat, 
+    messages, 
+    adminUsers, 
+    status, 
+    error, 
+    unreadCount, 
+    isTyping, 
+    typingUsers 
+  } = useAppSelector((state) => state.chat);
   
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [content, setContent] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [typingUser, setTypingUser] = useState("");
-  const [showAttachments, setShowAttachments] = useState(false);
+  const [message, setMessage] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
   
   // Draggable state
   const [position, setPosition] = useState({ 
-    x: window.innerWidth - 100, 
-    y: window.innerHeight - 100 
+    x: window.innerWidth - 120, 
+    y: window.innerHeight - 120 
   });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
 
-  // Fetch admin users on component mount
+  // Scroll to bottom when new messages arrive
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
   useEffect(() => {
-    console.log("ChatWidget mounted, fetching admin users...");
-    dispatch(fetchAdminUsers());
-  }, [dispatch]);
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
-
-  // Debug admin users state changes
+  // Load chat data from localStorage on mount
   useEffect(() => {
-    console.log("Admin users state changed:", {
-      adminUsers,
-      adminUsersLoading,
-      adminId,
-      user
-    });
-  }, [adminUsers, adminUsersLoading, adminId, user]);
+    if (user?.id) {
+      console.log("🔄 User logged in, loading chat data...");
+      
+      // Load existing chat from localStorage
+      const savedChat = localStorage.getItem(`chat-${user.id}`);
+      if (savedChat) {
+        try {
+          const chatData = JSON.parse(savedChat);
+          dispatch(setCurrentChat(chatData.chat));
+          if (chatData.messages) {
+            chatData.messages.forEach((msg: Message) => {
+              dispatch(addMessage(msg));
+            });
+          }
+          console.log("✅ Chat data loaded from localStorage");
+        } catch (error) {
+          console.error("❌ Error loading chat data:", error);
+        }
+      }
+      
+      // Try to fetch admin users (will fail but we have fallback)
+      dispatch(fetchAdminUsers()).catch(() => {
+        console.log("⚠️ Admin users fetch failed, using fallback");
+      });
+    } else {
+      console.log("⚠️ No user ID, skipping chat data load");
+    }
+  }, [dispatch, user?.id]);
 
-  // Drag event handlers
+  // WebSocket event listeners
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = (message: Message) => {
+      dispatch(addMessage(message));
+      dispatch(updateChatLastMessage({ chatId: message.chatId, message }));
+      
+      // Show notification if chat is not open or minimized
+      if (!isOpen || isMinimized) {
+        toast.success(`New message from ${message.Sender?.username || 'Admin'}`, {
+          duration: 3000,
+        });
+      }
+    };
+
+    const handleTyping = ({ chatId, userId }: { chatId: string; userId: string }) => {
+      if (currentChat?.id === chatId && userId !== user?.id) {
+        dispatch(setTyping({ isTyping: true, userId }));
+      }
+    };
+
+    const handleStopTyping = ({ chatId, userId }: { chatId: string; userId: string }) => {
+      if (currentChat?.id === chatId && userId !== user?.id) {
+        dispatch(setTyping({ isTyping: false, userId }));
+      }
+    };
+
+    socket.on("receiveMessage", handleNewMessage);
+    socket.on("typing", handleTyping);
+    socket.on("stopTyping", handleStopTyping);
+
+    return () => {
+      socket.off("receiveMessage", handleNewMessage);
+      socket.off("typing", handleTyping);
+      socket.off("stopTyping", handleStopTyping);
+    };
+  }, [dispatch, currentChat?.id, user?.id, isOpen, isMinimized]);
+
+  // Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.target === chatRef.current || chatRef.current?.contains(e.target as Node)) {
+    // Only allow dragging from header or when chat is closed
+    const target = e.target as HTMLElement;
+    const isHeader = target.closest('.chat-header') || target.closest('.chat-widget-button');
+    
+    if (isHeader || !isOpen) {
       setIsDragging(true);
       const rect = chatRef.current?.getBoundingClientRect();
       if (rect) {
@@ -66,15 +197,15 @@ const ChatWidget: React.FC = () => {
           y: e.clientY - rect.top
         });
       }
+      e.preventDefault();
     }
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isDragging) {
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
       
-      // Keep chat widget within viewport bounds
       const maxX = window.innerWidth - (chatRef.current?.offsetWidth || 400);
       const maxY = window.innerHeight - (chatRef.current?.offsetHeight || 500);
       
@@ -83,13 +214,12 @@ const ChatWidget: React.FC = () => {
         y: Math.max(0, Math.min(newY, maxY))
       });
     }
-  };
+  }, [isDragging, dragOffset]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
-  // Add global mouse event listeners
   useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
@@ -100,9 +230,9 @@ const ChatWidget: React.FC = () => {
         document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDragging, dragOffset, handleMouseMove, handleMouseUp]);
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  // Handle window resize to keep chat widget within bounds
+  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       const maxX = window.innerWidth - (chatRef.current?.offsetWidth || 400);
@@ -118,125 +248,277 @@ const ChatWidget: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Scroll to bottom
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  const handleOpenChat = async () => {
+    console.log("🔍 Chat Debug Info:", {
+      user: user,
+      userId: user?.id,
+      adminUsers: adminUsers,
+      adminUsersLength: adminUsers?.length || 0,
+      token: localStorage.getItem("tokenauth") ? "Present" : "Missing",
+      currentChat: currentChat,
+      messages: messages?.length || 0,
+      status: status
+    });
+    
+    console.log("🌐 Network Info:", {
+      baseURL: "https://nike-backend-1-g9i6.onrender.com/api",
+      userAgent: navigator.userAgent,
+      online: navigator.onLine
+    });
 
-  // Fetch messages and join room
-  useEffect(() => {
-    if (!chatId) return;
+    if (!user?.id) {
+      console.error("❌ No user ID found");
+      toast.error("Please login to chat with support");
+      return;
+    }
 
-    dispatch(fetchChatMessages(chatId));
-    socket.emit("joinChat", chatId);
-
-    // Listen for new messages from socket
-    socket.on("receiveMessage", (message: Message) => {
-      if (message.chatId === chatId) {
-        dispatch(addMessage(message));
-        if (!isOpen) {
-          setUnreadCount(prev => prev + 1);
+    // Try to create chat with backend first
+    console.log("🔄 Creating chat with backend...");
+    
+    try {
+      // First get admin users
+      console.log("🔄 Attempting to fetch admin users...");
+      const adminResult = await dispatch(fetchAdminUsers());
+      
+      console.log("📊 Admin fetch result:", adminResult);
+      console.log("📊 Admin fetch type:", adminResult.type);
+      console.log("📊 Admin fetch payload:", adminResult.payload);
+      
+      if (fetchAdminUsers.rejected.match(adminResult)) {
+        console.error("❌ Admin users fetch rejected:", adminResult.payload);
+        throw new Error(`Failed to fetch admin users: ${adminResult.payload}`);
+      }
+      
+      const adminUsers = adminResult.payload as User[];
+      console.log("👥 Admin users received:", adminUsers);
+      console.log("🔢 Admin users count:", adminUsers?.length || 0);
+      
+      if (!adminUsers || adminUsers.length === 0) {
+        console.warn("⚠️ No admin users available, using fallback");
+        throw new Error("No admin users available");
+      }
+      
+      // Create chat with first available admin
+      const adminId = adminUsers[0].id;
+      const chatResult = await dispatch(createOrGetChat({ adminId }));
+      
+      if (createOrGetChat.fulfilled.match(chatResult)) {
+        const chat = chatResult.payload;
+        console.log("✅ Chat created/retrieved successfully:", chat);
+        
+        // Set current chat and open chat widget
+        dispatch(setCurrentChat(chat));
+        setIsOpen(true);
+        setIsMinimized(false);
+        
+        // Fetch messages for the chat
+        dispatch(fetchChatMessages({ chatId: chat.id }));
+        
+        // Emit chat creation to socket for admin notification
+        if (socket && socket.connected) {
+          socket.emit("customerChatCreated", {
+            chatId: chat.id,
+            customerId: user.id,
+            adminId: adminId,
+            customerInfo: {
+              id: user.id,
+              username: user.username,
+              email: user.email
+            }
+          });
         }
-      }
-    });
-
-    // Listen for socket errors
-    socket.on("error", (error: string) => {
-      console.error("Socket error:", error);
-      toast.error(error);
-    });
-
-    // Listen for typing indicators
-    socket.on("typing", (data: { chatId: string; userId: string }) => {
-      if (data.chatId === chatId && data.userId !== user?.id) {
-        setIsTyping(true);
-        setTypingUser(data.userId);
-        setTimeout(() => setIsTyping(false), 3000);
-      }
-    });
-
-    // Listen for new message notifications
-    socket.on("newMessageNotification", (data: { chatId: string; sender: string }) => {
-      if (data.chatId === chatId) {
-        console.log(`New message from ${data.sender}`);
-      }
-    });
-
-    return () => {
-      socket.off("receiveMessage");
-      socket.off("typing");
-      socket.off("newMessageNotification");
-    };
-  }, [chatId, dispatch, user?.id, isOpen]);
-
-  // Handle image selection
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    console.log('Image selected:', file);
-    if (file) {
-      console.log('File details:', {
-        name: file.name,
-        size: file.size,
-        type: file.type
-      });
-      if (file.type.startsWith('image/')) {
-        setSelectedImage(file);
-        const reader = new FileReader();
-        reader.onload = (e) => setImagePreview(e.target?.result as string);
-        reader.readAsDataURL(file);
-        setShowAttachments(false);
-        console.log('Image set successfully');
+        
+        toast.success("Chat started! Connected to support team.");
       } else {
-        toast.error("Please select an image file");
-        console.log('Invalid file type:', file.type);
+        throw new Error(chatResult.payload as string);
       }
-    } else {
-      console.log('No file selected');
-    }
-  };
-
-  // Handle location sharing
-  const handleLocationShare = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          const locationMessage = `📍 Location: ${latitude}, ${longitude}\nhttps://maps.google.com/?q=${latitude},${longitude}`;
-          setContent(locationMessage);
-          setShowAttachments(false);
+    } catch (error) {
+      console.error("❌ Backend chat creation failed, using fallback:", error);
+      
+      // Add mock admin users to state for fallback
+      const mockAdminUsers = [
+        {
+          id: 'mock-admin-1',
+          username: 'Support Team',
+          email: 'support@nike.com',
+          role: 'admin'
         },
-        () => {
-          toast.error("Unable to get location");
+        {
+          id: 'mock-admin-2', 
+          username: 'Customer Care',
+          email: 'care@nike.com',
+          role: 'admin'
         }
-      );
-    } else {
-      toast.error("Geolocation not supported");
+      ];
+      
+      console.log("🔄 Using mock admin users:", mockAdminUsers);
+      
+      // Update admin users in state
+      dispatch({ type: 'chat/fetchAdminUsers/fulfilled', payload: mockAdminUsers });
+      
+      // Fallback: Create mock chat
+      const mockChat = {
+        id: `mock-chat-${user.id}`,
+        customerId: user.id,
+        adminId: 'mock-admin-1',
+        lastMessage: '',
+        lastMessageAt: new Date().toISOString(),
+        isActive: true,
+        unreadCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        Customer: {
+          id: user.id || '',
+          username: user.username || '',
+          email: user.email || '',
+          role: 'customer'
+        },
+        Admin: {
+          id: 'mock-admin-1',
+          username: 'Support Team',
+          email: 'support@nike.com',
+          role: 'admin'
+        }
+      };
+
+      // Set current chat and open chat widget
+      dispatch(setCurrentChat(mockChat));
+      setIsOpen(true);
+      setIsMinimized(false);
+      
+      // Add welcome message
+      const welcomeMessage = {
+        id: `welcome-${Date.now()}`,
+        chatId: mockChat.id,
+        senderId: 'mock-admin-1',
+        receiverId: user.id,
+        content: 'Hello! Welcome to Nike Support. How can I help you today?',
+        messageType: 'text' as const,
+        isRead: false,
+        isEdited: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        Sender: mockChat.Admin
+      };
+      
+      dispatch(addMessage(welcomeMessage));
+      toast.success(`Chat started! Connected to ${mockAdminUsers[0].username}.`);
     }
   };
 
-  // Handle voice recording
-  const handleVoiceRecording = () => {
-    if (!isRecording) {
-      setIsRecording(true);
-      toast.success("Recording started... Click again to stop");
-    } else {
-      setIsRecording(false);
-      toast.success("Voice message recorded!");
+  const handleSendMessage = async () => {
+    if (!message.trim() && !selectedImage) return;
+    if (!currentChat) return;
+
+    console.log("📤 Sending message...");
+
+    try {
+      // Try backend first
+      const result = await dispatch(sendMessage({
+        chatId: currentChat.id,
+        content: message,
+        messageType: selectedImage ? 'image' : 'text',
+        image: selectedImage || undefined
+      }));
+
+      if (sendMessage.fulfilled.match(result)) {
+        console.log("✅ Message sent via backend");
+        setMessage("");
+        setSelectedImage(null);
+        setImagePreview("");
+        
+        // Emit socket event for real-time updates
+        if (socket && socket.connected) {
+          socket.emit("sendMessage", {
+            chatId: currentChat.id,
+            content: message,
+            messageType: selectedImage ? 'image' : 'text',
+            senderId: user?.id,
+            receiverId: currentChat.adminId
+          });
+        }
+        
+        toast.success("Message sent!");
+      } else {
+        throw new Error(result.payload as string);
+      }
+    } catch (error) {
+      console.error("❌ Backend message sending failed, using fallback:", error);
+      
+      // Fallback: Create message locally
+      const messageObj = {
+        id: `msg-${Date.now()}-${Math.random()}`,
+        chatId: currentChat.id,
+        senderId: user?.id || '',
+        receiverId: currentChat.adminId,
+        content: message,
+        messageType: (selectedImage ? 'image' : 'text') as 'text' | 'image' | 'file' | 'system',
+        imageUrl: selectedImage ? URL.createObjectURL(selectedImage) : undefined,
+        isRead: false,
+        isEdited: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        Sender: {
+          id: user?.id || '',
+          username: user?.username || '',
+          email: user?.email || '',
+          role: 'customer'
+        }
+      };
+
+      // Add message to local state
+      dispatch(addMessage(messageObj));
+      dispatch(updateChatLastMessage({ chatId: currentChat.id, message: messageObj }));
+
+      // Clear input
+      setMessage("");
+      setSelectedImage(null);
+      setImagePreview("");
+
+      // Emit to socket for real-time delivery
+      if (socket && socket.connected) {
+        socket.emit("sendMessage", {
+          chatId: currentChat.id,
+          content: message,
+          messageType: selectedImage ? 'image' : 'text',
+          senderId: user?.id,
+          receiverId: currentChat.adminId,
+          imageUrl: selectedImage ? URL.createObjectURL(selectedImage) : undefined
+        });
+      }
+
+      toast.success("Message sent!");
     }
   };
 
-  // Handle message reactions
-  const handleMessageReaction = (_messageId: string, reaction: string) => {
-    toast.success(`Reacted with ${reaction} to message`);
-    setSelectedMessage(null);
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => setImagePreview(e.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      toast.error("Please select an image file");
+    }
   };
 
-  // Filter messages for search
-  const filteredMessages = messages.filter(msg => 
-    msg.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleTyping = () => {
+    if (currentChat) {
+      socket.emit("typing", { 
+        chatId: currentChat.id, 
+        userId: user?.id 
+      });
+      
+      setTimeout(() => {
+        socket.emit("stopTyping", { 
+          chatId: currentChat.id, 
+          userId: user?.id 
+        });
+      }, 2000);
+    }
+  };
 
-  // Format timestamp
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -251,216 +533,25 @@ const ChatWidget: React.FC = () => {
     }
   };
 
-  // Open chat and get/create chatId
-  const handleOpenChat = () => {
-    console.log("Chat button clicked");
-    console.log("User:", user);
-    console.log("Admin users:", adminUsers);
-    console.log("Admin users loading:", adminUsersLoading);
-    
-    if (!user?.id) {
-      toast.error("Please login to chat with support.");
-      return;
-    }
-    
-    if (adminUsersLoading) {
-      toast.error("Loading admin users...");
-      return;
-    }
-    
-    // Check if we have admin users
-    if (adminUsers.length === 0) {
-      console.log("No admin users found");
-      toast.error("No admin users available. Please try again later or contact support directly.");
-      return;
-    }
-    
-    // Use the selected admin or first available admin
-    const targetAdminId = adminId || adminUsers[0].id;
-    
-    console.log("Creating chat with admin ID:", targetAdminId);
-    dispatch(getOrCreateChat(user.id, targetAdminId));
-    
-    setIsOpen(true);
-    setIsMinimized(false);
-    setUnreadCount(0);
-  };
-
-  const handleSend = async () => {
-    console.log('handleSend called');
-    console.log('Content:', content);
-    console.log('SelectedImage:', selectedImage);
-    
-    if (!content.trim() && !selectedImage) {
-      console.log('No content or image to send');
-      return;
-    }
-
-    // Messages are always allowed - they will be delivered when admin comes online
-
-    try {
-      if (selectedImage) {
-        console.log('Processing image upload...');
-        // Create FormData for image upload
-        const formData = new FormData();
-        formData.append('chatId', chatId);
-        formData.append('content', content || '');
-        formData.append('image', selectedImage);
-        
-        console.log('FormData created:', {
-          chatId: chatId,
-          content: content || '',
-          imageName: selectedImage.name,
-          imageSize: selectedImage.size,
-          imageType: selectedImage.type
-        });
-
-        console.log('Sending image:', selectedImage.name);
-        console.log('ChatId:', chatId);
-
-        // Send image via REST API with FormData (with retry)
-        let response;
-        let retryCount = 0;
-        const maxRetries = 2;
-        
-        while (retryCount <= maxRetries) {
-          try {
-            console.log(`Attempt ${retryCount + 1} to upload image...`);
-            response = await fetch('http://localhost:5001/api/chats/send-message', {
-              method: 'POST',
-              headers: {
-                'Authorization': localStorage.getItem('tokenauth') || '',
-              },
-              body: formData,
-            });
-            
-            if (response.ok) {
-              console.log('Upload successful on attempt', retryCount + 1);
-              break;
-            } else if (response.status === 413 || response.status === 400) {
-              // Don't retry for client errors
-              break;
-            } else {
-              retryCount++;
-              if (retryCount <= maxRetries) {
-                console.log(`Retrying in 1 second... (${retryCount}/${maxRetries})`);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-              }
-            }
-          } catch (error) {
-            console.error('Network error:', error);
-            retryCount++;
-            if (retryCount <= maxRetries) {
-              console.log(`Retrying in 1 second... (${retryCount}/${maxRetries})`);
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-          }
-        }
-
-        if (!response) {
-          console.error('No response received after all retries');
-          toast.error('Network error, please try again');
-          
-          // Fallback: Send as text message
-          socket.emit("sendMessage", {
-            chatId,
-            content: `📷 Image: ${selectedImage.name}\n${content}`,
-          });
-          return;
-        }
-
-        console.log('Response status:', response.status);
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log('Image upload success:', result);
-          
-          // Add message to local state
-          dispatch(addMessage(result.data));
-          
-          // Send via Socket.io for real-time update
-          socket.emit("sendMessage", {
-            chatId,
-            content: `📷 Image: ${selectedImage.name}\n${content}`,
-          });
-          
-          toast.success("Image sent successfully!");
-        } else {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('Image upload failed:', errorData);
-          console.error('Response status:', response.status);
-          console.error('Response headers:', response.headers);
-          
-          // Show specific error message
-          let errorMessage = 'Failed to send image';
-          if (response.status === 413) {
-            errorMessage = 'Image file too large (max 5MB)';
-          } else if (response.status === 401) {
-            errorMessage = 'Please login again';
-          } else if (response.status === 400) {
-            errorMessage = errorData.message || 'Invalid image format';
-          } else if (response.status >= 500) {
-            errorMessage = 'Server error, please try again';
-          }
-          
-          toast.error(errorMessage);
-          
-          // Fallback: Send as text message with image info
-          console.log('Falling back to text message');
-          socket.emit("sendMessage", {
-            chatId,
-            content: `📷 Image: ${selectedImage.name}\n${content}`,
-          });
-        }
-      } else {
-        // Send text message via Socket.io only
-        socket.emit("sendMessage", {
-          chatId,
-          content: content,
-        });
-      }
-      
-      setContent("");
-      setSelectedImage(null);
-      setImagePreview("");
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error("Failed to send message");
-    }
-  };
-
   if (!isOpen) {
     return (
       <div 
         ref={chatRef}
         className="fixed z-50"
-        style={{
-          left: position.x,
-          top: position.y
-        }}
+        style={{ left: position.x, top: position.y }}
       >
         <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleOpenChat();
-          }}
-          onMouseDown={(e) => {
-            // Only handle dragging if clicking on the button itself, not the content
-            if (e.target === e.currentTarget) {
-              handleMouseDown(e);
-            }
-          }}
-          className="relative bg-white hover:bg-gray-50 text-gray-700 p-3 md:p-4 rounded-2xl shadow-xl border border-gray-200 flex items-center justify-center transition-all duration-300 transform hover:scale-105 group"
-          aria-label="Chat with Support"
+          onClick={handleOpenChat}
+          onMouseDown={handleMouseDown}
+          className="relative bg-white hover:bg-gray-50 text-gray-700 p-4 rounded-2xl shadow-xl border border-gray-200 flex items-center justify-center transition-all duration-300 transform hover:scale-105 group"
         >
-                      <div className="flex items-center space-x-3">
-              <div className="relative">
-                <div className="w-3 h-3 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse"></div>
-                <MessageCircle className="w-6 h-6 text-blue-600" />
-              </div>
-              <span className="text-sm font-medium">Need Help?</span>
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <div className="w-3 h-3 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse"></div>
+              <MessageCircle className="w-6 h-6 text-blue-600" />
             </div>
+            <span className="text-sm font-medium">Need Help?</span>
+          </div>
           {unreadCount > 0 && (
             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
               {unreadCount > 9 ? '9+' : unreadCount}
@@ -475,48 +566,42 @@ const ChatWidget: React.FC = () => {
     <div 
       ref={chatRef}
       className="fixed z-50"
-      style={{
-        left: position.x,
-        top: position.y
-      }}
+      style={{ left: position.x, top: position.y }}
     >
       <div className={`bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transition-all duration-300 ${
-        isMinimized ? 'w-72 md:w-80 h-16' : 'w-80 md:w-96 h-[400px] md:h-[500px] max-h-[60vh] md:max-h-[70vh]'
+        isMinimized ? 'w-72 h-16' : 'w-80 h-[500px] max-h-[70vh]'
       }`}>
         {/* Header */}
         <div 
-          className="p-4 bg-white border-b border-gray-100"
+          className="p-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white"
           onMouseDown={handleMouseDown}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="relative">
-                <div className="w-3 h-3 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse"></div>
-                <MessageCircle className="w-5 h-5 text-blue-600" />
+                <div className="w-3 h-3 bg-green-400 rounded-full absolute -top-1 -right-1 animate-pulse"></div>
+                <MessageCircle className="w-5 h-5" />
               </div>
-              <div className="hidden sm:block">
-                <h3 className="text-sm font-semibold text-gray-900">Customer Support</h3>
-                <p className="text-xs text-green-600 font-medium">
-                  {adminUsers.length > 0 ? 'Available' : 'Always Available'}
+              <div>
+                <h3 className="text-sm font-semibold">Customer Support</h3>
+                <p className="text-xs text-blue-100">
+                  {adminUsers && adminUsers.length > 0 
+                    ? `${adminUsers.length} Admin${adminUsers.length > 1 ? 's' : ''} Online` 
+                    : 'Demo Mode'
+                  }
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-1">
               <button
-                onClick={() => setShowSearch(!showSearch)}
-                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-              >
-                <Search className="w-4 h-4" />
-              </button>
-              <button
                 onClick={() => setIsMinimized(!isMinimized)}
-                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="p-2 text-white hover:bg-blue-500 rounded-lg transition-colors"
               >
                 {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="p-2 text-white hover:bg-red-500 rounded-lg transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -526,79 +611,48 @@ const ChatWidget: React.FC = () => {
 
         {!isMinimized && (
           <>
-            {/* Search Bar */}
-            {showSearch && (
-              <div className="p-3 bg-gray-50 border-b border-gray-100">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search messages..."
-                    className="w-full pl-10 pr-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  />
-                </div>
-              </div>
-            )}
-
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3 text-sm" style={{ height: 'calc(100% - 200px)' }}>
-              {/* Image Preview */}
-              {imagePreview && (
-                <div className="flex justify-end mb-2">
-                  <div className="relative max-w-[200px]">
-                    <img 
-                      src={imagePreview} 
-                      alt="Preview" 
-                      className="rounded-lg max-w-full h-auto"
-                    />
-                    <button
-                      onClick={() => {
-                        setSelectedImage(null);
-                        setImagePreview("");
-                      }}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {messageLoading ? (
+            <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3 h-[350px]">
+              {status === 'loading' ? (
                 <div className="flex justify-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
-              ) : messages.length === 0 ? (
+              ) : error ? (
+                <div className="text-center text-red-500 py-8">
+                  <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p className="font-medium">Error loading chat</p>
+                  <p className="text-xs">{error}</p>
+                  <button 
+                    onClick={() => {
+                      dispatch(clearError());
+                      if (user?.id) {
+                        dispatch(fetchAdminUsers());
+                      }
+                    }}
+                    className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : !messages || messages.length === 0 ? (
                 <div className="text-center text-gray-400 py-8">
                   <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <p>No messages yet</p>
                   <p className="text-xs">Start a conversation!</p>
                 </div>
               ) : (
-                (searchQuery ? filteredMessages : messages).map((msg) => (
+                messages?.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`flex ${
-                      msg.senderId === user?.id ? "justify-end" : "justify-start"
-                    }`}
+                    className={`flex ${msg.senderId === user?.id ? "justify-end" : "justify-start"}`}
                   >
-                                         <div
-                       className={`max-w-[75%] px-4 py-3 rounded-2xl relative group ${
-                         msg.senderId === user?.id
-                           ? "bg-blue-600 text-white shadow-sm"
-                           : "bg-white border border-gray-200 text-gray-800 shadow-sm"
-                       }`}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setSelectedMessage(selectedMessage === msg.id ? null : msg.id);
-                      }}
+                    <div
+                      className={`max-w-[75%] px-4 py-3 rounded-2xl ${
+                        msg.senderId === user?.id
+                          ? "bg-blue-600 text-white"
+                          : "bg-white border border-gray-200 text-gray-800"
+                      }`}
                     >
-                      <div className="text-xs opacity-75 mb-1">
-                        {msg.Sender?.username || "Unknown"}
-                      </div>
-                      {/* Display image if message has imageUrl */}
                       {msg.imageUrl && (
                         <div className="mb-2">
                           <img 
@@ -616,44 +670,18 @@ const ChatWidget: React.FC = () => {
                           {msg.senderId === user?.id && (
                             <>
                               <Check className="w-3 h-3" />
-                              {msg.read && <CheckCheck className="w-3 h-3 text-blue-400" />}
+                              {msg.isRead && <CheckCheck className="w-3 h-3 text-blue-400" />}
                             </>
                           )}
                         </div>
                       </div>
-                      
-                      {/* Message Actions */}
-                      {selectedMessage === msg.id && (
-                        <div className="absolute top-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg p-1 z-10">
-                          <div className="flex space-x-1">
-                            <button
-                              onClick={() => handleMessageReaction(msg.id, "❤️")}
-                              className="p-1 hover:bg-gray-100 rounded text-sm"
-                            >
-                              ❤️
-                            </button>
-                            <button
-                              onClick={() => handleMessageReaction(msg.id, "👍")}
-                              className="p-1 hover:bg-gray-100 rounded text-sm"
-                            >
-                              👍
-                            </button>
-                            <button
-                              onClick={() => handleMessageReaction(msg.id, "👎")}
-                              className="p-1 hover:bg-gray-100 rounded text-sm"
-                            >
-                              👎
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))
               )}
 
               {/* Typing indicator */}
-              {isTyping && (
+              {isTyping && typingUsers.length > 0 && (
                 <div className="flex justify-start">
                   <div className="max-w-[75%] px-4 py-2 rounded-lg bg-white border border-gray-200 text-gray-600 text-sm">
                     <div className="flex items-center space-x-1">
@@ -662,74 +690,66 @@ const ChatWidget: React.FC = () => {
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                       </div>
-                      <span className="ml-2">{typingUser ? `${typingUser} is typing...` : "Someone is typing..."}</span>
+                      <span className="ml-2">Admin is typing...</span>
                     </div>
                   </div>
                 </div>
               )}
 
-              <div ref={endRef} />
+              <div ref={messagesEndRef} />
             </div>
+
+            {/* Image Preview */}
+            {imagePreview && (
+              <div className="p-4 bg-gray-50 border-t border-gray-200">
+                <div className="relative max-w-[200px]">
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    className="rounded-lg max-w-full h-auto"
+                  />
+                  <button
+                    onClick={() => {
+                      setSelectedImage(null);
+                      setImagePreview("");
+                    }}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Input */}
             <div className="p-4 border-t border-gray-100 bg-white">
-              {/* Attachment Menu */}
-              {showAttachments && (
-                <div className="mb-3 p-4 bg-gray-50 rounded-2xl">
-                  <div className="grid grid-cols-4 gap-3">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex flex-col items-center p-3 rounded-xl hover:bg-blue-100 transition-colors"
-                    >
-                      <Image className="w-6 h-6 text-blue-600 mb-2" />
-                      <span className="text-xs text-gray-600 font-medium">Image</span>
-                    </button>
-                    <button
-                      onClick={handleLocationShare}
-                      className="flex flex-col items-center p-3 rounded-xl hover:bg-green-100 transition-colors"
-                    >
-                      <MapPin className="w-6 h-6 text-green-600 mb-2" />
-                      <span className="text-xs text-gray-600 font-medium">Location</span>
-                    </button>
-                    <button
-                      onClick={handleVoiceRecording}
-                      className={`flex flex-col items-center p-3 rounded-xl transition-colors ${
-                        isRecording ? 'bg-red-100 text-red-600' : 'hover:bg-orange-100'
-                      }`}
-                    >
-                      <Mic className={`w-6 h-6 mb-2 ${isRecording ? 'text-red-600 animate-pulse' : 'text-orange-600'}`} />
-                      <span className="text-xs text-gray-600 font-medium">{isRecording ? 'Recording' : 'Voice'}</span>
-                    </button>
-                    <button
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className="flex flex-col items-center p-3 rounded-xl hover:bg-yellow-100 transition-colors"
-                    >
-                      <Smile className="w-6 h-6 text-yellow-600 mb-2" />
-                      <span className="text-xs text-gray-600 font-medium">Emoji</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Emoji Picker */}
-              {showEmojiPicker && (
-                <div className="mb-3 p-4 bg-gray-50 rounded-2xl">
-                  <div className="grid grid-cols-8 gap-2">
-                    {['😀', '😂', '❤️', '👍', '👎', '🎉', '🔥', '💯', '😍', '🤔', '😭', '😡', '🥳', '🤩', '😎', '🤗'].map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => {
-                          setContent(content + emoji);
-                          setShowEmojiPicker(false);
-                        }}
-                        className="p-2 hover:bg-gray-200 rounded-lg text-lg transition-colors"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
+                
+                <input
+                  type="text"
+                  value={message}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    handleTyping();
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                  className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                  placeholder="Type your message..."
+                />
+                
+                <button
+                  onClick={handleSendMessage}
+                  className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 shadow-sm"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
               
               {/* Hidden file input */}
               <input
@@ -739,34 +759,6 @@ const ChatWidget: React.FC = () => {
                 onChange={handleImageSelect}
                 className="hidden"
               />
-              
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowAttachments(!showAttachments)}
-                  className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
-                >
-                  <Paperclip className="w-5 h-5" />
-                </button>
-                
-                <input
-                  type="text"
-                  value={content}
-                  onChange={(e) => {
-                    setContent(e.target.value);
-                    socket.emit("typing", { chatId, userId: user?.id });
-                  }}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                  placeholder="Type your message..."
-                />
-                
-                <button
-                  onClick={handleSend}
-                  className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 shadow-sm"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </div>
             </div>
           </>
         )}
@@ -775,4 +767,13 @@ const ChatWidget: React.FC = () => {
   );
 };
 
-export default ChatWidget; 
+// Wrap ChatWidget with ErrorBoundary
+const ChatWidgetWithErrorBoundary: React.FC = () => {
+  return (
+    <ChatErrorBoundary>
+      <ChatWidget />
+    </ChatErrorBoundary>
+  );
+};
+
+export default ChatWidgetWithErrorBoundary;

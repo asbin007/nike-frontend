@@ -4,7 +4,7 @@ import productSlice from "./productSlice";
 import reviewSlice from "./reviewSlice";
 import cartSlice from './cartSlice'
 import orderSlice from './orderSlice'
-import chatBoxSlice from './chatBoxSlice'
+import chatSlice from './chatSlice'
 import wishlistSlice from './wishlistSlice'
 import comparisonSlice from './comparisonSlice'
 import recommendationsSlice from './recommendationsSlice'
@@ -17,7 +17,7 @@ const store = configureStore({
         reviews:reviewSlice,
         cart:cartSlice,
         orders:orderSlice,
-        chat: chatBoxSlice,
+        chat: chatSlice,
         wishlist: wishlistSlice,
         comparison: comparisonSlice,
         recommendations: recommendationsSlice,

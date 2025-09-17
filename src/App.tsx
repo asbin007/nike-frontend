@@ -151,6 +151,13 @@ const AppContent = () => {
   useEffect(() => {
     const token = localStorage.getItem("tokenauth");
     
+    console.log("🔍 Socket Debug Info:", {
+      token: token ? "Present" : "Missing",
+      socketConnected: socket.connected,
+      socketId: socket.id,
+      socketUrl: "https://nike-backend-1-g9i6.onrender.com"
+    });
+    
     // Connect socket if token exists
     if (token) {
       if (!socket.connected) {
@@ -161,6 +168,7 @@ const AppContent = () => {
         const connectionTimeout = setTimeout(() => {
           if (!socket.connected) {
             console.warn("⚠️ Socket connection timeout after 10 seconds");
+            toast.error("Real-time connection timeout. Chat may not work properly.");
           }
         }, 10000);
         
@@ -173,6 +181,7 @@ const AppContent = () => {
       }
     } else {
       console.log("⚠️ No token found, socket will not connect");
+      toast.error("Please login to enable real-time features");
     }
     
     // Enhanced WebSocket event listeners for real-time updates
