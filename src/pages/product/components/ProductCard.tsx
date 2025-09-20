@@ -7,7 +7,6 @@ import { addToComparison, removeFromComparison } from "../../../store/comparison
 import { Heart, BarChart3 } from "lucide-react";
 import toast from "react-hot-toast";
 import { ProductCardSkeleton } from "../../../components/SkeletonLoader";
-import { shouldShowCostPrice } from "../../../utils/adminUtils";
 
 // Redefine ICardProps to override images type
 interface ICardProps {
@@ -229,15 +228,6 @@ const ProductCard: React.FC<ICardProps> = ({ product, showActions = true }) => {
                 </span>
               )}
               
-              {/* Admin Cost Price Display */}
-              {shouldShowCostPrice() && product.costPrice && (
-                <div className="mt-1 text-xs text-gray-500">
-                  <span>Cost: Rs{product.costPrice.toFixed(2)}</span>
-                  <span className="ml-2 text-green-600">
-                    Profit: Rs{(product.price - product.costPrice).toFixed(2)}
-                  </span>
-                </div>
-              )}
             </div>
             <button className="text-indigo-600 hover:text-indigo-800 font-medium">
               <svg

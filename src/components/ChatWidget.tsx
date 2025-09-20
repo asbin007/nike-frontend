@@ -1,75 +1,40 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import { useAppDispatch, useAppSelector } from "../store/hooks";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { MessageCircle, X, Minimize2, Maximize2, Loader2, Camera, MapPin } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { getSocket } from '../App';
 import { 
-  fetchAdminUsers, 
-  createOrGetChat, 
-  fetchChatMessages, 
-  sendMessage, 
+  fetchAllChatsThunk, 
   addMessage,
-  setTyping,
-  updateChatLastMessage,
-  clearError,
+  setMessages,
   setCurrentChat,
-  type Message,
-  type User
-} from "../store/chatSlice";
-import { socket } from "../App";
-import { 
-  Send, 
-  X, 
-  MessageCircle, 
-  Minimize2, 
-  Maximize2, 
-  Paperclip,
-  Check,
-  CheckCheck
-} from "lucide-react";
-import toast from "react-hot-toast";
+  setTyping,
+  updateChatLastMessage
+} from '../store/chatSlice';
 
-// Error Boundary Component
-class ChatErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error?: Error }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ChatWidget Error:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="fixed bottom-4 right-4 z-50">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg">
-            <div className="flex items-center">
-              <MessageCircle className="w-5 h-5 mr-2" />
-              <div>
-                <p className="font-bold">Chat Error</p>
-                <p className="text-sm">Something went wrong with the chat widget.</p>
-                <button
-                  onClick={() => this.setState({ hasError: false })}
-                  className="mt-2 text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                >
-                  Retry
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
+interface Message {
+  id: string;
+  chatId: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  imageUrl?: string;
+  location?: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
+  createdAt: string;
+  read: boolean;
+  Sender?: {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+  };
 }
+
+// Removed unused Chat interface
 
 const ChatWidget: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -77,88 +42,131 @@ const ChatWidget: React.FC = () => {
   const { 
     currentChat, 
     messages, 
-    adminUsers, 
-    status, 
-    error, 
-    unreadCount, 
-    isTyping, 
-    typingUsers 
+    isTyping
   } = useAppSelector((state) => state.chat);
+  
+  // Hardcoded admin data for chat system - using useMemo to prevent re-creation
+  const hardcodedAdmin = useMemo(() => ({
+    id: "28819183-81c9-4ab9-ba65-04b1c3e94fcd",
+    username: "asbin",
+    email: "asbin@gmail.com",
+    role: "admin"
+  }), []);
+  
+  // Use hardcoded admin if no user is logged in - using useMemo to prevent re-creation
+  const currentUser = useMemo(() => user || hardcodedAdmin, [user, hardcodedAdmin]);
   
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
+  const [adminUsers, setAdminUsers] = useState<{id: string; username: string; email: string; role: string}[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [typingUser, setTypingUser] = useState('');
+  const [socketConnected, setSocketConnected] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
-  
-  // Draggable state
-  const [position, setPosition] = useState({ 
-    x: window.innerWidth - 120, 
-    y: window.innerHeight - 120 
-  });
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [location, setLocation] = useState<{lat: number, lng: number, address: string} | null>(null);
+  const [position, setPosition] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 100 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom when new messages arrive
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
-
-  // Load chat data from localStorage on mount
-  useEffect(() => {
-    if (user?.id) {
-      console.log("🔄 User logged in, loading chat data...");
-      
-      // Load existing chat from localStorage
-      const savedChat = localStorage.getItem(`chat-${user.id}`);
-      if (savedChat) {
-        try {
-          const chatData = JSON.parse(savedChat);
-          dispatch(setCurrentChat(chatData.chat));
-          if (chatData.messages) {
-            chatData.messages.forEach((msg: Message) => {
-              dispatch(addMessage(msg));
-            });
-          }
-          console.log("✅ Chat data loaded from localStorage");
-        } catch (error) {
-          console.error("❌ Error loading chat data:", error);
-        }
-      }
-      
-      // Try to fetch admin users (will fail but we have fallback)
-      dispatch(fetchAdminUsers()).catch(() => {
-        console.log("⚠️ Admin users fetch failed, using fallback");
-      });
-    } else {
-      console.log("⚠️ No user ID, skipping chat data load");
+  // Backend URL with fallback
+  const baseURL = "https://nike-backend-1-g9i6.onrender.com/api";
+  
+  // Get proper token for API calls
+  const getAuthToken = () => {
+    const token = localStorage.getItem("tokenauth");
+    if (token) {
+      console.log('🔑 Using stored token');
+      return token;
     }
-  }, [dispatch, user?.id]);
+    // Fallback to hardcoded token for testing
+    console.log('🔑 Using fallback token');
+    return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyODgxOTE4My04MWM5LTRhYjktYmE2NS0wNGIxYzNlOTRmY2QiLCJpYXQiOjE3NTgyOTE5NzgsImV4cCI6MTc2MDg4Mzk3OH0.BjYDw7HHmAZcbUImpWfBd89YVGpJGT14E2AFpTl9z5k";
+  };
 
-  // WebSocket event listeners
+  // Drag handling functions
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (isOpen) return; // Don't drag when chat is open
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    });
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+    
+    // Keep within screen bounds
+    const maxX = window.innerWidth - 60;
+    const maxY = window.innerHeight - 60;
+    const minY = 20; // Don't go too high
+    
+    setPosition({
+      x: Math.max(0, Math.min(newX, maxX)),
+      y: Math.max(minY, Math.min(newY, maxY))
+    });
+  }, [isDragging, dragStart]);
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Add event listeners for dragging
   useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragStart, handleMouseMove]);
+
+  // WebSocket integration for real-time chat
+  useEffect(() => {
+    const socket = getSocket();
     if (!socket) return;
 
+    // Track processed message IDs to prevent duplicates
+    const processedMessageIds = new Set<string>();
+
+    // Listen for new messages with duplicate prevention
     const handleNewMessage = (message: Message) => {
-      dispatch(addMessage(message));
-      dispatch(updateChatLastMessage({ chatId: message.chatId, message }));
+      // Check if message already processed
+      if (processedMessageIds.has(message.id)) {
+        console.log('⚠️ Duplicate message ignored:', message.id);
+        return;
+      }
       
-      // Show notification if chat is not open or minimized
-      if (!isOpen || isMinimized) {
-        toast.success(`New message from ${message.Sender?.username || 'Admin'}`, {
-          duration: 3000,
-        });
+      // Mark message as processed
+      processedMessageIds.add(message.id);
+      
+      // Only add message if it's for current chat
+      if (currentChat?.id === message.chatId) {
+        dispatch(addMessage(message));
+        dispatch(updateChatLastMessage({ chatId: message.chatId, message }));
+        
+        // Show notification if not from current user
+        if (message.senderId !== user?.id) {
+          toast.success(`New message from ${message.Sender?.username || 'Admin'}`, {
+            duration: 3000,
+          });
+        }
       }
     };
 
+    // Listen for typing indicators
     const handleTyping = ({ chatId, userId }: { chatId: string; userId: string }) => {
       if (currentChat?.id === chatId && userId !== user?.id) {
         dispatch(setTyping({ isTyping: true, userId }));
@@ -171,6 +179,7 @@ const ChatWidget: React.FC = () => {
       }
     };
 
+    // Only listen to receiveMessage - remove other duplicate listeners
     socket.on("receiveMessage", handleNewMessage);
     socket.on("typing", handleTyping);
     socket.on("stopTyping", handleStopTyping);
@@ -180,600 +189,776 @@ const ChatWidget: React.FC = () => {
       socket.off("typing", handleTyping);
       socket.off("stopTyping", handleStopTyping);
     };
-  }, [dispatch, currentChat?.id, user?.id, isOpen, isMinimized]);
+  }, [dispatch, currentChat?.id, user?.id]);
 
-  // Drag handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    // Only allow dragging from header or when chat is closed
-    const target = e.target as HTMLElement;
-    const isHeader = target.closest('.chat-header') || target.closest('.chat-widget-button');
-    
-    if (isHeader || !isOpen) {
-      setIsDragging(true);
-      const rect = chatRef.current?.getBoundingClientRect();
-      if (rect) {
-        setDragOffset({
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top
-        });
+  // Initialize chat on component mount
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchAllChatsThunk());
+    }
+  }, [dispatch, user?.id]);
+
+
+
+  // Image handling functions
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size should be less than 5MB');
+        return;
       }
-      e.preventDefault();
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        return;
+      }
+      
+      setSelectedImage(file);
+      console.log('🖼️ Image selected:', file.name, 'Size:', file.size);
     }
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (isDragging) {
-      const newX = e.clientX - dragOffset.x;
-      const newY = e.clientY - dragOffset.y;
-      
-      const maxX = window.innerWidth - (chatRef.current?.offsetWidth || 400);
-      const maxY = window.innerHeight - (chatRef.current?.offsetHeight || 500);
-      
-      setPosition({
-        x: Math.max(0, Math.min(newX, maxX)),
-        y: Math.max(0, Math.min(newY, maxY))
-      });
+  // Removed unused removeImage function
+
+  // Location handling functions
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          
+          // Simple address format
+          const address = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+          setLocation({ lat, lng, address });
+          setShowLocationModal(false);
+          toast.success('Location captured!');
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          toast.error('Unable to get location');
+        }
+      );
+    } else {
+      toast.error('Geolocation not supported');
     }
-  }, [isDragging, dragOffset]);
+  };
 
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const removeLocation = () => {
+    setLocation(null);
+  };
 
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
 
-  // Handle window resize
+  // Use hardcoded admin directly - no API call needed
   useEffect(() => {
-    const handleResize = () => {
-      const maxX = window.innerWidth - (chatRef.current?.offsetWidth || 400);
-      const maxY = window.innerHeight - (chatRef.current?.offsetHeight || 500);
-      
-      setPosition(prev => ({
-        x: Math.min(prev.x, maxX),
-        y: Math.min(prev.y, maxY)
-      }));
-    };
+    console.log('🔄 Setting hardcoded admin directly');
+    setAdminUsers([hardcodedAdmin]);
+    setIsLoading(false);
+  }, [hardcodedAdmin]);
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const handleOpenChat = async () => {
-    console.log("🔍 Chat Debug Info:", {
-      user: user,
-      userId: user?.id,
-      adminUsers: adminUsers,
-      adminUsersLength: adminUsers?.length || 0,
-      token: localStorage.getItem("tokenauth") ? "Present" : "Missing",
-      currentChat: currentChat,
-      messages: messages?.length || 0,
-      status: status
-    });
-    
-    console.log("🌐 Network Info:", {
-      baseURL: "https://nike-backend-1-g9i6.onrender.com/api",
-      userAgent: navigator.userAgent,
-      online: navigator.onLine
-    });
-
-    if (!user?.id) {
-      console.error("❌ No user ID found");
-      toast.error("Please login to chat with support");
+  // Socket event listeners for real-time messages
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) {
+      console.log('❌ ChatWidget: No socket available');
       return;
     }
 
-    // Try to create chat with backend first
-    console.log("🔄 Creating chat with backend...");
+    console.log('🔌 ChatWidget: Setting up socket listeners, socket connected:', socket.connected);
+    setSocketConnected(socket.connected);
+
+    // Listen for connection status changes
+    const handleConnect = () => {
+      console.log('✅ ChatWidget: Socket connected');
+      setSocketConnected(true);
+    };
+
+    const handleDisconnect = () => {
+      console.log('❌ ChatWidget: Socket disconnected');
+      setSocketConnected(false);
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+
+    const handleReceiveMessage = (message: Message) => {
+      console.log('💬 ChatWidget: Received message:', message);
+      console.log('💬 Current chat ID:', currentChat?.id);
+      console.log('💬 Message chat ID:', message.chatId);
+      console.log('💬 Message sender ID:', message.senderId);
+      console.log('💬 Current user ID:', currentUser.id);
+      
+      // Check if message is for current chat and not from current user
+      if (message.chatId === currentChat?.id && message.senderId !== currentUser.id) {
+        // Check if message already exists to prevent duplicates
+        const messageExists = messages.some(msg => msg.id === message.id);
+        if (!messageExists) {
+          console.log('✅ Adding message to current chat (from admin)');
+          dispatch(addMessage(message));
+          toast.success('New message received!');
+        } else {
+          console.log('ℹ️ Message already exists, skipping duplicate');
+        }
+      } else if (message.chatId === currentChat?.id && message.senderId === currentUser.id) {
+        console.log('ℹ️ Message from current user, not adding to avoid duplicate');
+      } else {
+        console.log('❌ Message not for current chat or from current user');
+      }
+    };
+
+    // Removed unused handleNewMessageNotification function
+
+    const handleTyping = (data: {chatId: string; username: string}) => {
+      console.log('⌨️ ChatWidget: Typing indicator:', data);
+      if (data.chatId === currentChat?.id) {
+        dispatch(setTyping(true));
+        setTypingUser(data.username || 'Admin');
+        setTimeout(() => {
+          dispatch(setTyping(false));
+          setTypingUser('');
+        }, 3000);
+      }
+    };
+
+    const handleStopTyping = (data: {chatId: string; username: string}) => {
+      console.log('⌨️ ChatWidget: Stop typing indicator:', data);
+      if (data.chatId === currentChat?.id) {
+        dispatch(setTyping(false));
+        setTypingUser('');
+      }
+    };
+
+    // Add event listeners - only receiveMessage to prevent duplicates
+    socket.on('receiveMessage', handleReceiveMessage);
+    socket.on('typing', handleTyping);
+    socket.on('stopTyping', handleStopTyping);
+    
+    // Join chat room when chat is selected
+    if (currentChat?.id) {
+      socket.emit('joinChat', currentChat.id);
+      console.log('🔌 Joined chat room:', currentChat.id);
+    }
+    
+    // Socket connection status
+    console.log('🔌 ChatWidget: Socket events registered');
+    console.log('🔌 ChatWidget: Socket connected:', socket.connected);
+    console.log('🔌 ChatWidget: Socket ID:', socket.id);
+
+    // Cleanup
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('receiveMessage', handleReceiveMessage);
+      socket.off('typing', handleTyping);
+      socket.off('stopTyping', handleStopTyping);
+    };
+  }, [dispatch, currentChat?.id, currentUser.id, messages]);
+
+  // Auto-refresh messages every 5 seconds as fallback
+  useEffect(() => {
+    if (!currentChat?.id) return;
+    
+    const interval = setInterval(async () => {
+      console.log('🔄 ChatWidget: Auto-refreshing messages as fallback');
+      try {
+        const response = await fetch(`${baseURL}/chats/${currentChat.id}/messages`, {
+          headers: {
+            'Authorization': getAuthToken(),
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success || data.messages || data.data) {
+            const messagesData = data.messages || data.data || [];
+            dispatch(setMessages(messagesData));
+            console.log('✅ ChatWidget: Messages refreshed via fallback');
+          }
+        }
+      } catch (error) {
+        console.error('❌ ChatWidget: Fallback refresh failed:', error);
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [dispatch, currentChat?.id]);
+
+  // Fetch messages when chat changes
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!currentChat?.id) return;
+
+      try {
+        setIsLoading(true);
+        console.log('📥 Fetching messages for chat:', currentChat.id);
+        
+        const response = await fetch(`${baseURL}/chats/${currentChat.id}/messages`, {
+          headers: {
+            'Authorization': getAuthToken(),
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('📡 Messages API Response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📡 Messages API Response data:', data);
+          
+          // Check for both success field and messages field
+          if (data.success || data.messages || data.data) {
+            const messagesData = data.messages || data.data || [];
+            dispatch(setMessages(messagesData));
+            console.log('✅ Messages fetched:', messagesData);
+      } else {
+            console.error('❌ Failed to fetch messages:', data.message);
+      }
+    } else {
+          const errorData = await response.text();
+          console.error('❌ Failed to fetch messages:', response.status, errorData);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching messages:', error);
+        toast.error('Failed to load messages');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMessages();
+  }, [dispatch, currentChat?.id]);
+
+  const handleOpenChat = async () => {
+    if (adminUsers.length === 0) {
+      toast.error('No admin available at the moment. Please try again later.');
+      return;
+    }
+    
+    // Immediately show chat UI
+    setIsOpen(true);
+    setIsMinimized(false);
     
     try {
-      // First get admin users
-      console.log("🔄 Attempting to fetch admin users...");
-      const adminResult = await dispatch(fetchAdminUsers());
+      setIsLoading(true);
+      console.log('🔄 Creating chat with admin:', adminUsers[0]);
+      console.log('🌐 Making API call to:', `${baseURL}/chats/get-or-create`);
+      console.log('🔑 Token:', localStorage.getItem('tokenauth') ? 'Present' : 'Missing');
       
-      console.log("📊 Admin fetch result:", adminResult);
-      console.log("📊 Admin fetch type:", adminResult.type);
-      console.log("📊 Admin fetch payload:", adminResult.payload);
+      const response = await fetch(`${baseURL}/chats/get-or-create`, {
+        method: 'POST',
+        headers: {
+          'Authorization': getAuthToken(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ adminId: adminUsers[0].id })
+      });
       
-      if (fetchAdminUsers.rejected.match(adminResult)) {
-        console.error("❌ Admin users fetch rejected:", adminResult.payload);
-        throw new Error(`Failed to fetch admin users: ${adminResult.payload}`);
-      }
+      console.log('📡 API Response status:', response.status);
+      console.log('📡 API Response headers:', response.headers);
       
-      const adminUsers = adminResult.payload as User[];
-      console.log("👥 Admin users received:", adminUsers);
-      console.log("🔢 Admin users count:", adminUsers?.length || 0);
-      
-      if (!adminUsers || adminUsers.length === 0) {
-        console.warn("⚠️ No admin users available, using fallback");
-        throw new Error("No admin users available");
-      }
-      
-      // Create chat with first available admin
-      const adminId = adminUsers[0].id;
-      const chatResult = await dispatch(createOrGetChat({ adminId }));
-      
-      if (createOrGetChat.fulfilled.match(chatResult)) {
-        const chat = chatResult.payload;
-        console.log("✅ Chat created/retrieved successfully:", chat);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ API Response data:', data);
         
-        // Set current chat and open chat widget
-        dispatch(setCurrentChat(chat));
-        setIsOpen(true);
-        setIsMinimized(false);
-        
-        // Fetch messages for the chat
-        dispatch(fetchChatMessages({ chatId: chat.id }));
-        
-        // Emit chat creation to socket for admin notification
-        if (socket && socket.connected) {
-          socket.emit("customerChatCreated", {
-            chatId: chat.id,
-            customerId: user.id,
-            adminId: adminId,
-            customerInfo: {
-              id: user.id,
-              username: user.username,
-              email: user.email
+        // Check for both success field and chat field
+        if (data.success || data.chat) {
+          const chatData = data.chat || data.data;
+          console.log('✅ Chat created/opened:', chatData);
+          
+          // Ensure chatData has required fields
+          if (chatData && (chatData.id || chatData.chatId)) {
+            dispatch(setCurrentChat(chatData));
+            toast.success('Connected to support!');
+            
+            // Join chat room
+            const socket = getSocket();
+            if (socket && chatData.id) {
+              socket.emit('joinChat', chatData.id);
+              console.log('🔌 Joined chat room:', chatData.id);
             }
-          });
+          } else {
+            console.error('❌ Invalid chat data received:', chatData);
+            toast.error('Invalid chat data received');
+          }
+        } else {
+          console.error('❌ Failed to create chat:', data.message);
+          toast.error(data.message || 'Failed to start chat');
         }
-        
-        toast.success("Chat started! Connected to support team.");
       } else {
-        throw new Error(chatResult.payload as string);
+        const errorData = await response.text();
+        console.error('❌ Failed to create chat:', response.status);
+        console.error('❌ Error response:', errorData);
+        toast.error(`Failed to start chat: ${response.status} - ${errorData}`);
       }
     } catch (error) {
-      console.error("❌ Backend chat creation failed, using fallback:", error);
-      
-      // Add mock admin users to state for fallback
-      const mockAdminUsers = [
-        {
-          id: 'mock-admin-1',
-          username: 'Support Team',
-          email: 'support@nike.com',
-          role: 'admin'
-        },
-        {
-          id: 'mock-admin-2', 
-          username: 'Customer Care',
-          email: 'care@nike.com',
-          role: 'admin'
-        }
-      ];
-      
-      console.log("🔄 Using mock admin users:", mockAdminUsers);
-      
-      // Update admin users in state
-      dispatch({ type: 'chat/fetchAdminUsers/fulfilled', payload: mockAdminUsers });
-      
-      // Fallback: Create mock chat
-      const mockChat = {
-        id: `mock-chat-${user.id}`,
-        customerId: user.id,
-        adminId: 'mock-admin-1',
-        lastMessage: '',
-        lastMessageAt: new Date().toISOString(),
-        isActive: true,
-        unreadCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        Customer: {
-          id: user.id || '',
-          username: user.username || '',
-          email: user.email || '',
-          role: 'customer'
-        },
-        Admin: {
-          id: 'mock-admin-1',
-          username: 'Support Team',
-          email: 'support@nike.com',
-          role: 'admin'
-        }
-      };
-
-      // Set current chat and open chat widget
-      dispatch(setCurrentChat(mockChat));
-      setIsOpen(true);
-      setIsMinimized(false);
-      
-      // Add welcome message
-      const welcomeMessage = {
-        id: `welcome-${Date.now()}`,
-        chatId: mockChat.id,
-        senderId: 'mock-admin-1',
-        receiverId: user.id,
-        content: 'Hello! Welcome to Nike Support. How can I help you today?',
-        messageType: 'text' as const,
-        isRead: false,
-        isEdited: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        Sender: mockChat.Admin
-      };
-      
-      dispatch(addMessage(welcomeMessage));
-      toast.success(`Chat started! Connected to ${mockAdminUsers[0].username}.`);
+      console.error('❌ Error creating chat:', error);
+      toast.error('Failed to start chat');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSendMessage = async () => {
-    if (!message.trim() && !selectedImage) return;
-    if (!currentChat) return;
+    if ((!message.trim() && !selectedImage && !location) || !currentChat) return;
 
-    console.log("📤 Sending message...");
+    // Prevent duplicate sends
+    if (isLoading) {
+      console.log('⚠️ Message already being sent, ignoring duplicate');
+      return;
+    }
 
     try {
-      // Try backend first
-      const result = await dispatch(sendMessage({
-        chatId: currentChat.id,
-        content: message,
-        messageType: selectedImage ? 'image' : 'text',
-        image: selectedImage || undefined
-      }));
+      setIsLoading(true);
+      console.log('🚀 Starting message send process...');
+      console.log('📝 Message:', message.trim());
+      console.log('💬 Chat ID:', currentChat.id);
 
-      if (sendMessage.fulfilled.match(result)) {
-        console.log("✅ Message sent via backend");
-        setMessage("");
-        setSelectedImage(null);
-        setImagePreview("");
+      // Prepare location data if available
+      let locationData = null;
+      if (location) {
+        locationData = {
+          lat: location.lat,
+          lng: location.lng,
+          address: location.address
+        };
+      }
+
+      const messageContent = message.trim();
+      const messageId = Date.now().toString(); // Generate unique ID
+      
+      const formData = new FormData();
+      formData.append('chatId', currentChat.id);
+      formData.append('content', messageContent);
+      
+      if (selectedImage) {
+        formData.append('image', selectedImage);
+      }
+      
+      if (locationData) {
+        formData.append('location', JSON.stringify(locationData));
+      }
+
+      console.log('🌐 Making API call to:', `${baseURL}/chats/send-message`);
+
+      const response = await fetch(`${baseURL}/chats/send-message`, {
+        method: 'POST',
+        headers: {
+          'Authorization': getAuthToken()
+        },
+        body: formData
+      });
+
+      console.log('📡 API Response Status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Message sent successfully');
         
-        // Emit socket event for real-time updates
-        if (socket && socket.connected) {
-          socket.emit("sendMessage", {
-            chatId: currentChat.id,
-            content: message,
-            messageType: selectedImage ? 'image' : 'text',
-            senderId: user?.id,
-            receiverId: currentChat.adminId
-          });
+        // Add message to local state (only once) with unique ID
+        const newMessage = {
+          id: data.data?.id || messageId,
+          chatId: currentChat.id,
+          senderId: data.data?.senderId || currentUser.id,
+          receiverId: data.data?.receiverId || currentChat.adminId,
+          content: messageContent,
+          imageUrl: selectedImage ? URL.createObjectURL(selectedImage) : data.data?.imageUrl,
+          createdAt: data.data?.createdAt || new Date().toISOString(),
+          read: false,
+          Sender: {
+            id: data.data?.senderId || currentUser.id,
+            username: data.data?.Sender?.username || currentUser.username,
+            email: data.data?.Sender?.email || currentUser.email,
+            role: 'customer'
+          }
+        };
+
+        // Check if message already exists to prevent duplicates
+        const messageExists = messages.some(msg => msg.id === newMessage.id);
+        if (!messageExists) {
+          dispatch(addMessage(newMessage));
+        } else {
+          console.log('⚠️ Message already exists, skipping duplicate');
         }
         
-        toast.success("Message sent!");
+        // Clear form immediately to prevent duplicate sends
+        setMessage('');
+        setSelectedImage(null);
+        setLocation(null);
+        
+        // Don't emit socket event here - let backend handle it to prevent duplicates
+        // The backend will emit the message to all connected clients
+        
+        toast.success('Message sent successfully!');
       } else {
-        throw new Error(result.payload as string);
+        const errorData = await response.text();
+        console.error('❌ API Error Response:', errorData);
+        toast.error(`Failed to send message: ${response.status}`);
       }
     } catch (error) {
-      console.error("❌ Backend message sending failed, using fallback:", error);
-      
-      // Fallback: Create message locally
-      const messageObj = {
-        id: `msg-${Date.now()}-${Math.random()}`,
-        chatId: currentChat.id,
-        senderId: user?.id || '',
-        receiverId: currentChat.adminId,
-        content: message,
-        messageType: (selectedImage ? 'image' : 'text') as 'text' | 'image' | 'file' | 'system',
-        imageUrl: selectedImage ? URL.createObjectURL(selectedImage) : undefined,
-        isRead: false,
-        isEdited: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        Sender: {
-          id: user?.id || '',
-          username: user?.username || '',
-          email: user?.email || '',
-          role: 'customer'
-        }
-      };
-
-      // Add message to local state
-      dispatch(addMessage(messageObj));
-      dispatch(updateChatLastMessage({ chatId: currentChat.id, message: messageObj }));
-
-      // Clear input
-      setMessage("");
-      setSelectedImage(null);
-      setImagePreview("");
-
-      // Emit to socket for real-time delivery
-      if (socket && socket.connected) {
-        socket.emit("sendMessage", {
-          chatId: currentChat.id,
-          content: message,
-          messageType: selectedImage ? 'image' : 'text',
-          senderId: user?.id,
-          receiverId: currentChat.adminId,
-          imageUrl: selectedImage ? URL.createObjectURL(selectedImage) : undefined
-        });
-      }
-
-      toast.success("Message sent!");
+      console.error('❌ Error sending message:', error);
+      toast.error('Failed to send message');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      setSelectedImage(file);
-      const reader = new FileReader();
-      reader.onload = (e) => setImagePreview(e.target?.result as string);
-      reader.readAsDataURL(file);
-    } else {
-      toast.error("Please select an image file");
-    }
-  };
 
-  const handleTyping = () => {
-    if (currentChat) {
-      socket.emit("typing", { 
-        chatId: currentChat.id, 
-        userId: user?.id 
-      });
-      
-      setTimeout(() => {
-        socket.emit("stopTyping", { 
-          chatId: currentChat.id, 
-          userId: user?.id 
-        });
-      }, 2000);
-    }
-  };
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
-    if (diffInHours < 24) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffInHours < 48) {
-      return 'Yesterday';
-    } else {
-      return date.toLocaleDateString();
-    }
   };
 
   if (!isOpen) {
     return (
       <div 
-        ref={chatRef}
-        className="fixed z-50"
-        style={{ left: position.x, top: position.y }}
+        ref={dragRef}
+        className="fixed z-50 cursor-pointer select-none bottom-3 right-8 sm:bottom-4 sm:right-10 md:bottom-6 md:right-12 lg:bottom-8 lg:right-14"
+        style={{
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          transform: isDragging ? 'scale(1.1)' : 'scale(1)',
+          transition: isDragging ? 'none' : 'transform 0.2s ease'
+        }}
+        onMouseDown={handleMouseDown}
+        onClick={handleOpenChat}
       >
-        <button
-          onClick={handleOpenChat}
-          onMouseDown={handleMouseDown}
-          className="relative bg-white hover:bg-gray-50 text-gray-700 p-4 rounded-2xl shadow-xl border border-gray-200 flex items-center justify-center transition-all duration-300 transform hover:scale-105 group"
-        >
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <div className="w-3 h-3 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse"></div>
-              <MessageCircle className="w-6 h-6 text-blue-600" />
-            </div>
-            <span className="text-sm font-medium">Need Help?</span>
+        <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-2 sm:p-2.5 md:p-3 rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 relative group">
+          <div className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 flex items-center justify-center">
+            <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
           </div>
-          {unreadCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+          {isLoading && (
+            <div className="absolute -top-1 -right-1 bg-white rounded-full p-1 shadow-lg">
+              <Loader2 className="h-3 w-3 animate-spin text-orange-600" />
+            </div>
           )}
-        </button>
+          {/* Notification Badge */}
+          {messages.length > 0 && (
+            <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 bg-red-500 text-white text-xs rounded-full w-3.5 h-3.5 sm:w-4 sm:h-4 flex items-center justify-center font-bold shadow-lg animate-pulse">
+              {messages.length > 9 ? '9+' : messages.length}
+            </div>
+          )}
+          <div className="absolute -top-10 sm:-top-12 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap shadow-xl">
+            <div className="flex items-center space-x-1">
+              <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="font-medium text-xs">Nike Support</span>
+            </div>
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-slate-800"></div>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // When chat is open, don't show the floating button
   return (
-    <div 
-      ref={chatRef}
-      className="fixed z-50"
-      style={{ left: position.x, top: position.y }}
-    >
-      <div className={`bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transition-all duration-300 ${
-        isMinimized ? 'w-72 h-16' : 'w-80 h-[500px] max-h-[70vh]'
-      }`}>
+    <div className={`fixed bottom-4 right-8 z-50 bg-white rounded-3xl shadow-2xl border border-gray-100 ${
+      isMinimized 
+        ? 'w-72 h-14 sm:w-80 sm:h-16' 
+        : 'w-80 h-96 sm:w-96 sm:h-[400px] md:w-[380px] md:h-[450px]'
+    } overflow-hidden backdrop-blur-sm flex flex-col`}>
         {/* Header */}
-        <div 
-          className="p-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white"
-          onMouseDown={handleMouseDown}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <div className="w-3 h-3 bg-green-400 rounded-full absolute -top-1 -right-1 animate-pulse"></div>
-                <MessageCircle className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Customer Support</h3>
-                <p className="text-xs text-blue-100">
-                  {adminUsers && adminUsers.length > 0 
-                    ? `${adminUsers.length} Admin${adminUsers.length > 1 ? 's' : ''} Online` 
-                    : 'Demo Mode'
-                  }
-                </p>
-              </div>
+      <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white p-3 sm:p-4 md:p-5 rounded-t-3xl flex items-center justify-between relative overflow-hidden min-h-[60px] w-full flex-shrink-0">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10 z-10">
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/20 to-transparent"></div>
+          <div className="absolute -top-2 -right-2 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-white/10 rounded-full"></div>
+          <div className="absolute -bottom-1 -left-1 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-white/5 rounded-full"></div>
+        </div>
+        
+        <div className="flex items-center space-x-2 sm:space-x-3 relative z-50 min-w-0 flex-1 overflow-hidden">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
+            <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+          </div>
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="flex items-center space-x-2 flex-wrap">
+              <span className="font-bold text-sm sm:text-base text-white">
+                {adminUsers.length > 0 ? adminUsers[0].username : 'Nike Support'}
+              </span>
+              {adminUsers.length > 0 && (
+                <span className="text-xs bg-orange-500/20 px-2 py-0.5 rounded-full">Admin</span>
+              )}
             </div>
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={() => setIsMinimized(!isMinimized)}
-                className="p-2 text-white hover:bg-blue-500 rounded-lg transition-colors"
-              >
-                {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
-              </button>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-2 text-white hover:bg-red-500 rounded-lg transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            <div className="flex items-center space-x-1 sm:space-x-2 flex-wrap">
+              <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${socketConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+              <span className="text-xs opacity-90 font-medium text-white">
+                {socketConnected ? 'Active Now' : 'Offline'}
+              </span>
+              {socketConnected && (
+                <span className="text-xs bg-green-500/20 px-1.5 py-0.5 rounded-full">Live</span>
+              )}
             </div>
           </div>
         </div>
+        <div className="flex items-center space-x-1 relative z-50 flex-shrink-0">
+          <button
+            onClick={() => setIsMinimized(!isMinimized)}
+            className="text-white hover:text-white hover:bg-white/20 p-2 rounded-xl transition-all duration-200 hover:scale-110 border border-white/20 hover:border-white/40"
+            title={isMinimized ? "Maximize" : "Minimize"}
+          >
+            {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="text-white hover:text-white hover:bg-red-500/50 p-2.5 rounded-xl transition-all duration-200 hover:scale-110 border border-red-400/40 hover:border-red-400/70 bg-red-500/15 hover:shadow-lg"
+            title="Close Chat"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
         {!isMinimized && (
           <>
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3 h-[350px]">
-              {status === 'loading' ? (
-                <div className="flex justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          {/* Messages */}
+          <div className="flex-1 p-3 sm:p-4 md:p-5 overflow-y-auto bg-gradient-to-b from-gray-50 to-white scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent" style={{height: 'calc(100% - 120px)'}}>
+            {isLoading ? (
+              <div className="text-center text-gray-500 py-8 sm:py-12">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                  <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-orange-600" />
                 </div>
-              ) : error ? (
-                <div className="text-center text-red-500 py-8">
-                  <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p className="font-medium">Error loading chat</p>
-                  <p className="text-xs">{error}</p>
-                  <button 
-                    onClick={() => {
-                      dispatch(clearError());
-                      if (user?.id) {
-                        dispatch(fetchAdminUsers());
-                      }
-                    }}
-                    className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-                  >
-                    Retry
-                  </button>
+                <p className="text-xs sm:text-sm font-medium">Loading messages...</p>
+                <p className="text-xs text-gray-400 mt-1">Please wait</p>
                 </div>
-              ) : !messages || messages.length === 0 ? (
-                <div className="text-center text-gray-400 py-8">
-                  <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No messages yet</p>
-                  <p className="text-xs">Start a conversation!</p>
+              ) : messages.length === 0 ? (
+              <div className="text-center text-gray-500 py-8 sm:py-12">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg">
+                  <MessageCircle className="h-8 w-8 sm:h-10 sm:w-10 text-orange-600" />
+                </div>
+                <h3 className="font-bold text-base sm:text-lg text-gray-800 mb-2">Welcome to Nike Support!</h3>
+                <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">How can we help you today?</p>
+                <div className="space-y-2">
+                  <div className="px-3 py-1.5 sm:px-4 sm:py-2 bg-orange-50 rounded-full inline-block">
+                    <span className="text-xs font-medium text-orange-700">
+                      {adminUsers.length > 0 ? `${adminUsers.length} support agent(s) available` : 'No agents available'}
+                    </span>
+                  </div>
+                  <div className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-100 rounded-full inline-block">
+                    <span className="text-xs text-gray-600">Average response time: 2 minutes</span>
+                  </div>
+                </div>
                 </div>
               ) : (
-                messages?.map((msg) => (
+              <div className="space-y-3 sm:space-y-4">
+                {messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`flex ${msg.senderId === user?.id ? "justify-end" : "justify-start"}`}
+                    className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'} group`}
                   >
                     <div
-                      className={`max-w-[75%] px-4 py-3 rounded-2xl ${
-                        msg.senderId === user?.id
-                          ? "bg-blue-600 text-white"
-                          : "bg-white border border-gray-200 text-gray-800"
+                      className={`max-w-[85%] sm:max-w-xs px-3 py-2 sm:px-4 sm:py-3 rounded-2xl sm:rounded-3xl shadow-sm transition-all duration-200 hover:shadow-md ${
+                        msg.senderId === currentUser.id
+                          ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
+                          : 'bg-white text-gray-800 border border-gray-200 hover:border-gray-300'
                       }`}
                     >
+                      {/* Image */}
                       {msg.imageUrl && (
-                        <div className="mb-2">
+                        <div className="mb-2 sm:mb-3 -mx-1">
                           <img 
                             src={msg.imageUrl} 
                             alt="Message attachment" 
-                            className="max-w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={() => window.open(msg.imageUrl, '_blank')}
+                            className="max-w-full h-auto rounded-xl sm:rounded-2xl max-h-32 sm:max-h-48 object-cover shadow-sm"
                           />
                         </div>
                       )}
-                      <div className="break-words">{msg.content}</div>
-                      <div className="mt-1 flex items-center justify-between text-[10px]">
-                        <span className="opacity-75">{formatTime(msg.createdAt)}</span>
-                        <div className="flex items-center space-x-1">
-                          {msg.senderId === user?.id && (
-                            <>
-                              <Check className="w-3 h-3" />
-                              {msg.isRead && <CheckCheck className="w-3 h-3 text-blue-400" />}
-                            </>
-                          )}
+                      
+                      {/* Location - if location data exists */}
+                      {msg.metadata?.location && (
+                        <div className={`mb-2 sm:mb-3 p-2 sm:p-3 rounded-xl sm:rounded-2xl ${
+                          msg.senderId === currentUser.id 
+                            ? 'bg-white/20' 
+                            : 'bg-orange-50 border border-orange-200'
+                        }`}>
+                          <div className="flex items-center space-x-1 sm:space-x-2">
+                            <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="text-xs sm:text-sm font-medium">Location: {msg.metadata.location.address}</span>
+                          </div>
                         </div>
+                      )}
+                      
+                      {/* Text Content */}
+                      {msg.content && <p className="text-xs sm:text-sm leading-relaxed">{msg.content}</p>}
+                      
+                      <div className="flex justify-end mt-1 sm:mt-2">
+                        <p className="text-xs opacity-70">
+                          {formatTime(msg.createdAt)}
+                        </p>
                       </div>
                     </div>
                   </div>
-                ))
-              )}
-
-              {/* Typing indicator */}
-              {isTyping && typingUsers.length > 0 && (
+                ))}
+              {isTyping && (
                 <div className="flex justify-start">
-                  <div className="max-w-[75%] px-4 py-2 rounded-lg bg-white border border-gray-200 text-gray-600 text-sm">
-                    <div className="flex items-center space-x-1">
+                  <div className="bg-white text-gray-600 px-3 py-2 sm:px-4 sm:py-3 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-200">
+                    <div className="flex items-center space-x-1 sm:space-x-2">
                       <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-400 rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                       </div>
-                      <span className="ml-2">Admin is typing...</span>
+                      <span className="text-xs sm:text-sm font-medium">{typingUser} is typing...</span>
                     </div>
                   </div>
                 </div>
               )}
-
-              <div ref={messagesEndRef} />
+                
+                
+                <div ref={messagesEndRef} />
+                </div>
+              )}
             </div>
 
-            {/* Image Preview */}
-            {imagePreview && (
-              <div className="p-4 bg-gray-50 border-t border-gray-200">
-                <div className="relative max-w-[200px]">
-                  <img 
-                    src={imagePreview} 
-                    alt="Preview" 
-                    className="rounded-lg max-w-full h-auto"
-                  />
+
+            {/* Location Preview */}
+            {location && (
+              <div className="px-3 py-2 sm:px-5 sm:py-3 bg-gradient-to-r from-orange-50 to-red-50 border-t border-orange-200">
+                <div className="bg-white border border-orange-200 rounded-xl sm:rounded-2xl p-2 sm:p-3 flex items-center justify-between shadow-sm">
+                  <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-medium text-gray-800">Location Shared</p>
+                      <p className="text-xs text-gray-600 truncate">{location.address}</p>
+                    </div>
+                  </div>
                   <button
-                    onClick={() => {
-                      setSelectedImage(null);
-                      setImagePreview("");
-                    }}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                    onClick={removeLocation}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded-full transition-all duration-200 flex-shrink-0"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="h-3 w-3 sm:h-4 sm:w-4" />
                   </button>
                 </div>
               </div>
             )}
 
             {/* Input */}
-            <div className="p-4 border-t border-gray-100 bg-white">
-              <div className="flex items-center gap-3">
+            <div className="p-3 sm:p-4 md:p-5 bg-white border-t border-gray-100 flex-shrink-0">
+              <div className="flex items-end space-x-2 sm:space-x-3">
+                {/* Image Upload Button */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                  ref={fileInputRef}
+                />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                  className="bg-gray-100 hover:bg-orange-100 text-gray-600 hover:text-orange-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl cursor-pointer transition-all duration-200 flex items-center hover:scale-105 shadow-sm hover:shadow-md"
+                  title="Upload Image"
                 >
-                  <Paperclip className="w-5 h-5" />
+                  <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
                 </button>
-                
-                <input
-                  type="text"
-                  value={message}
-                  onChange={(e) => {
-                    setMessage(e.target.value);
-                    handleTyping();
-                  }}
-                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                  className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                  placeholder="Type your message..."
-                />
-                
+
+                {/* Location Button */}
                 <button
-                  onClick={handleSendMessage}
-                  className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 shadow-sm"
+                  onClick={() => setShowLocationModal(true)}
+                  className="bg-gray-100 hover:bg-green-100 text-gray-600 hover:text-green-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl cursor-pointer transition-all duration-200 flex items-center hover:scale-105 shadow-sm hover:shadow-md"
+                  title="Send Location"
                 >
-                  <Send className="w-4 h-4" />
+                  <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
                 </button>
+
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={message}
+                    onChange={(e) => {
+                      setMessage(e.target.value);
+                      // Emit typing indicator
+                      const socket = getSocket();
+                      if (socket && currentChat) {
+                        socket.emit('typing', {
+                          chatId: currentChat.id,
+                          userId: currentUser.id
+                        });
+                      }
+                    }}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder="Type your message..."
+                    className="w-full border border-gray-200 rounded-xl sm:rounded-2xl px-3 py-2 sm:px-4 sm:py-3 pr-10 sm:pr-14 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white shadow-sm text-sm sm:text-base"
+                  />
+                  <button
+                    onClick={() => {
+                      console.log('🔘 Send button clicked');
+                      console.log('📝 Message:', message.trim());
+                      console.log('🖼️ Selected Image:', !!selectedImage);
+                      console.log('📍 Location:', !!location);
+                      handleSendMessage();
+                    }}
+                    disabled={(!message.trim() && !selectedImage && !location) || isLoading}
+                    className={`absolute right-1 sm:right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 ${
+                      (!message.trim() && !selectedImage && !location) || isLoading
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 cursor-pointer shadow-lg hover:shadow-xl hover:scale-105'
+                    }`}
+                    style={{
+                      display: (!message.trim() && !selectedImage && !location) ? 'none' : 'flex'
+                    }}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                    ) : (
+                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
               
-              {/* Hidden file input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
-                className="hidden"
-              />
+              {/* Quick Actions */}
+              <div className="mt-2 sm:mt-3 flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center space-x-2 sm:space-x-4">
+                  <span className="hidden sm:inline">Press Enter to send</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span>Max 10MB</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full"></div>
+                  <span className="hidden sm:inline">Secure chat</span>
+                </div>
+              </div>
             </div>
           </>
         )}
-      </div>
+
+        {/* Location Modal */}
+        {showLocationModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4">Send Location</h3>
+              <p className="text-gray-600 mb-4">Get your current location to share with admin</p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={getCurrentLocation}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Get Location
+                </button>
+                <button
+                  onClick={() => setShowLocationModal(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 };
 
-// Wrap ChatWidget with ErrorBoundary
-const ChatWidgetWithErrorBoundary: React.FC = () => {
-  return (
-    <ChatErrorBoundary>
-      <ChatWidget />
-    </ChatErrorBoundary>
-  );
-};
-
-export default ChatWidgetWithErrorBoundary;
+export default ChatWidget; 

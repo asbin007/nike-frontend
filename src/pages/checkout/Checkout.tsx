@@ -1,8 +1,8 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { orderItem, checkKhaltiPaymentStatus } from "../../store/orderSlice";
-import { PaymentMethod } from "../../store/orderSlice";
+import { orderItem, checkKhaltiPaymentStatus, PaymentMethod } from "../../store/orderSlice";
 import { IData } from "../../store/orderSlice";
+import { clearCart } from "../../store/cartSlice";
 import toast from "react-hot-toast";
 // import { useNavigate } from "react-router-dom"; // Not needed since redirects are handled in orderSlice
 
@@ -12,10 +12,18 @@ function Checkout() {
   const { data } = useAppSelector((store) => store.cart);
   const { appliedCoupon } = useAppSelector((store) => store.coupon);
   const dispatch = useAppDispatch();
+  
+  // Debug cart state
+  console.log('🛒 Checkout: Cart state:', { 
+    cartData: data, 
+    cartLength: data?.length || 0,
+    hasItems: data && data.length > 0 
+  });
   // const navigate = useNavigate(); // Not needed since redirects are handled in orderSlice
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     PaymentMethod.COD
   );
+  
 
   const subTotal = data.reduce(
     (total, item) => item.Shoe.price * item.quantity + total,
@@ -65,7 +73,7 @@ function Checkout() {
         };
         
         const eligibleItems = data.filter(item => {
-          const itemBrand = item.Shoe.brand || item.Shoe.name.split(' ')[0];
+          const itemBrand = item.Shoe.brand || (item.Shoe.name ? item.Shoe.name.split(' ')[0] : 'Unknown');
           const itemBrandVariants = getBrandVariants(itemBrand);
           const couponBrandVariants = getBrandVariants(appliedCoupon.category || '');
           
@@ -134,9 +142,13 @@ function Checkout() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    console.log('🚀 Checkout: Form submitted');
+    console.log('🚀 Checkout: Cart data:', data);
+    console.log('🚀 Checkout: Form data:', item);
 
     // Check if cart is empty
-    if (data.length === 0) {
+    if (!data || data.length === 0) {
+      console.log('❌ Checkout: Cart is empty, cannot proceed');
       toast.error("Your cart is empty! Please add items to your cart before checkout", {
         duration: 5000,
         position: "top-center",
@@ -340,12 +352,79 @@ function Checkout() {
       totalPrice: total,
     };
 
-    console.log('Sending data to backend:', finalData); // Debug log
+    console.log('🚀 Checkout: Sending data to backend:', finalData);
+    console.log('🚀 Checkout: Payment method:', finalData.paymentMethod);
 
     try {
-      await dispatch(orderItem(finalData));
+      console.log('🚀 Checkout: Dispatching orderItem...');
+      const result = await dispatch(orderItem(finalData));
+      console.log('🚀 Checkout: OrderItem result:', result);
+      console.log('🚀 Checkout: Result type:', result?.type);
+      console.log('🚀 Checkout: Result payload:', result?.payload);
+      
+      // Check if order was successful - Redux thunk returns different structure
+      const isSuccess = result && (
+        (result.type && result.type.includes('fulfilled')) ||
+        (result.payload && !result.error) ||
+        (result.meta && result.meta.requestStatus === 'fulfilled') ||
+        (result.type === 'orderItem/fulfilled')
+      );
+      
+      console.log('🔍 Checkout: Success check result:', {
+        hasResult: !!result,
+        hasType: !!result?.type,
+        typeIncludesFulfilled: result?.type?.includes('fulfilled'),
+        hasPayload: !!result?.payload,
+        hasError: !!result?.error,
+        metaRequestStatus: result?.meta?.requestStatus,
+        isSuccess: isSuccess,
+        fullResult: result
+      });
+      
+      if (isSuccess) {
+        console.log('✅ Checkout: Order placed successfully, redirect should happen automatically');
+        
+        
+        // Check if it's COD payment and redirect immediately
+        if (finalData.paymentMethod === PaymentMethod.COD) {
+          console.log('💰 Checkout: COD payment detected, redirecting to success page immediately');
+          setTimeout(() => {
+            console.log('🔄 Checkout: Redirecting to /cod-success');
+            window.location.href = '/cod-success';
+          }, 1000);
+        } else {
+          // For other payment methods, let orderSlice handle redirect
+          console.log('💳 Checkout: Non-COD payment, letting orderSlice handle redirect');
+        }
+        
+        // Clear cart after successful order
+        dispatch(clearCart());
+      } else {
+        console.log('❌ Checkout: Order placement failed or was rejected');
+        console.log('❌ Checkout: Full result object:', JSON.stringify(result, null, 2));
+        
+        const errorMessage = result?.error || result?.payload?.message || "Failed to place order. Please try again.";
+        toast.error(errorMessage, {
+          duration: 5000,
+          position: "top-center",
+          style: {
+            background: "#dc2626",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+      }
     } catch (error) {
-      toast.error("Failed to place order. Please try again.", {
+      console.error('❌ Checkout: Error in order placement:', error);
+      console.error('❌ Checkout: Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        error: error
+      });
+      
+      const errorMessage = error instanceof Error ? error.message : "Failed to place order. Please try again.";
+      toast.error(errorMessage, {
         duration: 5000,
         position: "top-center",
         style: {
@@ -361,6 +440,29 @@ function Checkout() {
     // Khalti redirect is also handled in orderSlice.ts
   };
 
+  // Show empty cart message if no items
+  if (!data || data.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h2>
+          <p className="text-gray-600 mb-6">Add some items to your cart before checkout</p>
+          <a 
+            href="/collections" 
+            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Continue Shopping
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="font-[sans-serif] bg-white">
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-12 h-full">
@@ -373,10 +475,10 @@ function Checkout() {
                     <div className="flex items-start gap-3 sm:gap-4" key={item.id}>
                       <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-28 flex p-2 sm:p-3 shrink-0 bg-gray-200 rounded-md">
                         <img
-                              src={`https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${item.Shoe?.images[0].replace(
+                              src={`https://res.cloudinary.com/dxpe7jikz/image/upload/${CLOUDINARY_VERSION}${item.Shoe?.images?.[0]?.replace(
                             "/uploads",
                             ""
-                          )}.jpg`}
+                          ) || '/placeholder-image.svg'}.jpg`}
                           className="w-full object-contain"
                         />
                       </div>

@@ -424,6 +424,7 @@ export default function Navbar() {
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 lg:gap-4">
+              
               {/* Wishlist */}
                                 <Link to="/wishlist" className="p-2.5 rounded-xl hover:bg-gray-100 transition-colors duration-200 relative group">
                     <Heart className="h-5 w-5 text-gray-600 group-hover:text-red-500 transition-colors duration-200" />

@@ -13,7 +13,7 @@ import Features from "../features/Features";
 import ProductFilters from "../product/components/ProductFilters";
 import ProductRecommendations from "../../components/ProductRecommendations";
 import RealTimeReviews from "../../components/RealTimeReviews";
-import { ArrowRight, Star, Zap, Shield, ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
+import { Star, Zap, Shield, ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger, TextPlugin);
@@ -69,6 +69,7 @@ export default function Hero() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [sliderImages, setSliderImages] = useState<string[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState(true);
+  const [sliderProducts, setSliderProducts] = useState<any[]>([]);
   // const [usingBackendImages, setUsingBackendImages] = useState(false);
 
   const sliderTitles = [
@@ -101,76 +102,94 @@ export default function Hero() {
     "/collections" // Default collection
   ];
 
-  // Function to fetch backend images for slider
+  // Function to fetch real-time product data for slider
   const fetchSliderImages = useCallback(async () => {
     try {
       setIsLoadingImages(true);
-      console.log('🖼️ Fetching slider images from backend...');
+      console.log('🖼️ Fetching real-time product data for slider...');
       
-      // Try to fetch from backend API - get more products for randomization
-      const response = await fetch('https://nike-backend-1-g9i6.onrender.com/api/product?limit=50');
+      // Fetch real-time product data from API
+      const response = await fetch('https://nike-backend-1-g9i6.onrender.com/api/product?limit=20&sort=createdAt&order=desc');
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('📊 Real-time product data received:', data);
+        
         if (data.data && data.data.length > 0) {
-          // Filter products with images and collect all images
-          const allProductImages = data.data
-            .filter((product: { images?: string[] }) => product.images && product.images.length > 0)
-            .flatMap((product: { images: string[] }) => product.images)
-            .filter((image: string) => image && image.trim() !== '');
+          // Filter products with valid images and process them
+          const productsWithImages = data.data
+            .filter((product: any) => 
+              product.images && 
+              Array.isArray(product.images) && 
+              product.images.length > 0 &&
+              product.images.some((img: string) => img && img.trim() !== '')
+            );
           
-          console.log('🖼️ Total images available:', allProductImages.length);
+          console.log('🖼️ Products with images found:', productsWithImages.length);
           
-          // Randomly select 7 images from all available images
-          const shuffledImages = allProductImages.sort(() => Math.random() - 0.5);
-          const backendImages = shuffledImages.slice(0, 7)
-            .map((image: string) => {
-              // Use the same logic as ProductCard for image URL generation
-              console.log('🖼️ Processing random image:', {
-                originalImage: image,
-                isCloudinary: image.includes('cloudinary'),
-                isUploads: image.includes('/uploads/')
+          if (productsWithImages.length > 0) {
+            // Select up to 7 products for slider
+            const selectedProducts = productsWithImages.slice(0, 7);
+            
+            const processedImages = selectedProducts.map((product: any, index: number) => {
+              // Get the first valid image from each product
+              const firstImage = product.images.find((img: string) => img && img.trim() !== '');
+              
+              if (!firstImage) return null;
+              
+              console.log(`🖼️ Processing product ${index + 1} image:`, {
+                productId: product.id,
+                productName: product.name,
+                category: product.Category?.categoryName,
+                brand: product.brand,
+                originalImage: firstImage,
+                isCloudinary: firstImage.includes('cloudinary'),
+                isUploads: firstImage.includes('/uploads/')
               });
               
-              // Process individual image (not product with multiple images) with maximum quality optimization
-              if (image.includes('cloudinary')) {
-                console.log('☁️ Already Cloudinary URL:', image);
-                // Add maximum quality parameters if not already present
-                if (!image.includes('q_')) {
-                  const qualityUrl = image.replace('/upload/', '/upload/q_100,f_auto,w_1920,h_1080,c_fill,g_auto/');
-                  console.log('🎨 Enhanced Cloudinary URL with max quality:', qualityUrl);
-                  return qualityUrl;
+              // Process image URL for optimal Cloudinary delivery
+              if (firstImage.includes('cloudinary')) {
+                // Already a Cloudinary URL - optimize it
+                if (!firstImage.includes('q_') || !firstImage.includes('w_')) {
+                  const optimizedUrl = firstImage.replace('/upload/', '/upload/q_auto,f_auto,w_1920,h_1080,c_fill,g_auto/');
+                  console.log('☁️ Optimized Cloudinary URL:', optimizedUrl);
+                  return optimizedUrl;
                 }
-                return image;
-              } else if (image.includes('/uploads/')) {
-                const imageUrl = `https://res.cloudinary.com/dxpe7jikz/image/upload/q_100,f_auto,w_1920,h_1080,c_fill,g_auto/${CLOUDINARY_VERSION}${image.replace("/uploads", "")}.jpg`;
-                console.log('🔄 Converted uploads to Cloudinary with max quality:', imageUrl);
-                return imageUrl;
+                console.log('☁️ Already optimized Cloudinary URL:', firstImage);
+                return firstImage;
+              } else if (firstImage.includes('/uploads/')) {
+                // Convert uploads path to Cloudinary URL
+                const cloudinaryUrl = `https://res.cloudinary.com/dxpe7jikz/image/upload/q_auto,f_auto,w_1920,h_1080,c_fill,g_auto/${CLOUDINARY_VERSION}${firstImage.replace("/uploads", "")}.jpg`;
+                console.log('🔄 Converted to Cloudinary URL:', cloudinaryUrl);
+                return cloudinaryUrl;
               } else {
-                console.log('📁 Direct URL:', image);
-                return image;
+                // Direct URL - use as is
+                console.log('📁 Direct URL:', firstImage);
+                return firstImage;
               }
-            });
-          
-          if (backendImages.length > 0) {
-            console.log('✅ Random backend images fetched:', backendImages.length);
-            console.log('🎲 Randomization complete - selected from', allProductImages.length, 'total images');
-            console.log('🖼️ Random image URLs:', backendImages);
-            setSliderImages(backendImages);
-            // setUsingBackendImages(true);
-            return;
+            }).filter(Boolean); // Remove null values
+            
+            if (processedImages.length > 0) {
+              console.log('✅ Real-time images processed successfully:', processedImages.length);
+              console.log('🎯 Final image URLs:', processedImages);
+              setSliderImages(processedImages);
+              setSliderProducts(selectedProducts); // Store product data for titles/descriptions
+              setIsLoadingImages(false);
+              return;
+            }
           }
         }
       }
       
-      // Fallback to default images if backend fails
-      console.log('⚠️ Using fallback images');
+      // Fallback to default images if API fails or no images found
+      console.log('⚠️ Using fallback images - API failed or no images found');
       setSliderImages(defaultSliderImages);
-      // setUsingBackendImages(false);
+      setIsLoadingImages(false);
+      
     } catch (error) {
-      console.error('❌ Error fetching slider images:', error);
+      console.error('❌ Error fetching real-time product data:', error);
+      console.log('🔄 Falling back to default images');
       setSliderImages(defaultSliderImages);
-      // setUsingBackendImages(false);
-    } finally {
       setIsLoadingImages(false);
     }
   }, []);
@@ -382,9 +401,36 @@ export default function Hero() {
 
   // Handle slider image click navigation
   const handleSliderImageClick = (index: number) => {
-    const route = sliderRoutes[index] || '/collections';
-    console.log('🎯 Navigating to:', route);
-    navigate(route);
+    // If we have real product data, navigate to product detail
+    if (sliderProducts[index]?.id) {
+      const product = sliderProducts[index];
+      const productId = product.id;
+      const category = product.Category?.categoryName || 'shoes';
+      const brand = product.brand || 'nike';
+      
+      console.log('🎯 Navigating to product detail:', {
+        productId,
+        category,
+        brand,
+        fullProduct: product,
+        route: `/${category}/${brand}/${productId}`
+      });
+      
+      // Use the correct route structure: /:collection/:brand/:id
+      // If category or brand is missing, use fallback
+      if (product.Category?.categoryName && product.brand) {
+        navigate(`/${category}/${brand}/${productId}`);
+      } else {
+        // Fallback to all-shoes with product filter
+        console.log('⚠️ Missing category/brand, using fallback route');
+        navigate(`/all-shoes?product=${productId}`);
+      }
+    } else {
+      // Fallback to collection routes
+      const route = sliderRoutes[index] || '/collections';
+      console.log('🎯 Navigating to collection:', route);
+      navigate(route);
+    }
   };
 
   // Function to refresh images with new random selection
@@ -479,7 +525,7 @@ export default function Hero() {
                   {/* Button Content */}
                   <div className="relative z-10 flex items-center">
                     <span className="mr-1 sm:mr-2">🛒 Shop Now</span>
-                    <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 group-hover:translate-x-2 transition-transform duration-300" />
+                    <span className="text-lg">→</span>
                   </div>
                   
                   {/* Shimmer Effect */}
@@ -628,13 +674,26 @@ export default function Hero() {
                       <div className="absolute bottom-6 sm:bottom-8 left-6 sm:left-8 right-6 sm:right-8 text-white">
                         <div className="backdrop-blur-sm bg-white/10 rounded-2xl p-4 sm:p-6 border border-white/20 group-hover:bg-white/20 transition-all duration-300">
                           <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">
-                            {sliderTitles[index]}
+                            {sliderProducts[index]?.name || sliderTitles[index]}
                           </h3>
                           <p className="text-sm sm:text-base md:text-lg opacity-90 leading-relaxed">
-                            {sliderDescriptions[index]}
+                            {sliderProducts[index]?.description?.substring(0, 100) || sliderDescriptions[index]}
                           </p>
                           <div className="mt-4 flex items-center justify-between">
                             <div className="flex items-center space-x-4">
+                              {sliderProducts[index]?.price && (
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                                  <span className="text-sm font-medium">
+                                    Rs. {sliderProducts[index].price}
+                                    {sliderProducts[index].discount && (
+                                      <span className="text-green-400 ml-1">
+                                        ({sliderProducts[index].discount}% OFF)
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              )}
                               <div className="flex items-center space-x-2">
                                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                                 <span className="text-sm font-medium">Premium Quality</span>
@@ -647,7 +706,7 @@ export default function Hero() {
                             {/* Click indicator and image source */}
                             <div className="flex items-center space-x-2 text-white/80 group-hover:text-white transition-colors">
                               <span className="text-sm font-medium">Click to explore</span>
-                              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                              <span className="text-sm group-hover:translate-x-1 transition-transform">→</span>
                             </div>
                           </div>
                           

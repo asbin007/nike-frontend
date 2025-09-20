@@ -1,12 +1,8 @@
 // components/Footer.jsx
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Mail, Phone, MapPin, Heart, ArrowUp } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Mail, Phone, MapPin, Heart } from 'lucide-react';
 
 export default function Footer() {
-    const scrollToTop = () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
     // Get current day
 
 
@@ -134,13 +130,6 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Scroll to Top Button */}
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-6 right-6 w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110 z-50 flex items-center justify-center"
-        >
-          <ArrowUp className="w-5 h-5" />
-        </button>
       </footer>
     );
   }

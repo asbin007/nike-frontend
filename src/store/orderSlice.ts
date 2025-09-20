@@ -4,7 +4,7 @@ import { Status } from "../globals/types/types";
 import { APIS } from "../globals/http";
 import { AppDispatch } from "./store";
 import toast from "react-hot-toast";
-import { socket } from "../App";
+import { getSocket } from "../App";
 import { addToPurchaseHistory } from './recommendationsSlice'
 
 interface IProduct {
@@ -179,7 +179,15 @@ const orderSlice = createSlice({
         itemsChanged: updatedItems !== state.items,
         detailsChanged: updatedDetails !== state.orderDetails
       });
-      state.items = updatedItems;
+      
+      // Sort items by creation date (latest first) after update
+      const sortedItems = updatedItems.sort((a, b) => {
+        const dateA = new Date(a.createdAt || new Date()).getTime();
+        const dateB = new Date(b.createdAt || new Date()).getTime();
+        return dateB - dateA; // Latest first
+      });
+      
+      state.items = sortedItems;
       state.orderDetails = updatedDetails;
     },
 
@@ -284,12 +292,61 @@ export function orderItem(data: IData) {
         status: response.status,
         hasUrl: !!response.data.url,
         url: response.data.url,
-        data: response.data
+        data: response.data,
+        responseData: response.data,
+        responseStatus: response.status
       });
       
+      
       if (response.status === 201) {
+        console.log('✅ OrderItem: Order created successfully, status 201');
         dispatch(setStatus(Status.SUCCESS));
-        dispatch(setItems(response.data.data));
+        // Sort orders by creation date (latest first) before setting
+        const responseOrderData = response.data.data;
+        const sortedOrders = Array.isArray(responseOrderData) ? responseOrderData.sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.created_at || new Date()).getTime();
+          const dateB = new Date(b.createdAt || b.created_at || new Date()).getTime();
+          return dateB - dateA; // Latest first
+        }) : responseOrderData;
+        
+        dispatch(setItems(sortedOrders));
+        
+        // Trigger stock update for ordered products
+        if (Array.isArray(data.Shoe)) {
+          data.Shoe.forEach((item: any) => {
+            // Emit stock update event to backend
+            const socket = getSocket();
+            if (socket) {
+              socket.emit('stockUpdateRequest', {
+                productId: item.productId,
+                quantity: item.productQty
+              });
+            }
+          });
+        }
+        
+        // Show toast for successful order placement
+        const notificationOrderData = response.data.data;
+        const firstOrder = Array.isArray(notificationOrderData) && notificationOrderData.length > 0 ? notificationOrderData[0] : null;
+        
+        toast.success(`Order placed successfully! Order ID: ${firstOrder?.id || 'N/A'}`, {
+          duration: 4000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: '#fff',
+            fontWeight: '500',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+          },
+        });
+        
+
+        console.log('🔍 OrderItem: Checking payment method and response structure');
+        console.log('🔍 OrderItem: Payment method:', data.paymentMethod);
+        console.log('🔍 OrderItem: Response has URL:', !!response.data.url);
+        console.log('🔍 OrderItem: Response URL:', response.data.url);
         
         if (response.data.url) {
           // Khalti payment flow
@@ -303,10 +360,12 @@ export function orderItem(data: IData) {
           }
           
           // Redirect to Khalti payment page
+          console.log('🔄 OrderItem: Redirecting to Khalti payment page...');
           window.location.href = response.data.url;
         } else {
           // COD payment flow
           console.log('💰 OrderItem: COD payment detected, redirecting to success page');
+          console.log('💰 OrderItem: Response data structure:', response.data);
           
           // Track purchase history for recommendations
           try {
@@ -340,15 +399,64 @@ export function orderItem(data: IData) {
           
           // Redirect to COD success page
           console.log('🔄 OrderItem: About to redirect to /cod-success');
-          window.location.href = '/cod-success';
+          console.log('🔄 OrderItem: Current URL before redirect:', window.location.href);
+          
+          // Use setTimeout to ensure all state updates are processed
+          setTimeout(() => {
+            console.log('🔄 OrderItem: Executing redirect to /cod-success');
+            try {
+              // Try multiple redirect methods
+              window.location.href = '/cod-success';
+              // Alternative method
+              window.location.replace('/cod-success');
+            } catch (redirectError) {
+              console.error('❌ OrderItem: Redirect failed:', redirectError);
+              // Fallback: try to navigate programmatically
+              try {
+                window.location.assign('/cod-success');
+              } catch (fallbackError) {
+                console.error('❌ OrderItem: Fallback redirect also failed:', fallbackError);
+              }
+            }
+          }, 100);
         }
+        
+        // Return success result for Redux thunk
+        return {
+          type: 'orderItem/fulfilled',
+          payload: response.data,
+          meta: {
+            requestStatus: 'fulfilled',
+            requestId: Date.now().toString()
+          }
+        };
       } else {
         console.log('❌ OrderItem: Order creation failed with status:', response.status);
         dispatch(setStatus(Status.ERROR));
+        
+        // Return error result
+        return {
+          type: 'orderItem/rejected',
+          error: 'Order creation failed',
+          meta: {
+            requestStatus: 'rejected',
+            requestId: Date.now().toString()
+          }
+        };
       }
     } catch (error) {
       console.log('❌ OrderItem: Order creation error:', error);
       dispatch(setStatus(Status.ERROR));
+      
+      // Return error result
+      return {
+        type: 'orderItem/rejected',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        meta: {
+          requestStatus: 'rejected',
+          requestId: Date.now().toString()
+        }
+      };
     }
   };
 }
@@ -362,20 +470,20 @@ export function fetchMyOrders() {
       try {
         await APIS.get("/health");
         console.log("✅ Backend is reachable");
-      } catch (healthError) {
+      } catch {
         console.log("⚠️ Backend health check failed, but continuing with order fetch...");
       }
       
-      // Skip /orders endpoint since it's known to return 404, try working endpoints directly
-      let response;
-      try {
-        response = await APIS.get("/order");
-        console.log("✅ Orders fetched from /order endpoint");
-      } catch (firstError) {
-        console.log("⚠️ /order endpoint failed, trying /user/orders...");
-        response = await APIS.get("/user/orders");
-        console.log("✅ Orders fetched from /user/orders endpoint");
-      }
+        // Skip /orders endpoint since it's known to return 404, try working endpoints directly
+        let response;
+        try {
+          response = await APIS.get("/order");
+          console.log("✅ Orders fetched from /order endpoint");
+        } catch {
+          console.log("⚠️ /order endpoint failed, trying /user/orders...");
+          response = await APIS.get("/user/orders");
+          console.log("✅ Orders fetched from /user/orders endpoint");
+        }
       
       if (response && (response.status === 200 || response.status === 201)) {
         dispatch(setStatus(Status.SUCCESS));
@@ -384,7 +492,7 @@ export function fetchMyOrders() {
         // Debug: Log the structure of the first order to understand the data format
         if (ordersData && ordersData.length > 0) {
           console.log("🔍 First order structure:", ordersData[0]);
-          console.log("🔍 Order keys:", Object.keys(ordersData[0]));
+          console.log("🔍 Order keys:", ordersData[0] ? Object.keys(ordersData[0]) : 'No orders');
         }
         
         // Transform and normalize the order data
@@ -401,7 +509,14 @@ export function fetchMyOrders() {
           }
         }));
         
-        dispatch(setItems(normalizedOrders));
+        // Sort orders by creation date (latest first)
+        const sortedOrders = normalizedOrders.sort((a: any, b: any) => {
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
+          return dateB - dateA; // Latest first
+        });
+        
+        dispatch(setItems(sortedOrders));
         console.log("✅ Orders loaded successfully:", ordersData);
       } else {
         console.error("❌ Invalid response status:", response?.status);
@@ -489,16 +604,16 @@ export function refreshOrders() {
     try {
       console.log("🔄 Manually refreshing orders...");
       
-      // Skip /orders endpoint since it's known to return 404, try working endpoints directly
-      let response;
-      try {
-        response = await APIS.get("/order");
-        console.log("✅ Orders refreshed from /order endpoint");
-      } catch (firstError) {
-        console.log("⚠️ /order endpoint failed, trying /user/orders...");
-        response = await APIS.get("/user/orders");
-        console.log("✅ Orders refreshed from /user/orders endpoint");
-      }
+        // Skip /orders endpoint since it's known to return 404, try working endpoints directly
+        let response;
+        try {
+          response = await APIS.get("/order");
+          console.log("✅ Orders refreshed from /order endpoint");
+        } catch {
+          console.log("⚠️ /order endpoint failed, trying /user/orders...");
+          response = await APIS.get("/user/orders");
+          console.log("✅ Orders refreshed from /user/orders endpoint");
+        }
       
       if (response && (response.status === 200 || response.status === 201)) {
         dispatch(setStatus(Status.SUCCESS));
@@ -551,6 +666,44 @@ export function updateOrderStatusAPI(orderId: string, status: OrderStatus) {
           userId: "admin",
           orderId
         }));
+        
+        // Add notification for order status change
+        const statusMessages = {
+          'pending': 'Your order is being processed',
+          'confirmed': 'Your order has been confirmed',
+          'processing': 'Your order is being prepared',
+          'shipped': 'Your order has been shipped',
+          'delivered': 'Your order has been delivered',
+          'cancelled': 'Your order has been cancelled',
+          'returned': 'Your order has been returned'
+        };
+        
+        const message = statusMessages[status as keyof typeof statusMessages] || `Your order status has been updated to ${status}`;
+        
+        const statusEmoji = {
+          'pending': '⏳',
+          'confirmed': '✅',
+          'processing': '🔄',
+          'shipped': '🚚',
+          'delivered': '📦',
+          'cancelled': '❌',
+          'returned': '↩️'
+        };
+        
+        const emoji = statusEmoji[status as keyof typeof statusEmoji] || '📋';
+        
+        toast.success(`${emoji} ${message} (Order #${orderId})`, {
+          duration: 4000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: '#fff',
+            fontWeight: '500',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+          },
+        });
         
         console.log("✅ Order status updated successfully via API");
         toast.success(`Order status updated to: ${status}`);
@@ -661,113 +814,7 @@ export function updatePaymentStatusAPI(paymentId: string, status: PaymentStatus)
   };
 }
 
-// WebSocket function to update order status with fallback to API
-export function updateOrderStatusWebSocket(orderId: string, status: OrderStatus, userId: string) {
-  return async function updateOrderStatusWebSocketThunk(dispatch: AppDispatch) {
-    try {
-      console.log(`📤 Sending order status update via WebSocket: ${JSON.stringify({ status, orderId, userId })}`);
-      
-      // Try WebSocket first
-      if (socket && socket.connected) {
-        socket.emit("updateOrderStatus", { status, orderId, userId });
-        
-        // Wait for response or timeout
-        const timeout = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("WebSocket timeout")), 5000)
-        );
-        
-        const response = new Promise((resolve, reject) => {
-          const successHandler = (data: unknown) => {
-            console.log("✅ Order status updated via WebSocket:", data);
-            resolve(data);
-          };
-          
-          const errorHandler = (error: unknown) => {
-            console.log("❌ WebSocket error received:", error);
-            reject(error);
-          };
-          
-          socket.once("orderStatusUpdated", successHandler);
-          socket.once("statusUpdated", successHandler);
-          socket.once("error", errorHandler);
-        });
-        
-        try {
-          await Promise.race([response, timeout]);
-          // WebSocket succeeded
-          dispatch(updateOrderStatusinSlice({ status, userId, orderId }));
-          toast.success(`Order status updated to: ${status}`);
-          return true;
-        } catch {
-          console.log("🔄 WebSocket failed, falling back to API");
-          // Fallback to API
-          return await dispatch(updateOrderStatusAPI(orderId, status));
-        }
-      } else {
-        console.log("🔄 WebSocket not connected, using API");
-        return await dispatch(updateOrderStatusAPI(orderId, status));
-      }
-    } catch (error) {
-      console.error("❌ Failed to update order status:", error);
-      toast.error("Failed to update order status");
-      return false;
-    }
-  };
-}
 
-// WebSocket function to update payment status with fallback to API
-export function updatePaymentStatusWebSocket(orderId: string, status: PaymentStatus, paymentId: string) {
-  return async function updatePaymentStatusWebSocketThunk(dispatch: AppDispatch) {
-    try {
-      console.log(`📤 Sending payment status update via WebSocket: ${JSON.stringify({ status, orderId, paymentId })}`);
-      
-      // Try WebSocket first
-      if (socket && socket.connected) {
-        socket.emit("updatePaymentStatus", { status, orderId, paymentId });
-        
-        // Wait for response or timeout
-        const timeout = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("WebSocket timeout")), 5000)
-        );
-        
-        const response = new Promise((resolve, reject) => {
-          const successHandler = (data: unknown) => {
-            console.log("✅ Payment status updated via WebSocket:", data);
-            resolve(data);
-          };
-          
-          const errorHandler = (error: unknown) => {
-            console.log("❌ WebSocket error received:", error);
-            reject(error);
-          };
-          
-          socket.once("paymentStatusUpdated", successHandler);
-          socket.once("paymentUpdated", successHandler);
-          socket.once("error", errorHandler);
-        });
-        
-        try {
-          await Promise.race([response, timeout]);
-          // WebSocket succeeded
-          dispatch(updatePaymentStatusinSlice({ status, orderId, paymentId }));
-          toast.success(`Payment status updated to: ${status}`);
-          return true;
-        } catch {
-          console.log("🔄 WebSocket failed, falling back to API");
-          // Fallback to API
-          return await dispatch(updatePaymentStatusAPI(orderId, status));
-        }
-      } else {
-        console.log("🔄 WebSocket not connected, using API");
-        return await dispatch(updatePaymentStatusAPI(orderId, status));
-      }
-    } catch (error) {
-      console.error("❌ Failed to update payment status:", error);
-      toast.error("Failed to update payment status");
-      return false;
-    }
-  };
-}
 
 // Enhanced function to listen for real-time updates from admin panel
 export function listenForAdminUpdates() {
@@ -782,6 +829,53 @@ export function listenForAdminUpdates() {
           userId: data.userId,
           orderId: data.orderId
         }));
+        
+        // Add notification for order status change
+        const statusMessages = {
+          'pending': 'Your order is being processed',
+          'confirmed': 'Your order has been confirmed',
+          'processing': 'Your order is being prepared',
+          'shipped': 'Your order has been shipped',
+          'delivered': 'Your order has been delivered',
+          'cancelled': 'Your order has been cancelled',
+          'returned': 'Your order has been returned'
+        };
+        
+        const message = statusMessages[data.status as keyof typeof statusMessages] || `Your order status has been updated to ${data.status}`;
+        
+        console.log('🔔 Adding notification for order status update:', {
+          orderId: data.orderId,
+          status: data.status,
+          message: `${message} (Order #${data.orderId})`
+        });
+        
+        const statusEmoji = {
+          'pending': '⏳',
+          'confirmed': '✅',
+          'processing': '🔄',
+          'shipped': '🚚',
+          'delivered': '📦',
+          'cancelled': '❌',
+          'returned': '↩️'
+        };
+        
+        const emoji = statusEmoji[data.status as keyof typeof statusEmoji] || '📋';
+        
+        toast.success(`${emoji} ${message} (Order #${data.orderId})`, {
+          duration: 4000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: '#fff',
+            fontWeight: '500',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+          },
+        });
+        
+        console.log('✅ Notification dispatched successfully');
+        
         toast.success(`Order status updated to: ${data.status}`);
       } catch (error) {
         console.error("Error updating order status from admin:", error);
@@ -797,6 +891,41 @@ export function listenForAdminUpdates() {
           orderId: data.orderId,
           paymentId: data.paymentId
         }));
+        
+        // Add notification for payment status change
+        const paymentMessages = {
+          'pending': 'Your payment is being processed',
+          'completed': 'Your payment has been completed successfully',
+          'failed': 'Your payment has failed',
+          'refunded': 'Your payment has been refunded',
+          'cancelled': 'Your payment has been cancelled'
+        };
+        
+        const message = paymentMessages[data.status as keyof typeof paymentMessages] || `Your payment status has been updated to ${data.status}`;
+        
+        const paymentEmoji = {
+          'pending': '⏳',
+          'completed': '✅',
+          'failed': '❌',
+          'refunded': '💰',
+          'cancelled': '❌'
+        };
+        
+        const emoji = paymentEmoji[data.status as keyof typeof paymentEmoji] || '💳';
+        
+        toast.success(`${emoji} ${message} (Order #${data.orderId})`, {
+          duration: 4000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: '#fff',
+            fontWeight: '500',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+          },
+        });
+        
         toast.success(`Payment status updated to: ${data.status}`);
       } catch (error) {
         console.error("Error updating payment status from admin:", error);
@@ -805,23 +934,24 @@ export function listenForAdminUpdates() {
     };
 
     // Listen for multiple event names that admin panel might emit
-    if (socket && socket.connected) {
+    const socketInstance = getSocket();
+    if (socketInstance?.connected) {
       // Order status events
-      socket.on("adminOrderStatusUpdate", handleOrderStatusUpdate);
-      socket.on("adminOrderUpdate", handleOrderStatusUpdate);
-      socket.on("orderStatusChanged", handleOrderStatusUpdate);
-      socket.on("statusUpdated", handleOrderStatusUpdate);
-      socket.on("orderStatusUpdated", handleOrderStatusUpdate);
+      socketInstance.on("adminOrderStatusUpdate", handleOrderStatusUpdate);
+      socketInstance.on("adminOrderUpdate", handleOrderStatusUpdate);
+      socketInstance.on("orderStatusChanged", handleOrderStatusUpdate);
+      socketInstance.on("statusUpdated", handleOrderStatusUpdate);
+      socketInstance.on("orderStatusUpdated", handleOrderStatusUpdate);
       
       // Payment status events
-      socket.on("adminPaymentStatusUpdate", handlePaymentStatusUpdate);
-      socket.on("adminPaymentUpdate", handlePaymentStatusUpdate);
-      socket.on("paymentStatusChanged", handlePaymentStatusUpdate);
-      socket.on("paymentStatusUpdated", handlePaymentStatusUpdate);
-      socket.on("paymentUpdated", handlePaymentStatusUpdate);
+      socketInstance.on("adminPaymentStatusUpdate", handlePaymentStatusUpdate);
+      socketInstance.on("adminPaymentUpdate", handlePaymentStatusUpdate);
+      socketInstance.on("paymentStatusChanged", handlePaymentStatusUpdate);
+      socketInstance.on("paymentStatusUpdated", handlePaymentStatusUpdate);
+      socketInstance.on("paymentUpdated", handlePaymentStatusUpdate);
       
       // General admin events
-      socket.on("adminUpdate", () => {
+      socketInstance.on("adminUpdate", () => {
         console.log("🔄 Admin update detected, refreshing orders...");
         dispatch(refreshOrders());
       });
@@ -833,18 +963,19 @@ export function listenForAdminUpdates() {
     
     // Return cleanup function
     return () => {
-      if (socket) {
-        socket.off("adminOrderStatusUpdate", handleOrderStatusUpdate);
-        socket.off("adminOrderUpdate", handleOrderStatusUpdate);
-        socket.off("orderStatusChanged", handleOrderStatusUpdate);
-        socket.off("statusUpdated", handleOrderStatusUpdate);
-        socket.off("orderStatusUpdated", handleOrderStatusUpdate);
-        socket.off("adminPaymentStatusUpdate", handlePaymentStatusUpdate);
-        socket.off("adminPaymentUpdate", handlePaymentStatusUpdate);
-        socket.off("paymentStatusChanged", handlePaymentStatusUpdate);
-        socket.off("paymentStatusUpdated", handlePaymentStatusUpdate);
-        socket.off("paymentUpdated", handlePaymentStatusUpdate);
-        socket.off("adminUpdate");
+      const socketInstance = getSocket();
+      if (socketInstance) {
+        socketInstance.off("adminOrderStatusUpdate", handleOrderStatusUpdate);
+        socketInstance.off("adminOrderUpdate", handleOrderStatusUpdate);
+        socketInstance.off("orderStatusChanged", handleOrderStatusUpdate);
+        socketInstance.off("statusUpdated", handleOrderStatusUpdate);
+        socketInstance.off("orderStatusUpdated", handleOrderStatusUpdate);
+        socketInstance.off("adminPaymentStatusUpdate", handlePaymentStatusUpdate);
+        socketInstance.off("adminPaymentUpdate", handlePaymentStatusUpdate);
+        socketInstance.off("paymentStatusChanged", handlePaymentStatusUpdate);
+        socketInstance.off("paymentStatusUpdated", handlePaymentStatusUpdate);
+        socketInstance.off("paymentUpdated", handlePaymentStatusUpdate);
+        socketInstance.off("adminUpdate");
         console.log("🔄 Admin update listeners removed");
       }
     };
@@ -876,6 +1007,44 @@ export function updateOrderStatusDirect(orderId: string, status: OrderStatus) {
           userId: "admin",
           orderId
         }));
+        
+        // Add notification for order status change
+        const statusMessages = {
+          'pending': 'Your order is being processed',
+          'confirmed': 'Your order has been confirmed',
+          'processing': 'Your order is being prepared',
+          'shipped': 'Your order has been shipped',
+          'delivered': 'Your order has been delivered',
+          'cancelled': 'Your order has been cancelled',
+          'returned': 'Your order has been returned'
+        };
+        
+        const message = statusMessages[status as keyof typeof statusMessages] || `Your order status has been updated to ${status}`;
+        
+        const statusEmoji = {
+          'pending': '⏳',
+          'confirmed': '✅',
+          'processing': '🔄',
+          'shipped': '🚚',
+          'delivered': '📦',
+          'cancelled': '❌',
+          'returned': '↩️'
+        };
+        
+        const emoji = statusEmoji[status as keyof typeof statusEmoji] || '📋';
+        
+        toast.success(`${emoji} ${message} (Order #${orderId})`, {
+          duration: 4000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: '#fff',
+            fontWeight: '500',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+          },
+        });
         
         console.log("✅ Order status updated successfully");
         toast.success(`Order status updated to: ${status}`);

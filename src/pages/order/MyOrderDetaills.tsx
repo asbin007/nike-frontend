@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { cancelOrderAPI, fetchMyOrderDetails, updateOrderStatusinSlice, updatePaymentStatusinSlice } from "../../store/orderSlice";
 import { IOrderDetail, OrderStatus, PaymentStatus } from "./types";
 import { Package, Truck, CheckCircle, XCircle, Clock, MapPin, Phone, User, Calendar } from "lucide-react";
-import { socket } from "../../App";
+import { getSocket } from "../../App";
 const CLOUDINARY_VERSION = "v1750340657"; 
 
 function MyOrderDetail() {
@@ -61,13 +61,19 @@ function MyOrderDetail() {
     };
 
     // Add event listeners
-    socket.on("statusUpdated", handleStatusUpdate);
-    socket.on("paymentStatusUpdated", handlePaymentStatusUpdate);
+    const socketInstance = getSocket();
+    if (socketInstance) {
+      socketInstance.on("statusUpdated", handleStatusUpdate);
+      socketInstance.on("paymentStatusUpdated", handlePaymentStatusUpdate);
+    }
 
     // Cleanup function
     return () => {
-      socket.off("statusUpdated", handleStatusUpdate);
-      socket.off("paymentStatusUpdated", handlePaymentStatusUpdate);
+      const socketInstance = getSocket();
+      if (socketInstance) {
+        socketInstance.off("statusUpdated", handleStatusUpdate);
+        socketInstance.off("paymentStatusUpdated", handlePaymentStatusUpdate);
+      }
     };
   }, [dispatch, id]);
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {  Link } from "react-router-dom";
-import { socket } from "../../App";
+import { getSocket } from "../../App";
 import {
   fetchMyOrders,
   updateOrderStatusinSlice,
@@ -76,15 +76,8 @@ function MyOrder() {
     return () => clearInterval(autoRefreshInterval);
   }, [dispatch]);
   
+  // Socket event listeners for real-time updates
   useEffect(() => {
-    // Update socket connection status
-    const updateConnectionStatus = () => {
-      setIsSocketConnected(socket.connected);
-    };
-    
-    updateConnectionStatus();
-    
-    // Socket event listeners for real-time updates
     const handleStatusUpdate = (data: { status: string; userId: string; orderId: string }) => {
       console.log("🔄 MyOrders: Order status update received:", data);
       try {
@@ -125,20 +118,21 @@ function MyOrder() {
 
     // Add event listeners function
     const addEventListeners = () => {
-      if (socket.connected) {
+      const socketInstance = getSocket();
+      if (socketInstance?.connected) {
         // Order status events
-        socket.on("statusUpdated", handleStatusUpdate);
-        socket.on("orderStatusUpdated", handleStatusUpdate);
-        socket.on("orderUpdated", handleStatusUpdate);
-        socket.on("orderStatusChange", handleStatusUpdate);
+        socketInstance.on("statusUpdated", handleStatusUpdate);
+        socketInstance.on("orderStatusUpdated", handleStatusUpdate);
+        socketInstance.on("orderUpdated", handleStatusUpdate);
+        socketInstance.on("orderStatusChange", handleStatusUpdate);
         
         // Payment status events
-        socket.on("paymentStatusUpdated", handlePaymentStatusUpdate);
-        socket.on("paymentUpdated", handlePaymentStatusUpdate);
-        socket.on("paymentStatusChange", handlePaymentStatusUpdate);
+        socketInstance.on("paymentStatusUpdated", handlePaymentStatusUpdate);
+        socketInstance.on("paymentUpdated", handlePaymentStatusUpdate);
+        socketInstance.on("paymentStatusChange", handlePaymentStatusUpdate);
         
         // General order events
-        socket.on("orderChange", () => {
+        socketInstance.on("orderChange", () => {
           console.log("🔄 Order change detected, refreshing orders...");
           dispatch(refreshOrders());
           setLastUpdate(new Date());
@@ -153,36 +147,42 @@ function MyOrder() {
     };
 
     // Add listeners when socket connects
-    socket.on("connect", () => {
-      console.log("🔌 MyOrders: Socket connected, adding event listeners...");
-      addEventListeners();
-      setIsSocketConnected(true);
-    });
-    
-    // Add listeners immediately if already connected
-    if (socket.connected) {
-      console.log("🔌 MyOrders: Socket already connected, adding event listeners immediately...");
-      addEventListeners();
-      setIsSocketConnected(true);
+    const socketInstance = getSocket();
+    if (socketInstance) {
+      socketInstance.on("connect", () => {
+        console.log("🔌 MyOrders: Socket connected, adding event listeners...");
+        addEventListeners();
+        setIsSocketConnected(true);
+      });
+      
+      // Add listeners immediately if already connected
+      if (socketInstance.connected) {
+        console.log("🔌 MyOrders: Socket already connected, adding event listeners immediately...");
+        addEventListeners();
+        setIsSocketConnected(true);
+      }
+      
+      socketInstance.on("disconnect", () => {
+        setIsSocketConnected(false);
+      });
     }
-    
-    socket.on("disconnect", () => {
-      setIsSocketConnected(false);
-    });
 
     // Cleanup function
     return () => {
-      socket.off("connect", addEventListeners);
-      socket.off("disconnect");
-      socket.off("statusUpdated", handleStatusUpdate);
-      socket.off("orderStatusUpdated", handleStatusUpdate);
-      socket.off("orderUpdated", handleStatusUpdate);
-      socket.off("orderStatusChange", handleStatusUpdate);
-      socket.off("paymentStatusUpdated", handlePaymentStatusUpdate);
-      socket.off("paymentUpdated", handlePaymentStatusUpdate);
-      socket.off("paymentStatusChange", handlePaymentStatusUpdate);
-      socket.off("orderChange");
-      console.log("🔄 MyOrders: Socket event listeners removed");
+      const socketInstance = getSocket();
+      if (socketInstance) {
+        socketInstance.off("connect", addEventListeners);
+        socketInstance.off("disconnect");
+        socketInstance.off("statusUpdated", handleStatusUpdate);
+        socketInstance.off("orderStatusUpdated", handleStatusUpdate);
+        socketInstance.off("orderUpdated", handleStatusUpdate);
+        socketInstance.off("orderStatusChange", handleStatusUpdate);
+        socketInstance.off("paymentStatusUpdated", handlePaymentStatusUpdate);
+        socketInstance.off("paymentUpdated", handlePaymentStatusUpdate);
+        socketInstance.off("paymentStatusChange", handlePaymentStatusUpdate);
+        socketInstance.off("orderChange");
+        console.log("🔄 MyOrders: Socket event listeners removed");
+      }
     };
   }, [dispatch]);
 

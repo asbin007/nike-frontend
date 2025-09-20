@@ -72,6 +72,9 @@ const cartSlice = createSlice({
         state.data.splice(index, 1);
       }
     },
+    clearCart(state: IInitialData) {
+      state.data = [];
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -103,7 +106,7 @@ const cartSlice = createSlice({
   },
 });
 
-export const { setCart, setStatus, setUpdateCart, setDeleteCartItem } =
+export const { setCart, setStatus, setUpdateCart, setDeleteCartItem, clearCart } =
   cartSlice.actions;
 export default cartSlice.reducer;
 

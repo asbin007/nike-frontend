@@ -20,105 +20,39 @@ import { useAppDispatch } from "./store/hooks";
 import { loadUserFromStorage } from "./store/authSlice";
 import { checkKhaltiPaymentStatus, updateOrderStatusinSlice, updatePaymentStatusinSlice, refreshOrders, listenForAdminUpdates } from "./store/orderSlice";
 import { OrderStatus, PaymentStatus } from "./pages/order/types";
+import { updateProductStock, updateMultipleProductStock } from "./store/productSlice";
+import { updateWishlistItemStock } from "./store/wishlistSlice";
 import SearchProducts from "./pages/product/SearchProducts";
 import Wishlist from "./pages/wishlist/Wishlist";
 import ProductComparison from "./pages/comparison/ProductComparison";
-import ChatWidget from "./components/ChatWidget";
 import AllCollections from "./pages/product/Collection/AllCollections";
 import PaymentSuccess from "./pages/payment/PaymentSuccess";
 import CODSuccess from "./pages/payment/CODSuccess";
 import RoleProtection from "./components/RoleProtection";
+import ChatWidget from "./components/ChatWidget";
 
 // Add version for deployment tracking
 const APP_VERSION = "1.0.2";
 
-// Improved socket configuration
-export const socket = io("https://nike-backend-1-g9i6.onrender.com", {
-  // export const socket = io("http://localhost:5000", {
+// Render backend socket configuration
+const RENDER_BACKEND_URL = "https://nike-backend-1-g9i6.onrender.com";
+const SOCKET_URL = RENDER_BACKEND_URL;
 
-  auth: {
-    token: localStorage.getItem("tokenauth"),
-  },
-  transports: ['websocket', 'polling'],
-  timeout: 20000,
-  reconnection: true,
-  reconnectionAttempts: 10,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  forceNew: true,
-  autoConnect: false, // Don't auto-connect, we'll connect manually
-});
+// Socket configuration
+let socket: ReturnType<typeof io> | undefined;
 
-// Enhanced socket connection event listeners
-socket.on("connect", () => {
-  console.log("✅ Socket connected successfully:", socket.id);
-  console.log("🔌 Socket transport:", (socket.io as any).engine?.transport?.name || 'unknown');
-  toast.success("Real-time updates connected");
-});
-
-socket.on("connect_error", (error: any) => {
-  console.error("❌ Socket connection error:", error);
-  console.error("❌ Error details:", {
-    message: error.message,
-    description: error.description || 'Unknown error',
-    context: error.context || 'Socket connection',
-    type: error.type || 'ConnectionError'
-  });
-  toast.error("Real-time connection failed. Using manual refresh.");
-  
-  // Try to reconnect after 5 seconds
-  setTimeout(() => {
-    if (!socket.connected) {
-      console.log("🔄 Attempting to reconnect socket...");
-      socket.connect();
-    }
-  }, 5000);
-});
-
-socket.on("disconnect", (reason: string) => {
-  console.log("🔌 Socket disconnected:", reason);
-  console.log("🔌 Disconnect details:", {
-    reason,
-    connected: socket.connected,
-    id: socket.id
-  });
-  toast.error("Real-time connection lost. Using manual refresh.");
-  
-  if (reason === "io server disconnect") {
-    // Server disconnected us, try to reconnect
-    console.log("🔄 Server disconnected, attempting to reconnect...");
-    socket.connect();
+// Helper function to safely use socket
+export const getSocket = () => {
+  if (!socket) {
+    console.warn("Socket not initialized yet");
+    return null;
   }
-});
+  return socket;
+};
 
-socket.on("reconnect", (attemptNumber: number) => {
-  console.log("✅ Socket reconnected after", attemptNumber, "attempts");
-  console.log("✅ New socket ID:", socket.id);
-  toast.success("Real-time connection restored");
-});
+// Export socket for use in other components
+export { socket };
 
-socket.on("reconnect_attempt", (attemptNumber: number) => {
-  console.log("🔄 Socket reconnection attempt", attemptNumber);
-});
-
-socket.on("reconnect_error", (error: Error) => {
-  console.error("❌ Socket reconnection error:", error);
-});
-
-socket.on("reconnect_failed", () => {
-  console.error("❌ Socket reconnection failed after all attempts");
-  toast.error("Real-time connection failed. Please refresh manually.");
-});
-
-socket.on("error", (error: Error) => {
-  console.error("❌ Socket error:", error);
-});
-  
-// Debug: Log all socket events
-// Debug all socket events
-(socket as any).onAny?.((eventName: string, ...args: unknown[]) => {
-  console.log(`🔌 Socket event: ${eventName}`, args);
-});
 
 // Component to conditionally render navbar
 const AppContent = () => {
@@ -147,201 +81,212 @@ const AppContent = () => {
     }
   }, [dispatch]);
 
-  // Enhanced socket connection and event listeners
+  // Socket connection and event listeners
   useEffect(() => {
-    const token = localStorage.getItem("tokenauth");
+    const token = localStorage.getItem("tokenauth") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyODgxOTE4My04MWM5LTRhYjktYmE2NS0wNGIxYzNlOTRmY2QiLCJpYXQiOjE3NTgyOTE5NzgsImV4cCI6MTc2MDg4Mzk3OH0.BjYDw7HHmAZcbUImpWfBd89YVGpJGT14E2AFpTl9z5k";
     
-    console.log("🔍 Socket Debug Info:", {
-      token: token ? "Present" : "Missing",
-      socketConnected: socket.connected,
-      socketId: socket.id,
-      socketUrl: "https://nike-backend-1-g9i6.onrender.com"
-    });
-    
-    // Connect socket if token exists
-    if (token) {
-      if (!socket.connected) {
-        console.log("🔌 Connecting socket with token:", token.substring(0, 20) + "...");
-        socket.connect();
-        
-        // Add connection timeout
-        const connectionTimeout = setTimeout(() => {
-          if (!socket.connected) {
-            console.warn("⚠️ Socket connection timeout after 10 seconds");
-            toast.error("Real-time connection timeout. Chat may not work properly.");
-          }
-        }, 10000);
-        
-        // Clear timeout when connected
-        socket.on("connect", () => {
-          clearTimeout(connectionTimeout);
+    // Initialize socket if not already done
+    if (!socket) {
+      try {
+        console.log("🔌 Initializing socket connection to:", SOCKET_URL);
+        socket = io(SOCKET_URL, {
+          auth: {
+            token: token,
+          },
+          transports: ['websocket', 'polling'],
+          timeout: 20000,
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
+          forceNew: true,
+          autoConnect: true,
+          upgrade: true,
+          rememberUpgrade: true,
         });
-      } else {
-        console.log("🔌 Socket already connected");
-      }
-    } else {
-      console.log("⚠️ No token found, socket will not connect");
-      toast.error("Please login to enable real-time features");
-    }
-    
-    // Enhanced WebSocket event listeners for real-time updates
-    const handleOrderStatusUpdate = (data: { status: string; userId: string; orderId: string }) => {
-      console.log("🔄 Frontend: Order status update received:", data);
-      try {
-        dispatch(updateOrderStatusinSlice({
-          status: data.status as OrderStatus,
-          userId: data.userId,
-          orderId: data.orderId
-        }));
-        toast.success(`Order status updated to: ${data.status}`);
+        console.log("✅ Socket initialized successfully");
       } catch (error) {
-        console.error("Error updating order status:", error);
-        // Fallback to manual refresh
-        dispatch(refreshOrders());
+        console.error("❌ Socket initialization error:", error);
       }
-    };
 
-    const handlePaymentStatusUpdate = (data: { status: string; orderId: string; paymentId: string }) => {
-      console.log("🔄 Frontend: Payment status update received:", data);
-      try {
-        dispatch(updatePaymentStatusinSlice({
-          status: data.status as PaymentStatus,
-          orderId: data.orderId,
-          paymentId: data.paymentId
-        }));
-        toast.success(`Payment status updated to: ${data.status}`);
-      } catch (error) {
-        console.error("Error updating payment status:", error);
-        // Fallback to manual refresh
-        dispatch(refreshOrders());
-      }
-    };
-
-    // Backend event handlers
-    const handleBackendOrderStatusUpdate = (data: any) => {
-      console.log("🔄 Frontend: Backend order status update received:", data);
-      console.log("🔄 Frontend: Dispatching updateOrderStatusinSlice with:", {
-        status: data.status,
-        userId: data.updatedBy || 'admin',
-        orderId: data.orderId
+      // Socket event listeners
+      socket?.on("connect", () => {
+        console.log("✅ Socket connected successfully:", socket?.id);
+        toast.success("Real-time updates connected");
       });
-      try {
-        dispatch(updateOrderStatusinSlice({
-          status: data.status as OrderStatus,
-          userId: data.updatedBy || 'admin',
-          orderId: data.orderId
-        }));
-        console.log("✅ Frontend: updateOrderStatusinSlice dispatched successfully");
-        toast.success(`Order #${data.orderId} status updated to: ${data.status}`);
-      } catch (error) {
-        console.error("❌ Frontend: Error updating order status from backend:", error);
-        dispatch(refreshOrders());
-      }
-    };
 
-    const handleBackendPaymentStatusUpdate = (data: any) => {
-      console.log("💰 Frontend: Backend payment status update received:", data);
-      try {
-        dispatch(updatePaymentStatusinSlice({
-          status: data.status as PaymentStatus,
-          orderId: data.orderId || '',
-          paymentId: data.paymentId
-        }));
-        toast.success(`Payment status updated to: ${data.status}`);
-      } catch (error) {
-        console.error("Error updating payment status from backend:", error);
-        dispatch(refreshOrders());
-      }
-    };
+      socket?.on("disconnect", (reason: string) => {
+        console.log("🔌 Socket disconnected:", reason);
+        toast.error("Real-time connection lost");
+      });
 
-    // Listen for multiple event names that backend might emit
-    const addEventListeners = () => {
-      if (socket.connected) {
-        console.log("🔌 Adding WebSocket event listeners...");
-        
-        // Remove ALL existing listeners first
-        socket.removeAllListeners();
-        
-        // Add backend event listeners
-        socket.on("orderStatusUpdated", handleBackendOrderStatusUpdate);
-        socket.on("paymentStatusUpdated", handleBackendPaymentStatusUpdate);
-        
-        // Add legacy event listeners for compatibility
-        socket.on("statusUpdated", handleOrderStatusUpdate);
-        socket.on("orderStatusUpdated", handleOrderStatusUpdate);
-        socket.on("orderUpdated", handleOrderStatusUpdate);
-        socket.on("orderStatusChange", handleOrderStatusUpdate);
-        socket.on("paymentStatusUpdated", handlePaymentStatusUpdate);
-        socket.on("paymentUpdated", handlePaymentStatusUpdate);
-        socket.on("paymentStatusChange", handlePaymentStatusUpdate);
-        
-        // General order events
-        socket.on("orderChange", () => {
-          console.log("🔄 Order change detected, refreshing orders...");
+      socket?.on("error", (error: Error) => {
+        console.error("❌ Socket error:", error);
+      });
+
+      // Order status updates
+      socket?.on("orderStatusUpdated", (data: { status: string; updatedBy?: string; orderId: string }) => {
+        console.log("🔄 Frontend: Order status update received:", data);
+        try {
+          dispatch(updateOrderStatusinSlice({
+            status: data.status as OrderStatus,
+            userId: data.updatedBy || 'admin',
+            orderId: data.orderId
+          }));
+          
+          // Show toast for order status update
+          const statusEmoji = {
+            'pending': '⏳',
+            'confirmed': '✅',
+            'processing': '🔄',
+            'shipped': '🚚',
+            'delivered': '📦',
+            'cancelled': '❌',
+            'returned': '↩️'
+          };
+          
+          const emoji = statusEmoji[data.status as keyof typeof statusEmoji] || '📋';
+          
+          toast.success(`${emoji} Your order #${data.orderId} status has been updated to: ${data.status}`, {
+            duration: 4000,
+            position: 'top-right',
+            style: {
+              background: '#10B981',
+              color: '#fff',
+              fontWeight: '500',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+            },
+          });
+          
+          toast.success(`Order #${data.orderId} status updated to: ${data.status}`);
+        } catch (error) {
+          console.error("❌ Frontend: Error updating order status:", error);
           dispatch(refreshOrders());
-        });
-        
-        // Debug: Log all incoming events
-        (socket as any).onAny?.((eventName: string, ...args: unknown[]) => {
-          console.log(`📥 Frontend received event: ${eventName}`, args);
-        });
-        
-        console.log("✅ Frontend: WebSocket event listeners added successfully");
-      } else {
-        console.warn("⚠️ Frontend: Socket not connected, cannot add event listeners");
-      }
-    };
+        }
+      });
 
-    // Add listeners when socket connects
-    socket.on("connect", () => {
-      console.log("🔌 Socket connected, adding event listeners...");
-      addEventListeners();
-    });
-    
-    // Add listeners immediately if already connected
-    if (socket.connected) {
-      console.log("🔌 Socket already connected, adding event listeners immediately...");
-      addEventListeners();
-    }
-    
-    // Simple connection check - only reconnect if needed
-    const checkSocketConnection = () => {
-      if (!socket.connected && token) {
-        console.log("🔄 Socket disconnected, attempting to reconnect...");
-        socket.connect();
+      // Payment status updates
+      socket?.on("paymentStatusUpdated", (data: { status: string; orderId?: string; paymentId: string }) => {
+        console.log("💰 Frontend: Payment status update received:", data);
+        try {
+          dispatch(updatePaymentStatusinSlice({
+            status: data.status as PaymentStatus,
+            orderId: data.orderId || '',
+            paymentId: data.paymentId
+          }));
+          
+          // Show toast for payment status update
+          const paymentEmoji = {
+            'pending': '⏳',
+            'completed': '✅',
+            'failed': '❌',
+            'refunded': '💰',
+            'cancelled': '❌'
+          };
+          
+          const emoji = paymentEmoji[data.status as keyof typeof paymentEmoji] || '💳';
+          
+          toast.success(`${emoji} Your payment status has been updated to: ${data.status}`, {
+            duration: 4000,
+            position: 'top-right',
+            style: {
+              background: '#10B981',
+              color: '#fff',
+              fontWeight: '500',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+            },
+          });
+          
+          toast.success(`Payment status updated to: ${data.status}`);
+        } catch (error) {
+          console.error("Error updating payment status:", error);
+          dispatch(refreshOrders());
+        }
+      });
+
+      // General order events
+      socket?.on("orderChange", () => {
+        console.log("🔄 Order change detected, refreshing orders...");
+        dispatch(refreshOrders());
+      });
+
+      // Real-time stock updates
+      if (socket) {
+        socket.on("stockUpdated", (data: { productId: string; totalStock: number; isStock: boolean }) => {
+          console.log("📦 Frontend: Stock update received:", data);
+          try {
+            dispatch(updateProductStock({
+              productId: data.productId,
+              totalStock: data.totalStock,
+              isStock: data.isStock
+            }));
+            
+            // Also update wishlist stock if item exists
+            dispatch(updateWishlistItemStock({
+              id: data.productId,
+              inStock: data.isStock,
+              totalStock: data.totalStock
+            }));
+            
+            // Show toast for stock update
+            toast.success(`📦 Product stock has been updated`, {
+              duration: 4000,
+              position: 'top-right',
+              style: {
+                background: '#10B981',
+                color: '#fff',
+                fontWeight: '500',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+              },
+            });
+            
+            toast.success(`Stock updated for product ${data.productId}`);
+          } catch (error) {
+            console.error("❌ Frontend: Error updating stock:", error);
+          }
+        });
+
+        // Bulk stock updates
+        socket.on("bulkStockUpdated", (data: { productId: string; totalStock: number; isStock: boolean }[]) => {
+          console.log("📦 Frontend: Bulk stock update received:", data);
+          try {
+            dispatch(updateMultipleProductStock(data));
+            
+            // Also update wishlist stock for all items
+            data.forEach(item => {
+              dispatch(updateWishlistItemStock({
+                id: item.productId,
+                inStock: item.isStock,
+                totalStock: item.totalStock
+              }));
+            });
+            
+            toast.success(`${data.length} products stock updated`);
+          } catch (error) {
+            console.error("❌ Frontend: Error updating bulk stock:", error);
+          }
+        });
       }
-    };
-    
-    const interval = setInterval(checkSocketConnection, 30000); // Check every 30 seconds
+
+      // Chat events are now handled only in ChatWidget component to prevent duplicates
+    }
     
     // Set up admin update listeners
     const cleanupAdminListeners = dispatch(listenForAdminUpdates());
     
-    // Add manual refresh function to window for debugging
-    (window as any).refreshOrders = () => {
-      console.log("🔄 Manual refresh triggered");
-      dispatch(refreshOrders());
-    };
-    
-    (window as any).socketStatus = () => {
-      console.log("Socket status:", {
-        connected: socket.connected,
-        id: socket.id,
-        transport: 'websocket' // Simplified for debugging
-      });
-    };
-    
     return () => {
-      clearInterval(interval);
       if (cleanupAdminListeners) cleanupAdminListeners();
       
       // Remove all socket listeners
-      socket.removeAllListeners();
-      
-      delete (window as any).refreshOrders;
-      delete (window as any).socketStatus;
-      
-      console.log("🧹 Frontend: WebSocket listeners cleaned up");
+      if (socket) {
+        socket.removeAllListeners();
+      }
     };
   }, [dispatch]);
 

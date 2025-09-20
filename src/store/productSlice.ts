@@ -22,9 +22,41 @@ const productSlice = createSlice({
     setProduct(state: IProducts, action: PayloadAction<IProduct>) {
       state.product = action.payload;
     },
+    // Real-time stock update actions
+    updateProductStock(state: IProducts, action: PayloadAction<{ productId: string; totalStock: number; isStock: boolean }>) {
+      const { productId, totalStock, isStock } = action.payload;
+      
+      // Update in products array
+      const productIndex = state.products.findIndex(p => p.id === productId);
+      if (productIndex !== -1) {
+        state.products[productIndex].totalStock = totalStock;
+        state.products[productIndex].isStock = isStock;
+      }
+      
+      // Update current product if it matches
+      if (state.product && state.product.id === productId) {
+        state.product.totalStock = totalStock;
+        state.product.isStock = isStock;
+      }
+    },
+    // Bulk stock update for multiple products
+    updateMultipleProductStock(state: IProducts, action: PayloadAction<{ productId: string; totalStock: number; isStock: boolean }[]>) {
+      action.payload.forEach(({ productId, totalStock, isStock }) => {
+        const productIndex = state.products.findIndex(p => p.id === productId);
+        if (productIndex !== -1) {
+          state.products[productIndex].totalStock = totalStock;
+          state.products[productIndex].isStock = isStock;
+        }
+        
+        if (state.product && state.product.id === productId) {
+          state.product.totalStock = totalStock;
+          state.product.isStock = isStock;
+        }
+      });
+    },
   },
 });
-export const { setProducts, setStatus, setProduct } = productSlice.actions;
+export const { setProducts, setStatus, setProduct, updateProductStock, updateMultipleProductStock } = productSlice.actions;
 export default productSlice.reducer;
 
 export function fetchProducts() {
