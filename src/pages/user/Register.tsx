@@ -138,22 +138,32 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      await dispatch(registerUser(registerData));
-      setOtpData({ ...otpData, email: registerData.email });
-      setStep('otp');
-      setCountdown(60);
-      toast.success("Registration successful! Please check your email for OTP.", {
-        duration: 5000,
-        position: "top-center",
-        style: {
-          background: "#10b981",
-          color: "#ffffff",
-          padding: "12px 16px",
-          borderRadius: "8px",
-        },
-      });
-    } catch {
-      toast.error("Registration failed. Please try again.", {
+      const result = await dispatch(registerUser(registerData));
+      
+      // Check if registration was successful
+      if (result.type === 'auth/registerUser/fulfilled') {
+        setOtpData({ ...otpData, email: registerData.email });
+        setStep('otp');
+        setCountdown(60);
+        toast.success("Registration successful! Please check your email for OTP.", {
+          duration: 5000,
+          position: "top-center",
+          style: {
+            background: "#10b981",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+      } else {
+        throw new Error("Registration failed");
+      }
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      
+      // Show specific error message
+      const errorMessage = error?.message || "Registration failed. Please try again.";
+      toast.error(errorMessage, {
         duration: 5000,
         position: "top-center",
         style: {

@@ -73,19 +73,36 @@ export function registerUser(data: { username: string; email: string; password: 
   return async function registerUserThunk(dispatch: AppDispatch) {
     try {
       const res = await API.post("/auth/register", data);
-      console.log(res);
-      if (res.status === 201) {
+      console.log("Registration response:", res);
+      
+      // Check for successful registration (200 or 201 status codes)
+      if (res.status === 200 || res.status === 201) {
         // Store registration data for OTP verification
         localStorage.setItem("pendingRegistration", JSON.stringify({
-          userId: res.data.userId,
-          email: res.data.email,
+          userId: res.data.userId || res.data.id,
+          email: res.data.email || data.email,
           username: data.username
         }));
         dispatch(setStatus(Status.SUCCESS));
-      } else dispatch(setStatus(Status.ERROR));
-    } catch (error) {
-      console.log(error);
+        return { type: 'auth/registerUser/fulfilled', payload: res.data };
+      } else {
+        console.log("Registration failed with status:", res.status);
+        dispatch(setStatus(Status.ERROR));
+        throw new Error("Registration failed");
+      }
+    } catch (error: unknown) {
+      console.log("Registration error:", error);
       dispatch(setStatus(Status.ERROR));
+      
+      // Handle specific error cases
+      const axiosError = error as { response?: { status: number } };
+      if (axiosError?.response?.status === 400) {
+        throw new Error("User already exists or invalid data");
+      } else if (axiosError?.response?.status === 500) {
+        throw new Error("Server error during registration");
+      } else {
+        throw new Error("Registration failed. Please try again.");
+      }
     }
   };
 }
