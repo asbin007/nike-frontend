@@ -95,11 +95,16 @@ export function registerUser(data: { username: string; email: string; password: 
       dispatch(setStatus(Status.ERROR));
       
       // Handle specific error cases
-      const axiosError = error as { response?: { status: number } };
+      const axiosError = error as { response?: { status: number; data?: { message?: string } } };
       if (axiosError?.response?.status === 400) {
-        throw new Error("User already exists or invalid data");
+        const errorMessage = axiosError?.response?.data?.message;
+        if (errorMessage === "User already exists") {
+          throw new Error("This email is already registered. Please use a different email or try logging in.");
+        } else {
+          throw new Error(errorMessage || "Invalid registration data. Please check your information.");
+        }
       } else if (axiosError?.response?.status === 500) {
-        throw new Error("Server error during registration");
+        throw new Error("Server error during registration. Please try again later.");
       } else {
         throw new Error("Registration failed. Please try again.");
       }

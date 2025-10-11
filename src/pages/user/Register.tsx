@@ -163,16 +163,45 @@ const Register = () => {
       
       // Show specific error message
       const errorMessage = error?.message || "Registration failed. Please try again.";
-      toast.error(errorMessage, {
-        duration: 5000,
-        position: "top-center",
-        style: {
-          background: "#dc2626",
-          color: "#ffffff",
-          padding: "12px 16px",
-          borderRadius: "8px",
-        },
-      });
+      
+      // Special handling for user already exists error
+      if (errorMessage.includes("already registered")) {
+        toast.error(errorMessage, {
+          duration: 7000,
+          position: "top-center",
+          style: {
+            background: "#f59e0b",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+        
+        // Show additional help message
+        setTimeout(() => {
+          toast.success("You can sign in with your existing account!", {
+            duration: 5000,
+            position: "top-center",
+            style: {
+              background: "#10b981",
+              color: "#ffffff",
+              padding: "12px 16px",
+              borderRadius: "8px",
+            },
+          });
+        }, 2000);
+      } else {
+        toast.error(errorMessage, {
+          duration: 5000,
+          position: "top-center",
+          style: {
+            background: "#dc2626",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "8px",
+          },
+        });
+      }
     } finally {
       setIsLoading(false);
     }
