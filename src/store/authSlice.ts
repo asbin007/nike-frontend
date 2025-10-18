@@ -72,21 +72,20 @@ export default authSlice.reducer;
 export function registerUser(data: { username: string; email: string; password: string }) {
   return async function registerUserThunk(dispatch: AppDispatch) {
     try {
+      dispatch(setStatus(Status.LOADING));
       const res = await API.post("/auth/register", data);
       console.log("Registration response:", res);
       
-      // Check for successful registration (200 or 201 status codes)
-      if (res.status === 200 || res.status === 201) {
+      if (res.status === 201) {
         // Store registration data for OTP verification
         localStorage.setItem("pendingRegistration", JSON.stringify({
-          userId: res.data.userId || res.data.id,
-          email: res.data.email || data.email,
+          userId: res.data.userId,
+          email: res.data.email,
           username: data.username
         }));
         dispatch(setStatus(Status.SUCCESS));
-        return { type: 'auth/registerUser/fulfilled', payload: res.data };
+        return { type: 'auth/registerUser/fulfilled', payload: { success: true, email: res.data.email, requiresOtp: true } };
       } else {
-        console.log("Registration failed with status:", res.status);
         dispatch(setStatus(Status.ERROR));
         throw new Error("Registration failed");
       }
@@ -95,7 +94,14 @@ export function registerUser(data: { username: string; email: string; password: 
       dispatch(setStatus(Status.ERROR));
       
       // Handle specific error cases
-      const axiosError = error as { response?: { status: number; data?: { message?: string } } };
+      const axiosError = error as { 
+        message?: string;
+        response?: { 
+          status: number; 
+          data?: { message?: string; error?: string } 
+        };
+      };
+      
       if (axiosError?.response?.status === 400) {
         const errorMessage = axiosError?.response?.data?.message;
         if (errorMessage === "User already exists") {
@@ -106,7 +112,8 @@ export function registerUser(data: { username: string; email: string; password: 
       } else if (axiosError?.response?.status === 500) {
         throw new Error("Server error during registration. Please try again later.");
       } else {
-        throw new Error("Registration failed. Please try again.");
+        const errorMsg = axiosError?.message || "Registration failed. Please try again.";
+        throw new Error(errorMsg);
       }
     }
   };
@@ -115,28 +122,44 @@ export function registerUser(data: { username: string; email: string; password: 
 export function verifyOtp(data: { email: string; otp: string }) {
   return async function verifyOtpThunk(dispatch: AppDispatch) {
     try {
+      dispatch(setStatus(Status.LOADING));
       const res = await API.post("/auth/verify-otp", data);
+      console.log("OTP verify response:", res);
+      
       if (res.status === 200) {
         // Clear pending registration
         localStorage.removeItem("pendingRegistration");
         dispatch(setStatus(Status.SUCCESS));
-        return { type: 'auth/verifyOtp/fulfilled', payload: res.data };
+        return { type: 'auth/verifyOtp/fulfilled', payload: { success: true, email: data.email } };
       } else {
         dispatch(setStatus(Status.ERROR));
         throw new Error("OTP verification failed");
       }
     } catch (error: unknown) {
-      console.log("OTP verification error:", error);
+      console.log("Verify OTP error:", error);
       dispatch(setStatus(Status.ERROR));
       
       // Handle specific error cases
-      const axiosError = error as { response?: { status: number } };
+      const axiosError = error as { 
+        message?: string;
+        response?: { 
+          status: number; 
+          data?: { message?: string; error?: string } 
+        };
+      };
+      
       if (axiosError?.response?.status === 400) {
-        throw new Error("Invalid OTP");
-      } else if (axiosError?.response?.status === 410) {
-        throw new Error("OTP expired");
+        const errorMessage = axiosError?.response?.data?.message;
+        if (errorMessage?.includes('Invalid OTP') || errorMessage?.includes('OTP expired')) {
+          throw new Error("Invalid or expired OTP. Please try again or request a new one.");
+        } else {
+          throw new Error(errorMessage || "Invalid OTP");
+        }
+      } else if (axiosError?.response?.status === 500) {
+        throw new Error("Server error while verifying OTP. Please try again later.");
       } else {
-        throw new Error("OTP verification failed");
+        const errorMsg = axiosError?.message || "OTP verification failed. Please try again.";
+        throw new Error(errorMsg);
       }
     }
   };
@@ -145,10 +168,13 @@ export function verifyOtp(data: { email: string; otp: string }) {
 export function resendOtp(data: { email: string }) {
   return async function resendOtpThunk(dispatch: AppDispatch) {
     try {
+      dispatch(setStatus(Status.LOADING));
       const res = await API.post("/auth/resend-otp", data);
+      console.log("Resend OTP response:", res);
+      
       if (res.status === 200) {
         dispatch(setStatus(Status.SUCCESS));
-        return { type: 'auth/resendOtp/fulfilled', payload: res.data };
+        return { type: 'auth/resendOtp/fulfilled', payload: { success: true, email: data.email } };
       } else {
         dispatch(setStatus(Status.ERROR));
         throw new Error("Failed to resend OTP");
@@ -156,7 +182,25 @@ export function resendOtp(data: { email: string }) {
     } catch (error: unknown) {
       console.log("Resend OTP error:", error);
       dispatch(setStatus(Status.ERROR));
-      throw new Error("Failed to resend OTP. Please try again.");
+      
+      // Handle specific error cases
+      const axiosError = error as { 
+        message?: string;
+        response?: { 
+          status: number; 
+          data?: { message?: string; error?: string } 
+        };
+      };
+      
+      if (axiosError?.response?.status === 400) {
+        const errorMessage = axiosError?.response?.data?.message;
+        throw new Error(errorMessage || "Invalid email address");
+      } else if (axiosError?.response?.status === 500) {
+        throw new Error("Server error while resending OTP. Please try again later.");
+      } else {
+        const errorMsg = axiosError?.message || "Failed to resend OTP. Please try again.";
+        throw new Error(errorMsg);
+      }
     }
   };
 }
@@ -193,6 +237,7 @@ export function loginUser(data: ILoginUser) {
     } catch (error) {
       console.log(error);
       dispatch(setStatus(Status.ERROR));
+      throw error;
     }
   };
 }

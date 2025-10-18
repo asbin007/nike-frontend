@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError, AxiosResponse, AxiosHeaders, InternalAxiosRequestConfig } from "axios";
 
 // Function to get backend URL with fallback
 // const getBackendUrl = async () => {
@@ -23,33 +23,36 @@ import axios from "axios";
 // Simple static configuration to prevent UI crashes
 const API = axios.create({
   baseURL: "https://nike-backend-1-g9i6.onrender.com/api",
+  // baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 10000,
+  timeout: 60000, // Increased timeout to 60 seconds for Render delays
 });
 
 const APIS = axios.create({
   baseURL: "https://nike-backend-1-g9i6.onrender.com/api",
+  // baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 10000,
+  timeout: 60000, // Increased timeout to 60 seconds for Render delays
 });
 
 // Enhanced request interceptor for Render backend
 APIS.interceptors.request.use(
-  (config: any) => {
-    const token = localStorage.getItem("tokenauth") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyODgxOTE4My04MWM5LTRhYjktYmE2NS0wNGIxYzNlOTRmY2QiLCJpYXQiOjE3NTgyOTE5NzgsImV4cCI6MTc2MDg4Mzk3OH0.BjYDw7HHmAZcbUImpWfBd89YVGpJGT14E2AFpTl9z5k";
-    if (token) {
-      config.headers.Authorization = token;
-    }
+  (config: InternalAxiosRequestConfig) => {
+    const token = localStorage.getItem("tokenauth");
+    const headers: AxiosHeaders = (config.headers ?? new AxiosHeaders()) as AxiosHeaders;
+    if (token) headers.set("Authorization", token);
+    else headers.delete("Authorization");
+    config.headers = headers;
     console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
-  (error: any) => {
+  (error: AxiosError) => {
     console.error("❌ Request interceptor error:", error);
     return Promise.reject(error);
   }
@@ -57,11 +60,11 @@ APIS.interceptors.request.use(
 
 // Enhanced response interceptor for Render backend
 APIS.interceptors.response.use(
-  (response: any) => {
+  (response: AxiosResponse) => {
     console.log(`✅ API Response: ${response.status} ${response.config?.url}`);
     return response;
   },
-  (error: any) => {
+  (error: AxiosError) => {
     console.error(`❌ API Error: ${error.response?.status} ${error.config?.url}`, error.response?.data);
     
     // Handle 401 errors

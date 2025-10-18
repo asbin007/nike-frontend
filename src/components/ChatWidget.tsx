@@ -157,8 +157,8 @@ const ChatWidget: React.FC = () => {
         dispatch(addMessage(message));
         dispatch(updateChatLastMessage({ chatId: message.chatId, message }));
         
-        // Show notification if not from current user
-        if (message.senderId !== user?.id) {
+        // Show notification if not from current currentUser
+        if (message.senderId !== currentUser?.id) {
           toast.success(`New message from ${message.Sender?.username || 'Admin'}`, {
             duration: 3000,
           });
@@ -168,13 +168,13 @@ const ChatWidget: React.FC = () => {
 
     // Listen for typing indicators
     const handleTyping = ({ chatId, userId }: { chatId: string; userId: string }) => {
-      if (currentChat?.id === chatId && userId !== user?.id) {
+      if (currentChat?.id === chatId && userId !== currentUser?.id) {
         dispatch(setTyping({ isTyping: true, userId }));
       }
     };
 
     const handleStopTyping = ({ chatId, userId }: { chatId: string; userId: string }) => {
-      if (currentChat?.id === chatId && userId !== user?.id) {
+      if (currentChat?.id === chatId && userId !== currentUser?.id) {
         dispatch(setTyping({ isTyping: false, userId }));
       }
     };
@@ -189,14 +189,14 @@ const ChatWidget: React.FC = () => {
       socket.off("typing", handleTyping);
       socket.off("stopTyping", handleStopTyping);
     };
-  }, [dispatch, currentChat?.id, user?.id]);
+  }, [dispatch, currentChat?.id, currentUser?.id]);
 
   // Initialize chat on component mount
   useEffect(() => {
-    if (user?.id) {
+    if (currentUser?.id) {
       dispatch(fetchAllChatsThunk());
     }
-  }, [dispatch, user?.id]);
+  }, [dispatch, currentUser?.id]);
 
 
 
@@ -293,9 +293,9 @@ const ChatWidget: React.FC = () => {
       console.log('💬 Current chat ID:', currentChat?.id);
       console.log('💬 Message chat ID:', message.chatId);
       console.log('💬 Message sender ID:', message.senderId);
-      console.log('💬 Current user ID:', currentUser.id);
+      console.log('💬 Current currentUser ID:', currentUser.id);
       
-      // Check if message is for current chat and not from current user
+      // Check if message is for current chat and not from current currentUser
       if (message.chatId === currentChat?.id && message.senderId !== currentUser.id) {
         // Check if message already exists to prevent duplicates
         const messageExists = messages.some(msg => msg.id === message.id);
@@ -307,9 +307,9 @@ const ChatWidget: React.FC = () => {
           console.log('ℹ️ Message already exists, skipping duplicate');
         }
       } else if (message.chatId === currentChat?.id && message.senderId === currentUser.id) {
-        console.log('ℹ️ Message from current user, not adding to avoid duplicate');
+        console.log('ℹ️ Message from current currentUser, not adding to avoid duplicate');
       } else {
-        console.log('❌ Message not for current chat or from current user');
+        console.log('❌ Message not for current chat or from current currentUser');
       }
     };
 

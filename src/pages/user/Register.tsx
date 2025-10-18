@@ -1,4 +1,3 @@
-
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useAppDispatch } from "../../store/hooks";
 import { registerUser, verifyOtp, resendOtp } from "../../store/authSlice";
@@ -142,27 +141,46 @@ const Register = () => {
       
       // Check if registration was successful
       if (result.type === 'auth/registerUser/fulfilled') {
-        setOtpData({ ...otpData, email: registerData.email });
-        setStep('otp');
-        setCountdown(60);
-        toast.success("Registration successful! Please check your email for OTP.", {
-          duration: 5000,
-          position: "top-center",
-          style: {
-            background: "#10b981",
-            color: "#ffffff",
-            padding: "12px 16px",
-            borderRadius: "8px",
-          },
-        });
+        const payload = result.payload as { success: boolean; email: string; requiresOtp?: boolean };
+        
+        if (payload.requiresOtp) {
+          // Move to OTP verification step
+          setOtpData({ email: payload.email, otp: "" });
+          setStep('otp');
+          setCountdown(60);
+          toast.success("Registration successful! Please check your email for OTP verification.", {
+            duration: 5000,
+            position: "top-center",
+            style: {
+              background: "#10b981",
+              color: "#ffffff",
+              padding: "12px 16px",
+              borderRadius: "8px",
+            },
+          });
+        } else {
+          toast.success("Registration successful! Please login to continue.", {
+            duration: 5000,
+            position: "top-center",
+            style: {
+              background: "#10b981",
+              color: "#ffffff",
+              padding: "12px 16px",
+              borderRadius: "8px",
+            },
+          });
+          setTimeout(() => {
+            navigate("/login");
+          }, 1000);
+        }
       } else {
         throw new Error("Registration failed");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Registration error:", error);
       
       // Show specific error message
-      const errorMessage = error?.message || "Registration failed. Please try again.";
+      const errorMessage = (error as { message?: string })?.message || "Registration failed. Please try again.";
       
       // Special handling for user already exists error
       if (errorMessage.includes("already registered")) {
@@ -259,10 +277,9 @@ const Register = () => {
     try {
       const result = await dispatch(verifyOtp(otpData));
       
-      // Check if verification was successful
       if (result.type === 'auth/verifyOtp/fulfilled') {
         toast.success("Email verified successfully! You can now login.", {
-          duration: 5000,
+          duration: 2500,
           position: "top-center",
           style: {
             background: "#10b981",
@@ -271,22 +288,16 @@ const Register = () => {
             borderRadius: "8px",
           },
         });
-        
-        // Clear any pending registration data
-        localStorage.removeItem("pendingRegistration");
-        
-        // Navigate to login page after a short delay
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
+        setTimeout(() => navigate("/login"), 800);
       } else {
         throw new Error("OTP verification failed");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("OTP verification error:", error);
       
       // Handle specific error cases
-      if (error?.message?.includes('Invalid OTP') || error?.message?.includes('OTP expired')) {
+      const msg = (error as { message?: string })?.message || "";
+      if (msg.includes('Invalid OTP') || msg.includes('OTP expired')) {
         toast.error("Invalid or expired OTP. Please try again or request a new one.", {
           duration: 5000,
           position: "top-center",
@@ -350,7 +361,7 @@ const Register = () => {
       if (result.type === 'auth/resendOtp/fulfilled') {
         setCountdown(60);
         toast.success("New OTP sent to your email!", {
-          duration: 5000,
+          duration: 3000,
           position: "top-center",
           style: {
             background: "#10b981",
@@ -362,9 +373,10 @@ const Register = () => {
       } else {
         throw new Error("Failed to resend OTP");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Resend OTP error:", error);
-      toast.error(error?.message || "Failed to resend OTP. Please try again.", {
+      const msg = (error as { message?: string })?.message || "Failed to resend OTP. Please try again.";
+      toast.error(msg, {
         duration: 5000,
         position: "top-center",
         style: {
