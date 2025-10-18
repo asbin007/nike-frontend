@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { MessageCircle, X, Minimize2, Maximize2, Loader2, Camera, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -39,22 +39,11 @@ interface Message {
 const ChatWidget: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const { 
+  const {
     currentChat, 
     messages, 
     isTyping
   } = useAppSelector((state) => state.chat);
-  
-  // Hardcoded admin data for chat system - using useMemo to prevent re-creation
-  const hardcodedAdmin = useMemo(() => ({
-    id: "28819183-81c9-4ab9-ba65-04b1c3e94fcd",
-    username: "asbin",
-    email: "asbin@gmail.com",
-    role: "admin"
-  }), []);
-  
-  // Use hardcoded admin if no user is logged in - using useMemo to prevent re-creation
-  const currentUser = useMemo(() => user || hardcodedAdmin, [user, hardcodedAdmin]);
   
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -78,16 +67,10 @@ const ChatWidget: React.FC = () => {
   const baseURL = "https://nike-backend-1-g9i6.onrender.com/api";
   
   // Get proper token for API calls
-  const getAuthToken = () => {
+  const getAuthToken = useCallback(() => {
     const token = localStorage.getItem("tokenauth");
-    if (token) {
-      console.log('🔑 Using stored token');
-      return token;
-    }
-    // Fallback to hardcoded token for testing
-    console.log('🔑 Using fallback token');
-    return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyODgxOTE4My04MWM5LTRhYjktYmE2NS0wNGIxYzNlOTRmY2QiLCJpYXQiOjE3NTgyOTE5NzgsImV4cCI6MTc2MDg4Mzk3OH0.BjYDw7HHmAZcbUImpWfBd89YVGpJGT14E2AFpTl9z5k";
-  };
+    return token ? `Bearer ${token}` : '';
+  }, []);
 
   // Drag handling functions
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -256,12 +239,29 @@ const ChatWidget: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
-  // Use hardcoded admin directly - no API call needed
+  // Fetch admin users for chat
   useEffect(() => {
-    console.log('🔄 Setting hardcoded admin directly');
-    setAdminUsers([hardcodedAdmin]);
-    setIsLoading(false);
-  }, [hardcodedAdmin]);
+    const fetchAdminUsers = async () => {
+      try {
+        const response = await fetch(`${baseURL}/auth/users`, {
+          headers: {
+            'Authorization': getAuthToken(),
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const admins = data.data.filter((user: { role: string }) => user.role === 'admin');
+          setAdminUsers(admins);
+        }
+      } catch (error) {
+        console.error('Error fetching admin users:', error);
+      }
+    };
+
+    fetchAdminUsers();
+  }, [baseURL, getAuthToken]);
 
   // Socket event listeners for real-time messages
   useEffect(() => {
