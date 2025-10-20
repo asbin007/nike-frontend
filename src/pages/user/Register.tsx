@@ -135,6 +135,12 @@ const Register = () => {
     }
 
     setIsLoading(true);
+    // Clear any stale pending registration so old email doesn't leak into OTP step
+    try {
+      localStorage.removeItem("pendingRegistration");
+    } catch {
+      // ignore storage removal errors
+    }
     
     // Show loading message for Render delays
     toast.loading("Creating account... This may take up to 2 minutes due to server processing.", {
@@ -162,6 +168,17 @@ const Register = () => {
         if (payload.requiresOtp) {
           // Move to OTP verification step
           setOtpData({ email: payload.email, otp: "" });
+          // Ensure localStorage also reflects the latest email to avoid showing previous email
+          try {
+            const existing = localStorage.getItem("pendingRegistration");
+            const parsed = existing ? JSON.parse(existing) : {};
+            localStorage.setItem(
+              "pendingRegistration",
+              JSON.stringify({ ...parsed, email: payload.email })
+            );
+          } catch {
+            // ignore storage write errors
+          }
           setStep('otp');
           setCountdown(60);
           toast.success("Registration successful! Please check your email for OTP verification.", {
@@ -418,13 +435,20 @@ const Register = () => {
   // Check for pending registration on component mount
   useEffect(() => {
     const pendingRegistration = localStorage.getItem("pendingRegistration");
-    if (pendingRegistration) {
-      const data = JSON.parse(pendingRegistration);
-      setOtpData({ email: data.email, otp: "" });
-      setStep('otp');
-      setCountdown(60);
+    // Only hydrate from storage if user hasn't started a fresh registration
+    if (pendingRegistration && !registerData.email) {
+      try {
+        const data = JSON.parse(pendingRegistration);
+        if (data?.email) {
+          setOtpData({ email: data.email, otp: "" });
+          setStep('otp');
+          setCountdown(60);
+        }
+      } catch {
+        // ignore invalid storage
+      }
     }
-  }, []);
+  }, [registerData.email]);
 
   if (step === 'otp') {
     return (
