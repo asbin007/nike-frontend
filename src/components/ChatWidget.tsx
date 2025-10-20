@@ -19,13 +19,19 @@ interface Message {
   receiverId: string;
   content: string;
   imageUrl?: string;
-  location?: {
-    lat: number;
-    lng: number;
-    address: string;
-  };
   createdAt: string;
   read: boolean;
+  messageType?: 'text' | 'image' | 'file' | 'location';
+  metadata?: {
+    imageUrl?: string;
+    fileName?: string;
+    fileSize?: number;
+    location?: {
+      lat: number;
+      lng: number;
+      address: string;
+    };
+  };
   Sender?: {
     id: string;
     username: string;
@@ -141,7 +147,7 @@ const ChatWidget: React.FC = () => {
         dispatch(updateChatLastMessage({ chatId: message.chatId, message }));
         
         // Show notification if not from current currentUser
-        if (message.senderId !== currentUser?.id) {
+        if (message.senderId !== user?.id) {
           toast.success(`New message from ${message.Sender?.username || 'Admin'}`, {
             duration: 3000,
           });
@@ -151,13 +157,13 @@ const ChatWidget: React.FC = () => {
 
     // Listen for typing indicators
     const handleTyping = ({ chatId, userId }: { chatId: string; userId: string }) => {
-      if (currentChat?.id === chatId && userId !== currentUser?.id) {
+      if (currentChat?.id === chatId && userId !== user?.id) {
         dispatch(setTyping({ isTyping: true, userId }));
       }
     };
 
     const handleStopTyping = ({ chatId, userId }: { chatId: string; userId: string }) => {
-      if (currentChat?.id === chatId && userId !== currentUser?.id) {
+      if (currentChat?.id === chatId && userId !== user?.id) {
         dispatch(setTyping({ isTyping: false, userId }));
       }
     };
@@ -172,14 +178,14 @@ const ChatWidget: React.FC = () => {
       socket.off("typing", handleTyping);
       socket.off("stopTyping", handleStopTyping);
     };
-  }, [dispatch, currentChat?.id, currentUser?.id]);
+  }, [dispatch, currentChat?.id, user?.id]);
 
   // Initialize chat on component mount
   useEffect(() => {
-    if (currentUser?.id) {
+    if (user?.id) {
       dispatch(fetchAllChatsThunk());
     }
-  }, [dispatch, currentUser?.id]);
+  }, [dispatch, user?.id]);
 
 
 
@@ -293,10 +299,10 @@ const ChatWidget: React.FC = () => {
       console.log('💬 Current chat ID:', currentChat?.id);
       console.log('💬 Message chat ID:', message.chatId);
       console.log('💬 Message sender ID:', message.senderId);
-      console.log('💬 Current currentUser ID:', currentUser.id);
+      console.log('💬 Current currentUser ID:', user.id);
       
       // Check if message is for current chat and not from current currentUser
-      if (message.chatId === currentChat?.id && message.senderId !== currentUser.id) {
+      if (message.chatId === currentChat?.id && message.senderId !== user.id) {
         // Check if message already exists to prevent duplicates
         const messageExists = messages.some(msg => msg.id === message.id);
         if (!messageExists) {
@@ -306,7 +312,7 @@ const ChatWidget: React.FC = () => {
         } else {
           console.log('ℹ️ Message already exists, skipping duplicate');
         }
-      } else if (message.chatId === currentChat?.id && message.senderId === currentUser.id) {
+      } else if (message.chatId === currentChat?.id && message.senderId === user.id) {
         console.log('ℹ️ Message from current currentUser, not adding to avoid duplicate');
       } else {
         console.log('❌ Message not for current chat or from current currentUser');
@@ -359,7 +365,7 @@ const ChatWidget: React.FC = () => {
       socket.off('typing', handleTyping);
       socket.off('stopTyping', handleStopTyping);
     };
-  }, [dispatch, currentChat?.id, currentUser.id, messages]);
+  }, [dispatch, currentChat?.id, user.id, messages]);
 
   // Auto-refresh messages every 5 seconds as fallback
   useEffect(() => {
@@ -566,16 +572,17 @@ const ChatWidget: React.FC = () => {
         const newMessage = {
           id: data.data?.id || messageId,
           chatId: currentChat.id,
-          senderId: data.data?.senderId || currentUser.id,
+          senderId: data.data?.senderId || user.id,
           receiverId: data.data?.receiverId || currentChat.adminId,
           content: messageContent,
           imageUrl: selectedImage ? URL.createObjectURL(selectedImage) : data.data?.imageUrl,
+          location: locationData,
           createdAt: data.data?.createdAt || new Date().toISOString(),
           read: false,
           Sender: {
-            id: data.data?.senderId || currentUser.id,
-            username: data.data?.Sender?.username || currentUser.username,
-            email: data.data?.Sender?.email || currentUser.email,
+            id: data.data?.senderId || user.id,
+            username: data.data?.Sender?.username || user.username,
+            email: data.data?.Sender?.email || user.email,
             role: 'customer'
           }
         };
@@ -751,11 +758,11 @@ const ChatWidget: React.FC = () => {
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'} group`}
+                    className={`flex ${msg.senderId === user.id ? 'justify-end' : 'justify-start'} group`}
                   >
                     <div
                       className={`max-w-[85%] sm:max-w-xs px-3 py-2 sm:px-4 sm:py-3 rounded-2xl sm:rounded-3xl shadow-sm transition-all duration-200 hover:shadow-md ${
-                        msg.senderId === currentUser.id
+                        msg.senderId === user.id
                           ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
                           : 'bg-white text-gray-800 border border-gray-200 hover:border-gray-300'
                       }`}
@@ -774,7 +781,7 @@ const ChatWidget: React.FC = () => {
                       {/* Location - if location data exists */}
                       {msg.metadata?.location && (
                         <div className={`mb-2 sm:mb-3 p-2 sm:p-3 rounded-xl sm:rounded-2xl ${
-                          msg.senderId === currentUser.id 
+                          msg.senderId === user.id 
                             ? 'bg-white/20' 
                             : 'bg-orange-50 border border-orange-200'
                         }`}>
@@ -880,7 +887,7 @@ const ChatWidget: React.FC = () => {
                       if (socket && currentChat) {
                         socket.emit('typing', {
                           chatId: currentChat.id,
-                          userId: currentUser.id
+                          userId: user.id
                         });
                       }
                     }}
