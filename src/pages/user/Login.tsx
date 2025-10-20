@@ -6,6 +6,15 @@ import { Status } from "../../globals/types/types";
 import toast from "react-hot-toast";
 import { Mail, Lock, Eye, EyeOff, User, ArrowRight, Zap, Shield, Truck } from "lucide-react";
 
+// Shape of possible error payload returned by backend during login
+interface LoginErrorResponse {
+  requiresOtp?: boolean;
+  userId?: string;
+  email?: string;
+  username?: string;
+  message?: string;
+}
+
 const Login = () => {
   const dispatch = useAppDispatch();
   const { user, status } = useAppSelector((store) => store.auth);
@@ -157,9 +166,49 @@ const Login = () => {
     
     try {
       await dispatch(loginUser(data));
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle specific error cases
-      if (error?.message?.includes('Invalid credentials') || error?.message?.includes('User not found')) {
+      const axiosErr = error as { response?: { data?: unknown }; message?: string };
+      const responseData = (axiosErr?.response?.data as Partial<LoginErrorResponse>) || undefined;
+
+      // If backend requires OTP verification before login
+      if (responseData?.requiresOtp) {
+        try {
+          const pending = {
+            userId: responseData.userId || null,
+            email: responseData.email || data.email,
+            username: responseData.username || "",
+          };
+          localStorage.setItem("pendingRegistration", JSON.stringify(pending));
+        } catch {
+          // noop
+        }
+
+        toast.error(
+          responseData?.message ||
+            "Please verify your email with OTP before logging in. Check your email for verification code.",
+          {
+            duration: 6000,
+            position: "top-center",
+            style: {
+              background: "#f59e0b",
+              color: "#ffffff",
+              padding: "12px 16px",
+              borderRadius: "8px",
+            },
+          }
+        );
+
+        // Redirect user to OTP verification step on register page
+        navigate("/register");
+        return;
+      }
+
+      const serverMsg = typeof responseData?.message === 'string' ? responseData.message : '';
+
+      if (serverMsg.includes('Invalid password') ||
+          axiosErr?.message?.includes('Invalid credentials') ||
+          axiosErr?.message?.includes('User not found')) {
         toast.error("Invalid email or password. Please check your credentials and try again.", {
           duration: 5000,
           position: "top-center",
@@ -170,7 +219,7 @@ const Login = () => {
             borderRadius: "8px",
           },
         });
-      } else if (error?.message?.includes('Account not verified')) {
+      } else if (axiosErr?.message?.includes('Account not verified')) {
         toast.error("Please verify your email address before logging in. Check your inbox for verification link.", {
           duration: 6000,
           position: "top-center",
