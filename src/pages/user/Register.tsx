@@ -136,8 +136,24 @@ const Register = () => {
 
     setIsLoading(true);
     
+    // Show loading message for Render delays
+    toast.loading("Creating account... This may take up to 2 minutes due to server processing.", {
+      id: "register-loading",
+      duration: 120000, // 2 minutes
+      position: "top-center",
+      style: {
+        background: "#3b82f6",
+        color: "#ffffff",
+        padding: "12px 16px",
+        borderRadius: "8px",
+      },
+    });
+    
     try {
       const result = await dispatch(registerUser(registerData));
+      
+      // Dismiss loading toast
+      toast.dismiss("register-loading");
       
       // Check if registration was successful
       if (result.type === 'auth/registerUser/fulfilled') {
@@ -178,6 +194,9 @@ const Register = () => {
       }
     } catch (error: unknown) {
       console.error("Registration error:", error);
+      
+      // Dismiss loading toast
+      toast.dismiss("register-loading");
       
       // Show specific error message
       const errorMessage = (error as { message?: string })?.message || "Registration failed. Please try again.";

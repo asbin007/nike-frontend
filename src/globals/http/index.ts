@@ -28,7 +28,7 @@ const API = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 60000, // Increased timeout to 60 seconds for Render delays
+  timeout: 120000, // Increased timeout to 120 seconds for Render delays
 });
 
 const APIS = axios.create({
@@ -38,7 +38,7 @@ const APIS = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 60000, // Increased timeout to 60 seconds for Render delays
+  timeout: 120000, // Increased timeout to 120 seconds for Render delays
 });
 
 // Enhanced request interceptor for Render backend
