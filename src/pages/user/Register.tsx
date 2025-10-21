@@ -434,6 +434,18 @@ const Register = () => {
 
   // Check for pending registration on component mount
   useEffect(() => {
+    // Clear any stale localStorage data first
+    const urlParams = new URLSearchParams(window.location.search);
+    const clearStorage = urlParams.get('clear') === 'true';
+    
+    if (clearStorage) {
+      localStorage.removeItem("pendingRegistration");
+      // Remove the clear parameter from URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      return;
+    }
+    
     const pendingRegistration = localStorage.getItem("pendingRegistration");
     // Only hydrate from storage if user hasn't started a fresh registration
     if (pendingRegistration && !registerData.email) {
@@ -544,14 +556,40 @@ const Register = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setStep('register')}
-                    className="flex items-center text-sm text-yellow-400 hover:text-yellow-300 transition-colors duration-200"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Back to Register
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setStep('register')}
+                      className="flex items-center text-sm text-yellow-400 hover:text-yellow-300 transition-colors duration-200"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-1" />
+                      Back to Register
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.removeItem("pendingRegistration");
+                        setOtpData({ email: "", otp: "" });
+                        setRegisterData({ username: "", email: "", password: "" });
+                        setStep('register');
+                        setCountdown(0);
+                        toast.success("Registration cleared. You can start fresh!", {
+                          duration: 3000,
+                          position: "top-center",
+                          style: {
+                            background: "#10b981",
+                            color: "#ffffff",
+                            padding: "12px 16px",
+                            borderRadius: "8px",
+                          },
+                        });
+                      }}
+                      className="flex items-center text-sm text-red-400 hover:text-red-300 transition-colors duration-200"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      Start Fresh
+                    </button>
+                  </div>
                   
                   <button
                     type="button"
