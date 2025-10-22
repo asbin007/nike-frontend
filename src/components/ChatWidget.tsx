@@ -74,10 +74,12 @@ const ChatWidget: React.FC = () => {
   
   // Get proper token for API calls (normalize Bearer prefix)
   const getAuthToken = useCallback(() => {
-    const raw = localStorage.getItem("tokenauth") || '';
+    const fromRedux = user?.token ?? '';
+    const fromLocal = localStorage.getItem('tokenauth') || '';
+    const raw = fromLocal || fromRedux || '';
     if (!raw) return '';
     return raw.startsWith('Bearer ') ? raw : `Bearer ${raw}`;
-  }, []);
+  }, [user?.token]);
 
   // Drag handling functions
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -179,7 +181,7 @@ const ChatWidget: React.FC = () => {
       socket.off("typing", handleTyping);
       socket.off("stopTyping", handleStopTyping);
     };
-  }, [dispatch, currentChat?.id, user?.id]);
+  }, [dispatch, currentChat?.id, user?.id, getAuthToken]);
 
   // Initialize chat on component mount
   useEffect(() => {
@@ -400,7 +402,7 @@ const ChatWidget: React.FC = () => {
     }, 5000);
     
     return () => clearInterval(interval);
-  }, [dispatch, currentChat?.id]);
+  }, [dispatch, currentChat?.id, getAuthToken]);
 
   // Fetch messages when chat changes
   useEffect(() => {
@@ -453,7 +455,8 @@ const ChatWidget: React.FC = () => {
     setIsMinimized(false);
 
     // Ensure token present
-    if (!getAuthToken()) {
+    const authToken = getAuthToken();
+    if (!authToken) {
       toast.error('Please login to start support chat.');
       return;
     }
@@ -472,7 +475,7 @@ const ChatWidget: React.FC = () => {
       const response = await fetch(`${baseURL}/chats/get-or-create`, {
         method: 'POST',
         headers: {
-          'Authorization': getAuthToken(),
+          'Authorization': authToken,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(adminUsers[0]?.id ? { adminId: adminUsers[0].id } : {})
