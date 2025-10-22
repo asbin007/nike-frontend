@@ -3,8 +3,12 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { Provider } from 'react-redux'
-import store from './store/store.ts'
+import store, { AppDispatch } from './store/store.ts'
+import { loadUserFromStorage } from './store/authSlice'
 import { Toaster } from 'react-hot-toast'
+
+// Rehydrate auth state from localStorage before rendering
+(store.dispatch as AppDispatch)(loadUserFromStorage())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
