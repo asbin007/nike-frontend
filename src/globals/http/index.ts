@@ -44,7 +44,8 @@ const APIS = axios.create({
 // Enhanced request interceptor for Render backend
 APIS.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem("tokenauth");
+    const raw = localStorage.getItem("tokenauth") || "";
+    const token = raw.startsWith("Bearer ") ? raw : (raw ? `Bearer ${raw}` : "");
     const headers: AxiosHeaders = (config.headers ?? new AxiosHeaders()) as AxiosHeaders;
     if (token) headers.set("Authorization", token);
     else headers.delete("Authorization");

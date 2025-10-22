@@ -72,10 +72,11 @@ const ChatWidget: React.FC = () => {
   // Backend URL with fallback
   const baseURL = "https://nike-backend-1-g9i6.onrender.com/api";
   
-  // Get proper token for API calls
+  // Get proper token for API calls (normalize Bearer prefix)
   const getAuthToken = useCallback(() => {
-    const token = localStorage.getItem("tokenauth");
-    return token ? `Bearer ${token}` : '';
+    const raw = localStorage.getItem("tokenauth") || '';
+    if (!raw) return '';
+    return raw.startsWith('Bearer ') ? raw : `Bearer ${raw}`;
   }, []);
 
   // Drag handling functions
@@ -245,29 +246,33 @@ const ChatWidget: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
-  // Fetch admin users for chat
-  useEffect(() => {
-    const fetchAdminUsers = async () => {
-      try {
-        const response = await fetch(`${baseURL}/auth/users`, {
-          headers: {
-            'Authorization': getAuthToken(),
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          const admins = data.data.filter((user: { role: string }) => user.role === 'admin');
-          setAdminUsers(admins);
-        }
-      } catch (error) {
-        console.error('Error fetching admin users:', error);
+  // Fetch admin users for chat (reusable)
+  const fetchAdminUsers = useCallback(async () => {
+    try {
+      const response = await fetch(`${baseURL}/auth/users`, {
+        headers: {
+          'Authorization': getAuthToken(),
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const users = data?.data || data?.users || [];
+        const admins = users.filter((u: { role?: string }) => (u?.role || '').toLowerCase() === 'admin');
+        setAdminUsers(admins);
+      } else {
+        const text = await response.text();
+        console.error('Error fetching admin users:', response.status, text);
       }
-    };
-
-    fetchAdminUsers();
+    } catch (error) {
+      console.error('Error fetching admin users:', error);
+    }
   }, [baseURL, getAuthToken]);
+
+  useEffect(() => {
+    fetchAdminUsers();
+  }, [fetchAdminUsers]);
 
   // Socket event listeners for real-time messages
   useEffect(() => {
@@ -443,14 +448,20 @@ const ChatWidget: React.FC = () => {
   }, [dispatch, currentChat?.id]);
 
   const handleOpenChat = async () => {
-    if (adminUsers.length === 0) {
-      toast.error('No admin available at the moment. Please try again later.');
-      return;
-    }
-    
     // Immediately show chat UI
     setIsOpen(true);
     setIsMinimized(false);
+
+    // Ensure token present
+    if (!getAuthToken()) {
+      toast.error('Please login to start support chat.');
+      return;
+    }
+
+    // If admins not loaded yet, try fetching once
+    if (adminUsers.length === 0) {
+      await fetchAdminUsers();
+    }
     
     try {
       setIsLoading(true);
@@ -464,7 +475,7 @@ const ChatWidget: React.FC = () => {
           'Authorization': getAuthToken(),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ adminId: adminUsers[0].id })
+        body: JSON.stringify(adminUsers[0]?.id ? { adminId: adminUsers[0].id } : {})
       });
       
       console.log('📡 API Response status:', response.status);
