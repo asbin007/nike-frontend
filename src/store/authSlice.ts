@@ -209,7 +209,7 @@ export function loginUser(data: ILoginUser) {
   return async function loginUserThunk(dispatch: AppDispatch) {
     try {
       const response = await API.post("/auth/login", data);
-      if (response.status === 201) {
+      if (response.status === 201 || response.status === 200) {
         const { id, username, email } = response.data;
         dispatch(setStatus(Status.SUCCESS));
         console.log("res", response.data);

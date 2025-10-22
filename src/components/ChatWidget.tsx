@@ -81,6 +81,14 @@ const ChatWidget: React.FC = () => {
     return raw.startsWith('Bearer ') ? raw : `Bearer ${raw}`;
   }, [user?.token]);
 
+  // Debug token state
+  useEffect(() => {
+    const fromRedux = user?.token ?? '';
+    const fromLocal = localStorage.getItem('tokenauth') || '';
+    const normalized = getAuthToken();
+    console.log('[ChatWidget][Auth] user.id:', user?.id, 'has redux token:', !!fromRedux, 'has local token:', !!fromLocal, 'normalized set:', !!normalized);
+  }, [user?.id, user?.token, getAuthToken]);
+
   // Drag handling functions
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isOpen) return; // Don't drag when chat is open
@@ -348,7 +356,7 @@ const ChatWidget: React.FC = () => {
       }
     };
 
-    // Add event listeners - only receiveMessage to prevent duplicates
+    // Add event listeners including receiveMessage
     socket.on('receiveMessage', handleReceiveMessage);
     socket.on('typing', handleTyping);
     socket.on('stopTyping', handleStopTyping);
