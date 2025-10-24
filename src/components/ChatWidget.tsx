@@ -141,7 +141,11 @@ const ChatWidget: React.FC = () => {
   // WebSocket integration for real-time chat
   useEffect(() => {
     const socket = getSocket();
-    if (!socket) return;
+    if (!socket) {
+      console.log('❌ ChatWidget: No socket available');
+      setSocketConnected(false);
+      return;
+    }
 
     // Track processed message IDs to prevent duplicates
     const processedMessageIds = new Set<string>();
@@ -184,12 +188,31 @@ const ChatWidget: React.FC = () => {
       }
     };
 
+    // Set socket connection status
+    setSocketConnected(socket.connected);
+    
+    // Listen for connection status changes
+    const handleConnect = () => {
+      console.log('✅ ChatWidget: Socket connected');
+      setSocketConnected(true);
+    };
+
+    const handleDisconnect = () => {
+      console.log('❌ ChatWidget: Socket disconnected');
+      setSocketConnected(false);
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+
     // Only listen to receiveMessage - remove other duplicate listeners
     socket.on("receiveMessage", handleNewMessage);
     socket.on("typing", handleTyping);
     socket.on("stopTyping", handleStopTyping);
 
     return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
       socket.off("receiveMessage", handleNewMessage);
       socket.off("typing", handleTyping);
       socket.off("stopTyping", handleStopTyping);
