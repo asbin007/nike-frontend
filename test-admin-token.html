@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Token Setup Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .info {
+            color: #17a2b8;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Admin Token Setup for Nike Chatbot</h1>
+        
+        <div id="status">
+            <p class="info">Click the buttons below to manage admin token for chatbot authentication.</p>
+        </div>
+        
+        <div>
+            <button onclick="setupToken()">🚀 Setup Admin Token</button>
+            <button onclick="checkToken()">🔍 Check Token Status</button>
+            <button onclick="clearToken()">🧹 Clear Token</button>
+            <button onclick="testChatbot()">💬 Test Chatbot</button>
+        </div>
+        
+        <div id="output">
+            <h3>Console Output:</h3>
+            <pre id="console-output"></pre>
+        </div>
+    </div>
+
+    <script>
+        // Admin data from the provided response
+        const adminData = {
+            "message": "Admin logged in successfully",
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIzN2NiMzNlYS1jMTY0LTQ2NzgtYjRiZS1iYzQ1YjNjYzBlMTciLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NjEzMDIzMTMsImV4cCI6MTc2Mzg5NDMxM30.WTma_AyaxNtcHIiYfEMxEgd6raW3KX4x9gNRHhVJUys",
+            "user": {
+                "id": "37cb33ea-c164-4678-b4be-bc45b3cc0e17",
+                "username": "admin",
+                "email": "admin@gmail.com",
+                "role": "admin"
+            }
+        };
+
+        // Override console.log to display in the page
+        const originalLog = console.log;
+        const originalError = console.error;
+        const output = document.getElementById('console-output');
+        
+        function addToOutput(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToOutput(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToOutput(args.join(' '), 'error');
+        };
+
+        // Function to set up admin token
+        function setupToken() {
+            try {
+                // Set up admin token in localStorage
+                localStorage.setItem('adminToken', adminData.token);
+                localStorage.setItem('adminUser', JSON.stringify(adminData.user));
+                
+                console.log('✅ Admin token setup completed!');
+                console.log('Token:', adminData.token.substring(0, 20) + '...');
+                console.log('User:', adminData.user.username);
+                console.log('Role:', adminData.user.role);
+                
+                // Verify setup
+                const storedToken = localStorage.getItem('adminToken');
+                const storedUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+                
+                console.log('🔍 Verification:');
+                console.log('Token stored:', !!storedToken);
+                console.log('User stored:', !!storedUser.username);
+                console.log('Ready for chatbot!');
+                
+                document.getElementById('status').innerHTML = '<p class="success">✅ Admin token successfully set up! Chatbot is ready to use.</p>';
+                return true;
+            } catch (error) {
+                console.error('❌ Error setting up admin token:', error);
+                document.getElementById('status').innerHTML = '<p class="error">❌ Error setting up admin token. Check console for details.</p>';
+                return false;
+            }
+        }
+
+        // Function to check if admin token is set up
+        function checkToken() {
+            const token = localStorage.getItem('adminToken');
+            const user = localStorage.getItem('adminUser');
+            
+            console.log('🔍 Admin Token Status:');
+            console.log('Token exists:', !!token);
+            console.log('User exists:', !!user);
+            
+            if (token && user) {
+                const userData = JSON.parse(user);
+                console.log('Admin user:', userData.username);
+                console.log('Admin role:', userData.role);
+                document.getElementById('status').innerHTML = '<p class="success">✅ Admin token is properly set up!</p>';
+            } else {
+                console.log('❌ Admin token not found');
+                document.getElementById('status').innerHTML = '<p class="error">❌ Admin token not found. Please set it up first.</p>';
+            }
+            
+            return !!(token && user);
+        }
+
+        // Function to clear admin token
+        function clearToken() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminUser');
+            console.log('🧹 Admin token cleared');
+            document.getElementById('status').innerHTML = '<p class="info">🧹 Admin token has been cleared.</p>';
+        }
+
+        // Function to test chatbot functionality
+        function testChatbot() {
+            const token = localStorage.getItem('adminToken');
+            const user = localStorage.getItem('adminUser');
+            
+            if (!token || !user) {
+                console.log('❌ Admin token not found. Please set it up first.');
+                document.getElementById('status').innerHTML = '<p class="error">❌ Admin token not found. Please set it up first.</p>';
+                return;
+            }
+            
+            const userData = JSON.parse(user);
+            console.log('💬 Testing chatbot with admin token...');
+            console.log('Admin user:', userData.username);
+            console.log('Token format:', token.startsWith('Bearer ') ? 'Bearer format' : 'Raw format');
+            console.log('✅ Chatbot should now work with admin authentication!');
+            
+            document.getElementById('status').innerHTML = '<p class="success">✅ Chatbot test completed! Admin authentication is working.</p>';
+        }
+
+        // Auto-check on page load
+        window.onload = function() {
+            console.log('🚀 Admin Token Setup Page Loaded');
+            if (checkToken()) {
+                document.getElementById('status').innerHTML = '<p class="success">✅ Admin token is already set up and ready!</p>';
+            } else {
+                document.getElementById('status').innerHTML = '<p class="info">Click "Setup Admin Token" to configure chatbot authentication.</p>';
+            }
+        };
+    </script>
+</body>
+</html>

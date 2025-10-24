@@ -11,6 +11,7 @@ import {
   setTyping,
   updateChatLastMessage
 } from '../store/chatSlice';
+import { getFormattedAdminToken, getAdminUser } from '../utils/adminToken';
 
 interface Message {
   id: string;
@@ -74,9 +75,11 @@ const ChatWidget: React.FC = () => {
   
   // Get proper token for API calls (normalize Bearer prefix)
   const getAuthToken = useCallback(() => {
+    // Check for admin token first, then fallback to regular token
+    const adminToken = getFormattedAdminToken();
     const fromRedux = user?.token ?? '';
     const fromLocal = localStorage.getItem('tokenauth') || '';
-    const raw = fromLocal || fromRedux || '';
+    const raw = adminToken || fromLocal || fromRedux || '';
     if (!raw) return '';
     return raw.startsWith('Bearer ') ? raw : `Bearer ${raw}`;
   }, [user?.token]);
@@ -85,8 +88,10 @@ const ChatWidget: React.FC = () => {
   useEffect(() => {
     const fromRedux = user?.token ?? '';
     const fromLocal = localStorage.getItem('tokenauth') || '';
+    const adminToken = getFormattedAdminToken();
     const normalized = getAuthToken();
-    console.log('[ChatWidget][Auth] user.id:', user?.id, 'has redux token:', !!fromRedux, 'has local token:', !!fromLocal, 'normalized set:', !!normalized);
+    const adminUser = getAdminUser();
+    console.log('[ChatWidget][Auth] user.id:', user?.id, 'has redux token:', !!fromRedux, 'has local token:', !!fromLocal, 'has admin token:', !!adminToken, 'admin user:', adminUser?.username, 'normalized set:', !!normalized);
   }, [user?.id, user?.token, getAuthToken]);
 
   // Drag handling functions
@@ -455,7 +460,7 @@ const ChatWidget: React.FC = () => {
     };
 
     fetchMessages();
-  }, [dispatch, currentChat?.id]);
+  }, [dispatch, currentChat?.id, getAuthToken]);
 
   const handleOpenChat = async () => {
     // Immediately show chat UI

@@ -44,13 +44,16 @@ const APIS = axios.create({
 // Enhanced request interceptor for Render backend
 APIS.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const raw = localStorage.getItem("tokenauth") || "";
+    // Check for admin token first, then fallback to regular token
+    const adminToken = localStorage.getItem("adminToken");
+    const regularToken = localStorage.getItem("tokenauth");
+    const raw = adminToken || regularToken || "";
     const token = raw.startsWith("Bearer ") ? raw : (raw ? `Bearer ${raw}` : "");
     const headers: AxiosHeaders = (config.headers ?? new AxiosHeaders()) as AxiosHeaders;
     if (token) headers.set("Authorization", token);
     else headers.delete("Authorization");
     config.headers = headers;
-    console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url} (using ${adminToken ? 'admin' : 'regular'} token)`);
     return config;
   },
   (error: AxiosError) => {
@@ -70,10 +73,8 @@ APIS.interceptors.response.use(
     
     // Handle 401 errors
     if (error.response?.status === 401) {
-      console.log("🔐 Authentication error, clearing token");
-      localStorage.removeItem("tokenauth");
-      localStorage.removeItem("userData");
-      // Don't redirect automatically, let components handle it
+      // Keep token in storage to allow silent re-auth flows; components decide logout
+      console.log("🔐 401 received. Preserving token; app will handle logout if needed.");
     }
     
     return Promise.reject(error);
