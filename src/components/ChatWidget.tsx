@@ -342,9 +342,9 @@ const ChatWidget: React.FC = () => {
       console.log('💬 Current chat ID:', currentChat?.id);
       console.log('💬 Message chat ID:', message.chatId);
       console.log('💬 Message sender ID:', message.senderId);
-      console.log('💬 Current currentUser ID:', user.id);
+      console.log('💬 Current user ID:', user.id);
       
-      // Check if message is for current chat and not from current currentUser
+      // Check if message is for current chat and not from current user
       if (message.chatId === currentChat?.id && message.senderId !== user.id) {
         // Check if message already exists to prevent duplicates
         const messageExists = messages.some(msg => msg.id === message.id);
@@ -356,9 +356,9 @@ const ChatWidget: React.FC = () => {
           console.log('ℹ️ Message already exists, skipping duplicate');
         }
       } else if (message.chatId === currentChat?.id && message.senderId === user.id) {
-        console.log('ℹ️ Message from current currentUser, not adding to avoid duplicate');
+        console.log('ℹ️ Message from current user, not adding to avoid duplicate');
       } else {
-        console.log('❌ Message not for current chat or from current currentUser');
+        console.log('❌ Message not for current chat or from current user');
       }
     };
 

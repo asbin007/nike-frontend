@@ -83,7 +83,13 @@ const AppContent = () => {
 
   // Socket connection and event listeners
   useEffect(() => {
-    const token = localStorage.getItem("tokenauth") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyODgxOTE4My04MWM5LTRhYjktYmE2NS0wNGIxYzNlOTRmY2QiLCJpYXQiOjE3NTgyOTE5NzgsImV4cCI6MTc2MDg4Mzk3OH0.BjYDw7HHmAZcbUImpWfBd89YVGpJGT14E2AFpTl9z5k";
+    const token = localStorage.getItem("tokenauth");
+    
+    // Only initialize socket if we have a token
+    if (!token) {
+      console.log("⚠️ No auth token found, skipping socket initialization");
+      return;
+    }
     
     // Initialize socket if not already done
     if (!socket) {
@@ -94,15 +100,15 @@ const AppContent = () => {
             token: token,
           },
           transports: ['websocket', 'polling'],
-          timeout: 20000,
+          timeout: 30000,
           reconnection: true,
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
-          forceNew: true,
+          reconnectionAttempts: 3,
+          reconnectionDelay: 2000,
+          reconnectionDelayMax: 10000,
+          forceNew: false,
           autoConnect: true,
           upgrade: true,
-          rememberUpgrade: true,
+          rememberUpgrade: false,
         });
         console.log("✅ Socket initialized successfully");
       } catch (error) {
@@ -283,10 +289,8 @@ const AppContent = () => {
     return () => {
       if (cleanupAdminListeners) cleanupAdminListeners();
       
-      // Remove all socket listeners
-      if (socket) {
-        socket.removeAllListeners();
-      }
+      // Don't remove all listeners here as it might interfere with ChatWidget
+      // Only clean up specific listeners if needed
     };
   }, [dispatch]);
 
