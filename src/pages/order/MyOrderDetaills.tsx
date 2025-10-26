@@ -243,13 +243,22 @@ function MyOrderDetail() {
                 <div className="flex items-center space-x-2 mt-1 sm:mt-2">
                   <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
                   <p className="text-sm sm:text-base text-gray-600">
-                    {order?.createdAt
-                      ? new Date(order?.createdAt).toLocaleDateString('en-US', {
+                    {(() => {
+                      // Safely parse and display date
+                      const dateStr = order?.createdAt || order?.Order?.createdAt;
+                      if (!dateStr) return "N/A";
+                      try {
+                        const date = new Date(dateStr);
+                        if (isNaN(date.getTime())) return "Invalid Date";
+                        return date.toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
-                        })
-                      : "N/A"}
+                        });
+                      } catch {
+                        return "N/A";
+                      }
+                    })()}
                   </p>
                 </div>
               </div>

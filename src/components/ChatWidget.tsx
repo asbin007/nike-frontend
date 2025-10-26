@@ -62,7 +62,14 @@ const ChatWidget: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [location, setLocation] = useState<{lat: number, lng: number, address: string} | null>(null);
-  const [position, setPosition] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 100 });
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [position, setPosition] = useState(() => {
+    // Initialize position near bottom-right corner
+    return { 
+      x: window.innerWidth - 80, 
+      y: window.innerHeight - 100 
+    };
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -71,7 +78,7 @@ const ChatWidget: React.FC = () => {
 
 
   // Backend URL with fallback
-  const baseURL = "https://nike-backend-1-g9i6.onrender.com/api";
+  const baseURL = "http://localhost:5000/api";
   
   // Get proper token for API calls (normalize Bearer prefix)
   const getAuthToken = useCallback(() => {
@@ -138,6 +145,20 @@ const ChatWidget: React.FC = () => {
     };
   }, [isDragging, dragStart, handleMouseMove]);
 
+  // Update position on window resize to keep widget within bounds
+  useEffect(() => {
+    const handleResize = () => {
+      // Ensure widget stays within viewport bounds
+      setPosition(prev => ({
+        x: Math.min(prev.x, window.innerWidth - 60),
+        y: Math.min(prev.y, window.innerHeight - 60)
+      }));
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // WebSocket integration for real-time chat
   useEffect(() => {
     const socket = getSocket();
@@ -168,8 +189,14 @@ const ChatWidget: React.FC = () => {
         
         // Show notification if not from current currentUser
         if (message.senderId !== user?.id) {
-          toast.success(`New message from ${message.Sender?.username || 'Admin'}`, {
+          // Increment unread count if chat is closed or minimized
+          if (!isOpen || isMinimized) {
+            setUnreadCount(prev => prev + 1);
+          }
+          toast.success(`💬 New message from ${message.Sender?.username || 'Admin'}`, {
             duration: 3000,
+            position: 'top-right',
+            icon: '💬',
           });
         }
       }
@@ -217,7 +244,7 @@ const ChatWidget: React.FC = () => {
       socket.off("typing", handleTyping);
       socket.off("stopTyping", handleStopTyping);
     };
-  }, [dispatch, currentChat?.id, user?.id, getAuthToken]);
+  }, [dispatch, currentChat?.id, user?.id, getAuthToken, isOpen, isMinimized]);
 
   // Initialize chat on component mount
   useEffect(() => {
@@ -287,24 +314,32 @@ const ChatWidget: React.FC = () => {
   // Fetch admin users for chat (reusable)
   const fetchAdminUsers = useCallback(async () => {
     try {
-      const response = await fetch(`${baseURL}/auth/users`, {
+      console.log('🔍 Fetching admin users from:', `${baseURL}/chats/admins`);
+      const response = await fetch(`${baseURL}/chats/admins`, {
         headers: {
           'Authorization': getAuthToken(),
           'Content-Type': 'application/json',
         },
       });
       
+      console.log('📡 Admin users response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        const users = data?.data || data?.users || [];
-        const admins = users.filter((u: { role?: string }) => (u?.role || '').toLowerCase() === 'admin');
+        console.log('📊 Admin users data:', data);
+        const admins = data?.data || data || [];
         setAdminUsers(admins);
+        console.log('✅ Admin users fetched:', admins.length);
       } else {
         const text = await response.text();
-        console.error('Error fetching admin users:', response.status, text);
+        console.error('❌ Error fetching admin users:', response.status, text);
+        // Set a fallback admin user
+        setAdminUsers([{ id: 'default-admin-id', username: 'Support Team', email: 'admin@nike-store.com', role: 'admin' }]);
       }
     } catch (error) {
-      console.error('Error fetching admin users:', error);
+      console.error('❌ Error fetching admin users:', error);
+      // Set a fallback admin user
+      setAdminUsers([{ id: 'default-admin-id', username: 'Support Team', email: 'admin@nike-store.com', role: 'admin' }]);
     }
   }, [baseURL, getAuthToken]);
 
@@ -351,7 +386,16 @@ const ChatWidget: React.FC = () => {
         if (!messageExists) {
           console.log('✅ Adding message to current chat (from admin)');
           dispatch(addMessage(message));
-          toast.success('New message received!');
+          
+          // Show notification if chat is closed or minimized
+          if (!isOpen || isMinimized) {
+            setUnreadCount(prev => prev + 1);
+            toast.success(`💬 New message from ${message.Sender?.username || 'Admin'}`, {
+              duration: 3000,
+              position: 'top-right',
+              icon: '💬',
+            });
+          }
         } else {
           console.log('ℹ️ Message already exists, skipping duplicate');
         }
@@ -408,7 +452,7 @@ const ChatWidget: React.FC = () => {
       socket.off('typing', handleTyping);
       socket.off('stopTyping', handleStopTyping);
     };
-  }, [dispatch, currentChat?.id, user.id, messages]);
+  }, [dispatch, currentChat?.id, user.id, messages, isOpen, isMinimized]);
 
   // Auto-refresh messages every 5 seconds as fallback
   useEffect(() => {
@@ -489,6 +533,8 @@ const ChatWidget: React.FC = () => {
     // Immediately show chat UI
     setIsOpen(true);
     setIsMinimized(false);
+    // Reset unread count when opening chat
+    setUnreadCount(0);
 
     // Ensure token present
     const authToken = getAuthToken();
@@ -502,11 +548,19 @@ const ChatWidget: React.FC = () => {
       await fetchAdminUsers();
     }
     
+    // Check if we have a valid admin ID
+    if (!adminUsers[0] || !adminUsers[0].id) {
+      console.error('❌ No admin available for chat');
+      toast.error('No support agent available. Please try again later.');
+      return;
+    }
+    
     try {
       setIsLoading(true);
       console.log('🔄 Creating chat with admin:', adminUsers[0]);
       console.log('🌐 Making API call to:', `${baseURL}/chats/get-or-create`);
       console.log('🔑 Token:', localStorage.getItem('tokenauth') ? 'Present' : 'Missing');
+      console.log('👤 Sending adminId:', adminUsers[0].id);
       
       const response = await fetch(`${baseURL}/chats/get-or-create`, {
         method: 'POST',
@@ -514,7 +568,7 @@ const ChatWidget: React.FC = () => {
           'Authorization': authToken,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(adminUsers[0]?.id ? { adminId: adminUsers[0].id } : {})
+        body: JSON.stringify({ adminId: adminUsers[0].id })
       });
       
       console.log('📡 API Response status:', response.status);
@@ -678,10 +732,11 @@ const ChatWidget: React.FC = () => {
     return (
       <div 
         ref={dragRef}
-        className="fixed z-50 cursor-pointer select-none bottom-3 right-8 sm:bottom-4 sm:right-10 md:bottom-6 md:right-12 lg:bottom-8 lg:right-14"
+        className="fixed cursor-pointer select-none"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
+          zIndex: 9999,
           transform: isDragging ? 'scale(1.1)' : 'scale(1)',
           transition: isDragging ? 'none' : 'transform 0.2s ease'
         }}
@@ -698,9 +753,9 @@ const ChatWidget: React.FC = () => {
             </div>
           )}
           {/* Notification Badge */}
-          {messages.length > 0 && (
-            <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 bg-red-500 text-white text-xs rounded-full w-3.5 h-3.5 sm:w-4 sm:h-4 flex items-center justify-center font-bold shadow-lg animate-pulse">
-              {messages.length > 9 ? '9+' : messages.length}
+          {unreadCount > 0 && (
+            <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-bold shadow-lg animate-bounce">
+              {unreadCount > 9 ? '9+' : unreadCount}
             </div>
           )}
           <div className="absolute -top-10 sm:-top-12 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap shadow-xl">
@@ -717,11 +772,12 @@ const ChatWidget: React.FC = () => {
 
   // When chat is open, don't show the floating button
   return (
-    <div className={`fixed bottom-4 right-8 z-50 bg-white rounded-3xl shadow-2xl border border-gray-100 ${
+    <div className={`fixed bottom-4 right-8 bg-white rounded-3xl shadow-2xl border border-gray-100 ${
       isMinimized 
         ? 'w-72 h-14 sm:w-80 sm:h-16' 
         : 'w-80 h-96 sm:w-96 sm:h-[400px] md:w-[380px] md:h-[450px]'
-    } overflow-hidden backdrop-blur-sm flex flex-col`}>
+    } overflow-hidden backdrop-blur-sm flex flex-col`}
+    style={{ zIndex: 9999 }}>
         {/* Header */}
       <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white p-3 sm:p-4 md:p-5 rounded-t-3xl flex items-center justify-between relative overflow-hidden min-h-[60px] w-full flex-shrink-0">
         {/* Background Pattern */}
@@ -756,8 +812,22 @@ const ChatWidget: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center space-x-1 relative z-50 flex-shrink-0">
+          {/* Show notification badge when minimized */}
+          {isMinimized && unreadCount > 0 && (
+            <div className="relative mr-2">
+              <div className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-lg animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </div>
+            </div>
+          )}
           <button
-            onClick={() => setIsMinimized(!isMinimized)}
+            onClick={() => {
+              setIsMinimized(!isMinimized);
+              if (!isMinimized) {
+                // Reset unread count when maximizing
+                setUnreadCount(0);
+              }
+            }}
             className="text-white hover:text-white hover:bg-white/20 p-2 rounded-xl transition-all duration-200 hover:scale-110 border border-white/20 hover:border-white/40"
             title={isMinimized ? "Maximize" : "Minimize"}
           >
@@ -992,7 +1062,8 @@ const ChatWidget: React.FC = () => {
 
         {/* Location Modal */}
         {showLocationModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+          style={{ zIndex: 10000 }}>
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
               <h3 className="text-lg font-semibold mb-4">Send Location</h3>
               <p className="text-gray-600 mb-4">Get your current location to share with admin</p>

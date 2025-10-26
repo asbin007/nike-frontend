@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import toast from "react-hot-toast";
 import { CartSkeleton } from "../../components/SkeletonLoader";
 import CouponInput from "../../components/CouponInput";
+import BackButton from "../../components/BackButton";
 
 function MyCart() {
   const { data } = useAppSelector((store) => store.cart);
@@ -109,6 +110,9 @@ function MyCart() {
   return (
     <div className="bg-gray-100 min-h-screen py-4 sm:py-6 md:py-8">
       <div className="container mx-auto px-3 sm:px-4">
+        <div className="mb-4">
+          <BackButton />
+        </div>
         <h1 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">Shopping Cart</h1>
 
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">

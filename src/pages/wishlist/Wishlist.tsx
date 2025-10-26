@@ -5,6 +5,7 @@ import { removeFromWishlist, clearWishlist, WishlistItem, syncWishlistStock } fr
 import { fetchProducts } from "../../store/productSlice";
 import toast from "react-hot-toast";
 import { WishlistSkeleton } from "../../components/SkeletonLoader";
+import BackButton from "../../components/BackButton";
 import { useEffect, useState } from "react";
 
 export default function Wishlist() {
@@ -112,6 +113,10 @@ export default function Wishlist() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-4 sm:py-6 md:py-8">
       <div className="container mx-auto px-3 sm:px-4 lg:px-6">
+        {/* Back Button */}
+        <div className="mb-4">
+          <BackButton />
+        </div>
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-4">

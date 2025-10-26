@@ -582,7 +582,7 @@ export const fetchAllCollections = createAsyncThunk(
         if (airMaxProduct) {
           console.log('🧪 Air Max 270 test:', {
             originalImages: airMaxProduct.images,
-            expectedURL: airMaxProduct.images?.[0] ? `https://nike-backend-1-g9i6.onrender.com${airMaxProduct.images[0]}.jpg` : 'No images'
+            expectedURL: airMaxProduct.images?.[0] ? `http://localhost:5000${airMaxProduct.images[0]}.jpg` : 'No images'
           });
         }
       }

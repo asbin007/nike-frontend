@@ -10,6 +10,7 @@ import Review from "./Review";
 import ProductRecommendations from "../../components/ProductRecommendations";
 import { ProductDetailSkeleton } from "../../components/SkeletonLoader";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Heart } from "lucide-react";
+import BackButton from "../../components/BackButton";
 import toast from "react-hot-toast";
 
 const CLOUDINARY_VERSION = "v1750340657";
@@ -272,6 +273,9 @@ const ProductDetail = () => {
     <>
       <section className="py-6 sm:py-8 md:py-12 bg-white">
         <div className="container mx-auto px-3 sm:px-4">
+          <div className="mb-4">
+            <BackButton />
+          </div>
           <div className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
             <Link to="/" className="hover:text-indigo-600">
               Home

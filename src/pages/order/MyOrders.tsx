@@ -12,6 +12,7 @@ import {
 import { Package, Search, Clock, CheckCircle, XCircle, Truck, CreditCard, Eye, RefreshCw, Wifi, WifiOff, Calendar } from "lucide-react";
 import { OrderStatus, PaymentStatus } from "./types";
 import { OrderSkeleton } from "../../components/SkeletonLoader";
+import BackButton from "../../components/BackButton";
 import toast from "react-hot-toast";
 
 function MyOrder() {
@@ -293,6 +294,10 @@ function MyOrder() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-4 sm:py-6 md:py-8 px-3 sm:px-4">
       <div className="max-w-7xl mx-auto">
+        {/* Back Button */}
+        <div className="mb-4">
+          <BackButton />
+        </div>
         {/* Header Section */}
         <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
@@ -428,34 +433,49 @@ function MyOrder() {
                             <Calendar className="w-4 h-4 text-gray-500" />
                             <div className="flex flex-col">
                               <span className="text-sm font-medium text-gray-800">
-                                {item.createdAt 
-                                  ? new Date(item.createdAt).toLocaleDateString('en-US', {
+                                {(() => {
+                                  // Try multiple date field names
+                                  const dateStr = item.createdAt 
+                                    || (item as any).orderDate 
+                                    || (item as any).created_at
+                                    || (item as any).createdDate
+                                    || (item as any).date;
+                                  
+                                  if (!dateStr) return "N/A";
+                                  try {
+                                    const date = new Date(dateStr);
+                                    if (isNaN(date.getTime())) return "N/A";
+                                    return date.toLocaleDateString('en-US', {
                                       year: 'numeric',
                                       month: 'short',
                                       day: 'numeric'
-                                    })
-                                  : (item as any).orderDate
-                                    ? new Date((item as any).orderDate).toLocaleDateString('en-US', {
-                                        year: 'numeric',
-                                        month: 'short',
-                                        day: 'numeric'
-                                      })
-                                    : "Loading..."
-                                }
+                                    });
+                                  } catch {
+                                    return "N/A";
+                                  }
+                                })()}
                               </span>
                               <span className="text-xs text-gray-500">
-                                {item.createdAt 
-                                  ? new Date(item.createdAt).toLocaleTimeString('en-US', {
+                                {(() => {
+                                  // Try multiple date field names
+                                  const dateStr = item.createdAt 
+                                    || (item as any).orderDate 
+                                    || (item as any).created_at
+                                    || (item as any).createdDate
+                                    || (item as any).date;
+                                  
+                                  if (!dateStr) return "";
+                                  try {
+                                    const date = new Date(dateStr);
+                                    if (isNaN(date.getTime())) return "";
+                                    return date.toLocaleTimeString('en-US', {
                                       hour: '2-digit',
                                       minute: '2-digit'
-                                    })
-                                  : (item as any).orderDate
-                                    ? new Date((item as any).orderDate).toLocaleTimeString('en-US', {
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                      })
-                                    : ""
-                                }
+                                    });
+                                  } catch {
+                                    return "";
+                                  }
+                                })()}
                               </span>
                             </div>
                           </div>

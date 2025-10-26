@@ -23,6 +23,13 @@ interface CouponState {
   error: string | null;
 }
 
+// Helper function to get date 1 month from now
+const getValidUntilDate = () => {
+  const date = new Date();
+  date.setMonth(date.getMonth() + 1);
+  return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
+};
+
 const initialState: CouponState = {
   availableCoupons: [
     {
@@ -34,7 +41,7 @@ const initialState: CouponState = {
       discountValue: 50,
       minSpend: 5000,
       maxDiscount: 10000,
-      validUntil: '2025-10-20',
+      validUntil: getValidUntilDate(),
       category: 'Nike',
       isActive: true,
       usageLimit: 1000,
@@ -49,7 +56,7 @@ const initialState: CouponState = {
       discountValue: 100,
       minSpend: 8000,
       maxDiscount: 15000,
-      validUntil: '2025-11-05',
+      validUntil: getValidUntilDate(),
       category: 'Adidas',
       isActive: true,
       usageLimit: 500,
@@ -64,7 +71,7 @@ const initialState: CouponState = {
       discountValue: 15,
       minSpend: 3000,
       maxDiscount: 5000,
-      validUntil: '2025-10-30',
+      validUntil: getValidUntilDate(),
       category: 'Puma',
       isActive: true,
       usageLimit: 2000,

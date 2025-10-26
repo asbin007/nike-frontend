@@ -34,9 +34,9 @@ import ChatWidget from "./components/ChatWidget";
 // Add version for deployment tracking
 const APP_VERSION = "1.0.2";
 
-// Render backend socket configuration
-const RENDER_BACKEND_URL = "https://nike-backend-1-g9i6.onrender.com";
-const SOCKET_URL = RENDER_BACKEND_URL;
+// Local backend socket configuration
+const LOCAL_BACKEND_URL = "http://localhost:5000";
+const SOCKET_URL = LOCAL_BACKEND_URL;
 
 // Socket configuration
 let socket: ReturnType<typeof io> | undefined;

@@ -109,7 +109,7 @@ export default function Hero() {
       console.log('🖼️ Fetching real-time product data for slider...');
       
       // Fetch real-time product data from API
-      const response = await fetch('https://nike-backend-1-g9i6.onrender.com/api/product?limit=20&sort=createdAt&order=desc');
+      const response = await fetch('http://localhost:5000/api/product?limit=20&sort=createdAt&order=desc');
       
       if (response.ok) {
         const data = await response.json();

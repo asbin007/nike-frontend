@@ -496,23 +496,53 @@ export function fetchMyOrders() {
         }
         
         // Transform and normalize the order data
-        const normalizedOrders = ordersData.map((order: any) => ({
-          ...order,
-          // Ensure we have all required fields with fallbacks
-          id: order.id || order.orderId || order._id || 'unknown',
-          orderStatus: order.orderStatus || order.status || 'pending',
-          totalPrice: order.totalPrice || order.price || order.amount || 0,
-          createdAt: order.createdAt || order.orderDate || order.created_at || new Date().toISOString(),
-          Payment: order.Payment || {
-            paymentMethod: order.paymentMethod || 'cod',
-            paymentStatus: order.paymentStatus || order.payment_status || 'pending'
-          }
-        }));
+        const normalizedOrders = ordersData.map((order: any) => {
+          // Helper function to safely parse date
+          const parseDate = (dateString: string | undefined): string => {
+            if (!dateString) return '';
+            try {
+              const date = new Date(dateString);
+              if (isNaN(date.getTime())) return '';
+              return date.toISOString();
+            } catch {
+              return '';
+            }
+          };
+
+          // Try multiple date field names from backend (including nested Order fields)
+          const dateFromField = parseDate(order.createdAt) 
+            || parseDate(order.orderDate) 
+            || parseDate(order.created_at)
+            || parseDate(order.createdDate)
+            || parseDate(order.orderCreatedAt)
+            || parseDate(order.date)
+            || parseDate(order.timestamp)
+            || parseDate(order.Order?.createdAt)
+            || parseDate(order.Order?.orderDate)
+            || parseDate(order.Order?.created_at)
+            || '';
+
+          return {
+            ...order,
+            // Ensure we have all required fields with fallbacks
+            id: order.id || order.orderId || order._id || 'unknown',
+            orderStatus: order.orderStatus || order.status || 'pending',
+            totalPrice: order.totalPrice || order.price || order.amount || 0,
+            createdAt: dateFromField,
+            Payment: order.Payment || {
+              paymentMethod: order.paymentMethod || 'cod',
+              paymentStatus: order.paymentStatus || order.payment_status || 'pending'
+            }
+          };
+        });
         
         // Sort orders by creation date (latest first)
         const sortedOrders = normalizedOrders.sort((a: any, b: any) => {
-          const dateA = new Date(a.createdAt).getTime();
-          const dateB = new Date(b.createdAt).getTime();
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          if (!a.createdAt && !b.createdAt) return 0; // Both missing dates, keep order
+          if (!a.createdAt) return 1; // Missing date goes to bottom
+          if (!b.createdAt) return -1; // Missing date goes to bottom
           return dateB - dateA; // Latest first
         });
         

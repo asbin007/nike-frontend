@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosResponse, AxiosHeaders, InternalAxiosRequestConfig } from "axios";
 
-// Function to get backend URL with fallback
+// Function to get backend URL with fallback - COMMENTED OUT FOR LOCAL DEVELOPMENT
 // const getBackendUrl = async () => {
 //   try {
 //     // Try Render first
@@ -20,10 +20,10 @@ import axios, { AxiosError, AxiosResponse, AxiosHeaders, InternalAxiosRequestCon
 //   return "http://localhost:5000/api";
 // };
 
-// Simple static configuration to prevent UI crashes
+// Simple static configuration for local development
 const API = axios.create({
-  baseURL: "https://nike-backend-1-g9i6.onrender.com/api",
-  // baseURL: "http://localhost:5000/api",
+  // baseURL: "https://nike-backend-1-g9i6.onrender.com/api", // COMMENTED OUT FOR PRODUCTION
+  baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -32,8 +32,8 @@ const API = axios.create({
 });
 
 const APIS = axios.create({
-  baseURL: "https://nike-backend-1-g9i6.onrender.com/api",
-  // baseURL: "http://localhost:5000/api",
+  // baseURL: "https://nike-backend-1-g9i6.onrender.com/api", // COMMENTED OUT FOR PRODUCTION
+  baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -41,7 +41,7 @@ const APIS = axios.create({
   timeout: 120000, // Increased timeout to 120 seconds for Render delays
 });
 
-// Enhanced request interceptor for Render backend
+// Enhanced request interceptor for local backend
 APIS.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Check for admin token first, then fallback to regular token
@@ -62,7 +62,7 @@ APIS.interceptors.request.use(
   }
 );
 
-// Enhanced response interceptor for Render backend
+// Enhanced response interceptor for local backend
 APIS.interceptors.response.use(
   (response: AxiosResponse) => {
     console.log(`✅ API Response: ${response.status} ${response.config?.url}`);

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useAppSelector } from "@/store/hooks";
 import { useLocation } from "react-router-dom";
 import ProductCard from "./components/ProductCard";
+import BackButton from "../../components/BackButton";
 
 const useQuery = () => new URLSearchParams(useLocation().search);
 
@@ -33,6 +34,9 @@ const SearchProducts = () => {
 
   return (
     <div className="p-3 sm:p-4 md:p-6">
+      <div className="mb-4">
+        <BackButton />
+      </div>
       <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
         Search Results for:{" "}
         <span className="text-blue-600">"{query.get("query")}"</span>

@@ -4,6 +4,7 @@ import { orderItem, checkKhaltiPaymentStatus, PaymentMethod } from "../../store/
 import { IData } from "../../store/orderSlice";
 import { clearCart } from "../../store/cartSlice";
 import toast from "react-hot-toast";
+import BackButton from "../../components/BackButton";
 // import { useNavigate } from "react-router-dom"; // Not needed since redirects are handled in orderSlice
 
 const CLOUDINARY_VERSION = "v1750340657";
@@ -465,6 +466,9 @@ function Checkout() {
 
   return (
     <div className="font-[sans-serif] bg-white">
+      <div className="px-3 sm:px-4 pt-4 sm:pt-6">
+        <BackButton />
+      </div>
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-12 h-full">
         <div className="bg-gray-100 lg:h-screen lg:sticky lg:top-0 lg:min-w-[370px] sm:min-w-[300px]">
           <div className="relative h-full">
