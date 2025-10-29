@@ -244,39 +244,43 @@ function MyOrderDetail() {
                   <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
                   <p className="text-sm sm:text-base text-gray-600">
                     {(() => {
-                      // Try multiple possible date fields to be robust against backend variations
-                      const getString = (obj: unknown, key: string): string | undefined => {
-                        if (obj && typeof obj === 'object' && key in (obj as Record<string, unknown>)) {
-                          const val = (obj as Record<string, unknown>)[key];
-                          return typeof val === 'string' ? val : undefined;
+                      // Accept string | number | Date and multiple key names from both top-level and nested Order
+                      const readDate = (obj: unknown, key: string): Date | undefined => {
+                        if (!obj || typeof obj !== 'object' || !(key in (obj as Record<string, unknown>))) return undefined;
+                        const value = (obj as Record<string, unknown>)[key];
+                        if (
+                          typeof value === 'string' ||
+                          typeof value === 'number' ||
+                          value instanceof Date
+                        ) {
+                          const parsed = new Date(value as unknown as string);
+                          return isNaN(parsed.getTime()) ? undefined : parsed;
                         }
                         return undefined;
                       };
 
-                      const top = order as unknown;
-                      const nested = order?.Order as unknown;
-                      const dateStr =
-                        getString(top, 'createdAt') ||
-                        getString(top, 'orderDate') ||
-                        getString(top, 'created_at') ||
-                        getString(top, 'createdDate') ||
-                        getString(nested, 'createdAt') ||
-                        getString(nested, 'created_at') ||
-                        getString(nested, 'orderDate') ||
-                        getString(nested, 'createdDate') ||
-                        getString(top, 'date');
-                      if (!dateStr) return "N/A";
-                      try {
-                        const date = new Date(dateStr);
-                        if (isNaN(date.getTime())) return "N/A";
-                        return date.toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        });
-                      } catch {
-                        return "N/A";
-                      }
+                      const top: unknown = order;
+                      const nested: unknown = order?.Order;
+
+                      const candidates: Array<Date | undefined> = [
+                        readDate(top, 'createdAt'),
+                        readDate(top, 'orderDate'),
+                        readDate(top, 'created_at'),
+                        readDate(top, 'createdDate'),
+                        readDate(nested, 'createdAt'),
+                        readDate(nested, 'orderDate'),
+                        readDate(nested, 'created_at'),
+                        readDate(nested, 'createdDate'),
+                        readDate(top, 'date')
+                      ];
+
+                      const date = candidates.find(Boolean);
+                      if (!date) return "N/A";
+                      return date.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      });
                     })()}
                   </p>
                 </div>
