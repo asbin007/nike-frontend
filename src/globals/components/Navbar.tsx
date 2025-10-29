@@ -278,7 +278,7 @@ export default function Navbar() {
               to="/men" 
               className="font-medium text-gray-700 hover:text-indigo-600 transition-all duration-200 relative group px-3 py-2 rounded-lg hover:bg-indigo-50"
             >
-              Men
+              Man
               <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0.5 bg-indigo-600 group-hover:w-full transition-all duration-300"></span>
             </Link>
             
