@@ -245,7 +245,11 @@ function MyOrderDetail() {
                   <p className="text-sm sm:text-base text-gray-600">
                     {(() => {
                       // Safely parse and display date
-                      const dateStr = order?.createdAt || order?.Order?.createdAt;
+                      const dateStr =
+                        (order?.Order && typeof order.Order === 'object' && 'createdAt' in order.Order
+                          ? (order.Order as { createdAt?: string }).createdAt
+                          : undefined) ||
+                        order?.createdAt;
                       if (!dateStr) return "N/A";
                       try {
                         const date = new Date(dateStr);
