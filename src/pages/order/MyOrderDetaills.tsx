@@ -11,6 +11,7 @@ function MyOrderDetail() {
   const dispatch = useAppDispatch();
   const { id } = useParams();
   const { orderDetails } = useAppSelector((store) => store.orders);
+  const { items } = useAppSelector((store) => store.orders);
   const [isLoading, setIsLoading] = useState(true);
 
   // Debug logging
@@ -223,6 +224,12 @@ function MyOrderDetail() {
 
   const order = orderDetails[0] as IOrderDetail;
   const customer = (order as IOrderDetail)?.Order as IOrderDetail['Order'];
+  const listOrderMatch = (() => {
+    // Try to match current detail with list items to reuse normalized createdAt
+    const detailOrderId = order?.orderId;
+    if (!items || !Array.isArray(items)) return undefined;
+    return items.find((it) => it?.id === detailOrderId || it?.orderId === detailOrderId);
+  })();
   const statusInfo = getStatusInfo(customer?.orderStatus || "");
   const StatusIcon = statusInfo.icon;
 
@@ -268,6 +275,7 @@ function MyOrderDetail() {
                       const top: unknown = order;
                       const nested: unknown = order?.Order;
                       const payment: unknown = order?.Order?.Payment;
+                      const listItem: unknown = listOrderMatch;
 
                       const candidates: Array<Date | undefined> = [
                         readDate(top, 'createdAt'),
@@ -286,7 +294,12 @@ function MyOrderDetail() {
                         readDate(payment, 'created_at'),
                         readDate(payment, 'updatedAt'),
                         readDate(payment, 'updated_at'),
-                        readDate(top, 'date')
+                        readDate(top, 'date'),
+                        // From list (normalized in fetchMyOrders)
+                        readDate(listItem, 'createdAt'),
+                        readDate(listItem, 'created_at'),
+                        readDate(listItem, 'orderDate'),
+                        readDate(listItem, 'createdDate')
                       ];
 
                       const date = candidates.find(Boolean);
