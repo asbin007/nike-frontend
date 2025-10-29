@@ -245,36 +245,57 @@ function MyOrderDetail() {
                   <p className="text-sm sm:text-base text-gray-600">
                     {(() => {
                       // Accept string | number | Date and multiple key names from both top-level and nested Order
-                      const readDate = (obj: unknown, key: string): Date | undefined => {
-                        if (!obj || typeof obj !== 'object' || !(key in (obj as Record<string, unknown>))) return undefined;
-                        const value = (obj as Record<string, unknown>)[key];
-                        if (
-                          typeof value === 'string' ||
-                          typeof value === 'number' ||
-                          value instanceof Date
-                        ) {
-                          const parsed = new Date(value as unknown as string);
-                          return isNaN(parsed.getTime()) ? undefined : parsed;
+                      const toDate = (value: unknown): Date | undefined => {
+                        if (value instanceof Date) return isNaN(value.getTime()) ? undefined : value;
+                        if (typeof value === 'number') {
+                          const millis = value < 1e12 ? value * 1000 : value; // support epoch seconds
+                          const d = new Date(millis);
+                          return isNaN(d.getTime()) ? undefined : d;
+                        }
+                        if (typeof value === 'string') {
+                          const d = new Date(value);
+                          return isNaN(d.getTime()) ? undefined : d;
                         }
                         return undefined;
                       };
 
+                      const readDate = (obj: unknown, key: string): Date | undefined => {
+                        if (!obj || typeof obj !== 'object' || !(key in (obj as Record<string, unknown>))) return undefined;
+                        const value = (obj as Record<string, unknown>)[key];
+                        return toDate(value);
+                      };
+
                       const top: unknown = order;
                       const nested: unknown = order?.Order;
+                      const payment: unknown = order?.Order?.Payment;
 
                       const candidates: Array<Date | undefined> = [
                         readDate(top, 'createdAt'),
                         readDate(top, 'orderDate'),
                         readDate(top, 'created_at'),
                         readDate(top, 'createdDate'),
+                        readDate(top, 'updatedAt'),
+                        readDate(top, 'updated_at'),
                         readDate(nested, 'createdAt'),
                         readDate(nested, 'orderDate'),
                         readDate(nested, 'created_at'),
                         readDate(nested, 'createdDate'),
+                        readDate(nested, 'updatedAt'),
+                        readDate(nested, 'updated_at'),
+                        readDate(payment, 'createdAt'),
+                        readDate(payment, 'created_at'),
+                        readDate(payment, 'updatedAt'),
+                        readDate(payment, 'updated_at'),
                         readDate(top, 'date')
                       ];
 
                       const date = candidates.find(Boolean);
+                      // Debug once per render to help track why it might be N/A
+                      try {
+                        console.debug('🕒 OrderDetails date candidates:', candidates.map(c => (c ? c.toISOString() : null)));
+                      } catch {
+                        /* ignore */
+                      }
                       if (!date) return "N/A";
                       return date.toLocaleDateString('en-US', {
                         year: 'numeric',
