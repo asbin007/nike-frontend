@@ -244,12 +244,31 @@ function MyOrderDetail() {
                   <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
                   <p className="text-sm sm:text-base text-gray-600">
                     {(() => {
-                      // Safely parse and display date
-                      const dateStr = order?.createdAt;
+                      // Try multiple possible date fields to be robust against backend variations
+                      const getString = (obj: unknown, key: string): string | undefined => {
+                        if (obj && typeof obj === 'object' && key in (obj as Record<string, unknown>)) {
+                          const val = (obj as Record<string, unknown>)[key];
+                          return typeof val === 'string' ? val : undefined;
+                        }
+                        return undefined;
+                      };
+
+                      const top = order as unknown;
+                      const nested = order?.Order as unknown;
+                      const dateStr =
+                        getString(top, 'createdAt') ||
+                        getString(top, 'orderDate') ||
+                        getString(top, 'created_at') ||
+                        getString(top, 'createdDate') ||
+                        getString(nested, 'createdAt') ||
+                        getString(nested, 'created_at') ||
+                        getString(nested, 'orderDate') ||
+                        getString(nested, 'createdDate') ||
+                        getString(top, 'date');
                       if (!dateStr) return "N/A";
                       try {
                         const date = new Date(dateStr);
-                        if (isNaN(date.getTime())) return "Invalid Date";
+                        if (isNaN(date.getTime())) return "N/A";
                         return date.toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'long',
