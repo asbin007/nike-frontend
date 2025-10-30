@@ -608,7 +608,7 @@ function Checkout() {
                   >
                     <option value={PaymentMethod.COD}>COD</option>
                     <option value={PaymentMethod.Khalti}>Khalti</option>
-                    <option value={PaymentMethod.Esewa}>Esewa</option>
+                    {/* <option value={PaymentMethod.Esewa}>Esewa</option> Temporarily disabled */}
                   </select>
                 </div>
               </div>
@@ -629,14 +629,14 @@ function Checkout() {
                     Pay with Khalti
                   </button>
                 )}
-                {paymentMethod === PaymentMethod.Esewa && (
+                {/* {paymentMethod === PaymentMethod.Esewa && (
                   <button
                     type="submit"
                     className="rounded-md px-3 sm:px-4 py-2 sm:py-2.5 w-full text-xs sm:text-sm bg-green-600 hover:bg-green-700 text-white"
                   >
                     Pay with Esewa
                   </button>
-                )}
+                )} */} {/* Temporarily disabled */}
               </div>
             </div>
           </form>

@@ -4,7 +4,7 @@ import { logout } from "../../store/authSlice";
 import { Link, useNavigate } from "react-router-dom";
 import { fetchCartItems } from "../../store/cartSlice";
 import toast from "react-hot-toast";
-import { Search, Menu, X, ShoppingBag, User, Heart, ChevronDown, Settings, LogOut, BarChart3, Lock } from "lucide-react";
+import { Search, Menu, X, ShoppingBag, User, Heart, ChevronDown, LogOut, BarChart3, Lock } from "lucide-react";
 import { gsap } from "gsap";
 import { fetchRecommendations } from "../../store/recommendationsSlice";
 
@@ -275,7 +275,7 @@ export default function Navbar() {
             </Link>
             
             <Link 
-              to="/men" 
+              to="/man" 
               className="font-medium text-gray-700 hover:text-indigo-600 transition-all duration-200 relative group px-3 py-2 rounded-lg hover:bg-indigo-50"
             >
               Man
@@ -460,7 +460,11 @@ export default function Navbar() {
                     )}
                   </div>
 
-              {/* User Menu */}
+              {/* ==================
+                  User Dropdown Menu (shows on avatar click)
+                  Includes: My Profile, My Orders, Forgot Password, Settings
+                  Handles click-outside, closes on link click
+                ==================*/}
               <div className="relative" ref={userMenuRef}>
                 {isLogin ? (
                   <div className="flex items-center gap-2">
@@ -473,24 +477,14 @@ export default function Navbar() {
                       </div>
                       <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} />
                     </button>
-                    
-                    {/* User Dropdown Menu */}
+                    {/* User Dropdown Menu Actual Popover */}
                     {showUserMenu && (
                       <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50">
                         <div className="px-4 py-3 border-b border-gray-100">
                           <p className="text-sm font-semibold text-gray-900">Welcome back!</p>
                           <p className="text-xs text-gray-500 truncate">{user.email}</p>
                         </div>
-                        
-                        <Link 
-                          to="/profile" 
-                          onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
-                        >
-                          <User className="h-4 w-4" />
-                          My Profile
-                        </Link>
-                        
+                        {/* My Orders - Link to user's order history */}
                         <Link 
                           to="/my-orders" 
                           onClick={() => setShowUserMenu(false)}
@@ -499,7 +493,7 @@ export default function Navbar() {
                           <ShoppingBag className="h-4 w-4" />
                           My Orders
                         </Link>
-                        
+                        {/* Forgot Password - Quick user password reset */}
                         <Link 
                           to="/forgot-password" 
                           onClick={() => setShowUserMenu(false)}
@@ -508,16 +502,6 @@ export default function Navbar() {
                           <Lock className="h-4 w-4" />
                           Forgot Password
                         </Link>
-                        
-                        <Link 
-                          to="/settings" 
-                          onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
-                        >
-                          <Settings className="h-4 w-4" />
-                          Settings
-                        </Link>
-                        
                         <div className="border-t border-gray-100 mt-2 pt-2">
                           <button
                             onClick={handleLogout}
